@@ -7,9 +7,15 @@ Version **2.0.0** documents the refactored metadata architecture and current dep
 ## Current project
 
 - **GitHub:** https://github.com/mbmelgo/nuvio-anime-releases-addon
-- **Vercel:** https://nuvio-anime-releases-addon-2jnviz85v-personal-bcb9.vercel.app
-- **Manifest:** https://nuvio-anime-releases-addon-2jnviz85v-personal-bcb9.vercel.app/manifest.json
+- **Vercel:** https://nuvio-anime-releases-addon-rho.vercel.app
+- **Manifest:** https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json
 - **Branch:** `main`
+
+## Current status
+
+GitHub is the source of truth. Automatic Vercel Git deployments are intentionally disabled, so GitHub commits do not automatically create Vercel deployments. Production deployments are performed manually when a consolidated candidate is ready.
+
+The current production metadata routing uses **v4**. **v5** is the refactored candidate and remains available for validation.
 
 ## v2.0.0 highlights
 
@@ -99,11 +105,11 @@ Single-season baseline: **37 episodes, S1E1–S1E37**.
 
 ### Mushoku Tensei — MAL 39535
 
-Multi-season/cour test. The refactored implementation previously reached approximately **23 + 24 + 1 = 48 episodes** across three seasons. Exact output must be revalidated against current upstream data.
+Multi-season/cour test. Multi-season/cour test. Exact output must be revalidated against current upstream data.
 
 ### One Piece — MAL 21
 
-Long-running stress test. The old implementation stopped at 100 episodes. The refactored implementation previously reached approximately **23 seasons / 1,196 unique episodes** before special/recap filtering was refined.
+Long-running stress test. The old implementation stopped at 100 episodes. Long-running stress test. The current architecture has no arbitrary 100-episode ceiling; exact output must be revalidated against current upstream data.
 
 Additional candidates: Naruto, Bleach, Gintama, Fairy Tail, Dragon Ball, Hunter × Hunter, Re:ZERO, Attack on Titan, and JoJo's Bizarre Adventure.
 
@@ -126,6 +132,23 @@ For every tested anime verify:
 - no artificial 100-episode cap
 - no special/recap/OVA/ONA/movie leakage
 - reasonable response size
+
+## Key endpoints
+
+```text
+/                         Home page
+/manifest.json            Addon manifest
+/catalog/series/:id.json  Series catalog
+/meta/series/:id.json     Series metadata
+/api/meta/series/:id.json Series metadata compatibility route
+```
+
+Current examples:
+- https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json
+- https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/ongoing.json
+- https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/new_episodes.json
+- https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/next_episodes.json
+- https://nuvio-anime-releases-addon-rho.vercel.app/meta/series/mal%3A39535.json
 
 ## Catalogs
 
