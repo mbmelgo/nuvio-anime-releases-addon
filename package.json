@@ -4,5 +4,9 @@
   "private": true,
   "type": "module",
   "engines": { "node": ">=20" },
-  "scripts": { "dev": "vercel dev" }
+  "scripts": {
+    "dev": "vercel dev",
+    "test": "node --test",
+    "test:watch": "node --test --watch"
+  }
 }
