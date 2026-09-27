@@ -1,4 +1,4 @@
-const BASE_URL = "https://nuvio-anime-releases-addon-2jnviz85v-personal-bcb9.vercel.app";
+const BASE_URL = "https://nuvio-anime-releases-addon-rho.vercel.app";
 const MANIFEST_URL = `${BASE_URL}/manifest.json`;
 const GITHUB_URL = "https://github.com/mbmelgo/nuvio-anime-releases-addon";
 const VERSION = "2.0.0";
