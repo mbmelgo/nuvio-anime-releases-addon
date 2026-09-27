@@ -2,7 +2,8 @@ const SPECIAL_RE = /\b(?:recaps?|recap\s+episode|compilation|digest|summary|summ
 
 export function normalizeAniZipEpisode(item) {
   if (!item || typeof item !== "object") return null;
-  const episode = Number(item.episodeNumber ?? item.number ?? item.episode);
+  const rawEpisode = item.episodeNumber ?? item.number ?? item.episode;
+  const episode = Number(rawEpisode);
   if (!Number.isInteger(episode) || episode <= 0) return null;
   const season = Number(item.seasonNumber ?? item.season ?? 1) || 1;
   const title = titleOf(item.title) || `Episode ${episode}`;
@@ -35,7 +36,9 @@ export function normalizeJikanEpisode(item) {
 
 export function mergeEpisodeRows(rows) {
   const map = new Map();
-  for (const row of rows.map(normalizeAniZipEpisode).filter(Boolean)) {
+  for (const item of rows) {
+    const row = normalizeAniZipEpisode(item);
+    if (!row) continue;
     const key = `${row.sourceSeason}:${row.number}`;
     const old = map.get(key);
     if (!old || better(row, old)) map.set(key, row);
@@ -57,22 +60,22 @@ function better(a,b) {
 }
 
 function isSpecial(item, title) {
-  const type = String(item?.type || item?.episodeType || "").toLowerCase();
-  if (/^(special|ova|ona|movie|recap|summary|compilation|digest)$/.test(type)) return true;
+  const type = String(item?.type || item?.episodeType || item?.kind || "").trim().toLowerCase();
+  if (/^(special|ova|ona|movie|recap|summary|compilation|digest|opening|ending|preview|trailer|credits)$/.test(type)) return true;
 
-  // AniZip carries the AniDB episode code in `episode`. Regular TV episodes
-  // are numeric; S/C/T/P/O prefixes represent specials/credits/trailers/
-  // parodies/other entries and must not enter Nuvio's normal TV episode list.
+  // Prefer explicit source episode codes. Numeric episode codes are regular TV
+  // episodes; S/C/T/P/O prefixes are AniDB special/credit/trailer/parody/other.
   const aniDbEpisode = String(item?.episode || "").trim().toUpperCase();
   if (/^[SCTPO]\d+(?:\.\d+)?$/.test(aniDbEpisode)) return true;
 
-  // TVDB specials are season 0. Do not let them become a normal Nuvio season.
+  // TVDB specials use season 0. Never map them into a normal Nuvio season.
   const season = Number(item?.seasonNumber ?? item?.season);
   if (Number.isInteger(season) && season === 0) return true;
 
-  // Title matching is the final fallback only. Prefer explicit source metadata
-  // above so legitimate episode titles containing words like "special" are not
-  // discarded merely because of their wording.
+  // Some providers expose an explicit non-standard flag without a type string.
+  if (item?.isSpecial === true || item?.special === true || item?.is_ova === true || item?.is_ona === true) return true;
+
+  // Last-resort title matching only.
   return SPECIAL_RE.test(title);
 }
 
