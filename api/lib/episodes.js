@@ -1,4 +1,4 @@
-const SPECIAL_RE = /\b(recaps?|compilation|digest|summary|pre-broadcast|broadcast special|episode\s+of|fan\s+letter|barto['’]?s\s+secret\s+room)\b/i;
+const SPECIAL_RE = /\b(?:recaps?|recap\s+episode|compilation|digest|summary|summaries|pre-broadcast|broadcast\s+special|tv\s+special|special\s+episode|opening|ending|preview|ova|ona|episode\s+of|fan\s+letter|barto['’]?s\s+secret\s+room)\b/i;
 
 export function normalizeAniZipEpisode(item) {
   if (!item || typeof item !== "object") return null;
@@ -58,7 +58,7 @@ function better(a,b) {
 
 function isSpecial(item, title) {
   const type = String(item?.type || item?.episodeType || "").toLowerCase();
-  if (/^(special|ova|ona|movie|recap|summary)$/.test(type)) return true;
+  if (/^(special|ova|ona|movie|recap|summary|compilation|digest)$/.test(type)) return true;
 
   // AniZip carries the AniDB episode code in `episode`. Regular TV episodes
   // are numeric; S/C/T/P/O prefixes represent specials/credits/trailers/
@@ -70,6 +70,9 @@ function isSpecial(item, title) {
   const season = Number(item?.seasonNumber ?? item?.season);
   if (Number.isInteger(season) && season === 0) return true;
 
+  // Title matching is the final fallback only. Prefer explicit source metadata
+  // above so legitimate episode titles containing words like "special" are not
+  // discarded merely because of their wording.
   return SPECIAL_RE.test(title);
 }
 
