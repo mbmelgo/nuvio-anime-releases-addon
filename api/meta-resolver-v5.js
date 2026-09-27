@@ -124,7 +124,19 @@ async function buildVideos(groups) {
 }
 
 export function chooseRows(jikanRows, aniZipRows, expected = 0) { if (expected > 0 && jikanRows.length >= expected) return enrichRows(jikanRows, aniZipRows); if (expected > 0 && aniZipRows.length >= expected) return aniZipRows; if (aniZipRows.length > jikanRows.length) return enrichRows(aniZipRows, jikanRows); return enrichRows(jikanRows, aniZipRows); }
-function enrichRows(primary, secondary) { const enrich = new Map(secondary.map(x => [Number(x.number), x])); return primary.map(row => { const e = enrich.get(row.number); return e ? { ...row, title: row.title === `Episode ${row.number}` ? e.title : row.title, released: row.released || e.released, thumbnail: row.thumbnail || e.thumbnail, sourceSeason: row.sourceSeason || e.sourceSeason } : row; }); }
+function enrichRows(primary, secondary) {
+  const enrich = new Map(secondary.map(x => [Number(x.number), x]));
+  return primary.map((row) => {
+    const e = enrich.get(row.number);
+    if (!e) return row;
+    const merged = { ...row };
+    if (row.title === `Episode ${row.number}` && e.title) merged.title = e.title;
+    if (!row.released && e.released) merged.released = e.released;
+    if (!row.thumbnail && e.thumbnail) merged.thumbnail = e.thumbnail;
+    if ((!row.sourceSeason || row.sourceSeason === 0) && e.sourceSeason) merged.sourceSeason = e.sourceSeason;
+    return merged;
+  });
+}
 function nextEpisode(counters, season) { const n = (counters.get(season) || 0) + 1; counters.set(season, n); return n; }
 function better(a,b) { return (/^Episode \d+$/i.test(b.title) && !/^Episode \d+$/i.test(a.title)) || (!b.thumbnail && a.thumbnail) || (!b.released && a.released); }
 
