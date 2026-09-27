@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "git": {
+    "deploymentEnabled": false
+  },
+  "rewrites": [
+    {
+      "source": "/manifest.json",
+      "destination": "/api/stremio?resource=manifest"
+    },
+    {
+      "source": "/catalog/:type/:id.json",
+      "destination": "/api/stremio?resource=catalog&type=:type&id=:id"
+    },
+    {
+      "source": "/meta/:type/:id.json",
+      "destination": "/api/meta-resolver-v4?type=:type&id=:id"
+    },
+    {
+      "source": "/api/meta/series/:id.json",
+      "destination": "/api/meta-resolver-v4?type=series&id=:id"
+    },
+    {
+      "source": "/",
+      "destination": "/api/home"
+    }
+  ]
+}
