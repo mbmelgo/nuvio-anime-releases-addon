@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   try {
     const rootJikan = await getJikanAnime(malId);
     const rootAniList = await getAniListByMal(malId);
-    if (!rootJikan && !rootAniList) return res.status(200).json({ meta: null });
+    if (!rootJikan && !rootAniList) return res.status(404).json({ meta: null });
     const root = rootJikan || aniListToJikan(rootAniList);
     const graph = await discoverTvGraph(malId, root, MAX_GRAPH_NODES);
     const seasons = numberSeasons(graph, malId);
@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ meta });
   } catch (error) {
     console.error("[meta-resolver-v5]", error);
-    return res.status(200).json({ meta: buildMeta({}, requestedId, []) });
+    return res.status(502).json({ meta: null, error: "Upstream metadata resolution failed" });
   }
 }
 
@@ -47,7 +47,8 @@ function numberSeasons(entries, requestedMalId) {
   for (const entry of sorted) {
     const explicit = explicitSeason(entry.node);
     const part = isPart(entry.node);
-    let season = explicit || (part && groups.length ? groups[groups.length - 1].season : groups.length + 1);
+    let season = explicit || (part && groups.length ? groups[groups.length - 1].season : null);
+    if (!season) season = nextSeasonNumber(groups, entry);
     let group = groups.find(g => g.season === season);
     if (!group) { group = { season, entries: [] }; groups.push(group); }
     if (!group.entries.some(x => Number(x.jikan?.mal_id) === Number(entry.jikan?.mal_id))) group.entries.push(entry);
@@ -55,6 +56,13 @@ function numberSeasons(entries, requestedMalId) {
   const requested = entries.find(x => Number(x.jikan?.mal_id) === Number(requestedMalId));
   if (requested && !groups.some(g => g.entries.some(x => Number(x.jikan?.mal_id) === Number(requestedMalId)))) groups.unshift({ season: 1, entries: [requested] });
   return groups.sort((a,b) => a.season - b.season);
+}
+function nextSeasonNumber(groups, entry) {
+  // A graph entry with explicit AniList season metadata is authoritative for
+  // seasonal anime. Otherwise preserve chronological franchise order. A split
+  // cour/part is handled by isPart() before this fallback.
+  const max = groups.reduce((n, g) => Math.max(n, Number(g.season) || 0), 0);
+  return max + 1;
 }
 function explicitSeason(node) {
   const titles = [...(node?.synonyms || []), node?.title?.english, node?.title?.romaji, node?.title?.native].filter(Boolean).map(String);
@@ -78,7 +86,8 @@ async function buildVideos(groups) {
       if (!rows.length) continue;
 
       const identity = /^tt\d+$/i.test(String(mapping?.imdb_id || "")) ? String(mapping.imdb_id) : `mal:${malId}`;
-      const useSourceSeasons = groups.length === 1 && new Set(rows.map(r => Number(r.sourceSeason)).filter(n => n > 0)).size > 1;
+      const sourceSeasons = new Set(rows.map(r => Number(r.sourceSeason)).filter(n => n > 0));
+      const useSourceSeasons = groups.length === 1 && sourceSeasons.size > 1;
       const counters = new Map();
       for (const row of rows) {
         const targetSeason = useSourceSeasons ? Number(row.sourceSeason) : group.season;
@@ -95,14 +104,21 @@ async function buildVideos(groups) {
   }
   return [...out.values()].sort((a,b) => a.season - b.season || a.episode - b.episode);
 }
-function chooseRows(jikanRows, aniZipRows, expected, aired) {
-  if (expected > 0 && jikanRows.length >= Math.min(expected, 1)) {
-    const primary = jikanRows.slice(0, expected || jikanRows.length);
-    const enrich = new Map(aniZipRows.filter(x => Number(x.sourceSeason) > 0).map(x => [Number(x.number), x]));
-    return primary.map(row => { const e = enrich.get(row.number); return e ? { ...row, title: row.title === `Episode ${row.number}` ? e.title : row.title, released: row.released || e.released, thumbnail: row.thumbnail || e.thumbnail, sourceSeason: e.sourceSeason || row.sourceSeason } : row; });
+function chooseRows(jikanRows, aniZipRows, expected) {
+  // Use Jikan as the canonical sequence only when it appears complete. If it
+  // is partial, prefer AniZip's larger dataset; when neither has a declared
+  // expected count, use the source with more rows and use the other for
+  // enrichment below.
+  if (expected > 0 && jikanRows.length >= expected) {
+    return enrichRows(jikanRows, aniZipRows);
   }
-  if (aniZipRows.length) return aniZipRows;
-  return jikanRows;
+  if (expected > 0 && aniZipRows.length >= expected) return aniZipRows;
+  if (aniZipRows.length > jikanRows.length) return enrichRows(aniZipRows, jikanRows);
+  return enrichRows(jikanRows, aniZipRows);
+}
+function enrichRows(primary, secondary) {
+  const enrich = new Map(secondary.map(x => [Number(x.number), x]));
+  return primary.map(row => { const e = enrich.get(row.number); return e ? { ...row, title: row.title === `Episode ${row.number}` ? e.title : row.title, released: row.released || e.released, thumbnail: row.thumbnail || e.thumbnail, sourceSeason: row.sourceSeason || e.sourceSeason } : row; });
 }
 function nextEpisode(counters, season) { const n = (counters.get(season) || 0) + 1; counters.set(season, n); return n; }
 function better(a,b) { return (/^Episode \d+$/i.test(b.title) && !/^Episode \d+$/i.test(a.title)) || (!b.thumbnail && a.thumbnail) || (!b.released && a.released); }
