@@ -53,7 +53,8 @@ test("rejects known One Piece side-story/special titles", () => {
 
 test("preserves legitimate episode titles containing ordinary words", () => {
   assert.equal(isSpecial({ episodeNumber: 1 }, "The Beginning"), false);
-  assert.equal(isSpecial({ episodeNumber: 2 }, "A Special Moment"), true);
+  assert.equal(isSpecial({ episodeNumber: 2 }, "A Special Moment"), false);
+  assert.equal(isSpecial({ episodeNumber: 3 }, "Episode 1000 Special Broadcast"), true);
 });
 
 test("rejects invalid and non-positive episode numbers", () => {
