@@ -1,7 +1,9 @@
+import { ADDON_VERSION } from "./version.js";
+
 const BASE_URL = "https://nuvio-anime-releases-addon-rho.vercel.app";
 const MANIFEST_URL = `${BASE_URL}/manifest.json`;
 const GITHUB_URL = "https://github.com/mbmelgo/nuvio-anime-releases-addon";
-const VERSION = "2.0.0";
+const VERSION = ADDON_VERSION;
 
 const CATALOGS = [
   ["ongoing", "Ongoing — current season", "Currently releasing TV anime, including still-releasing titles from the immediately previous season."],
@@ -33,7 +35,7 @@ export default function handler(req, res) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0f14">
-  <meta name="description" content="Anime Releases for Nuvio v2.0.0 — season-aware anime catalogs and metadata for Nuvio, BingeCat, and Stremio-compatible clients.">
+  <meta name="description" content="Anime Releases for Nuvio v${VERSION} — season-aware anime catalogs and metadata for Nuvio, BingeCat, and Stremio-compatible clients.">
   <title>Anime Releases for Nuvio · v${VERSION}</title>
   <style>
     :root { color-scheme:dark; --bg:#0b0f14; --panel:#121821; --panel2:#18212c; --text:#f4f7fb; --muted:#9da9b8; --accent:#ff6f61; --border:#283341; --green:#71d99a; }
@@ -88,7 +90,7 @@ export default function handler(req, res) {
       <a class="button" href="${GITHUB_URL}">View on GitHub</a>
       <a class="button" href="#catalogs">View catalogs</a>
     </div>
-    <div class="notice"><strong>Current v2.0.0 status:</strong> GitHub is the source of truth, automatic Vercel Git deployments are disabled, and production metadata currently routes to the v4 resolver while the v5 refactor is being validated.</div>
+    <div class="notice"><strong>Current v${VERSION} status:</strong> GitHub is the source of truth, automatic Vercel Git deployments are disabled, and production metadata currently routes to the v4 resolver while the v5 refactor is being validated.</div>
   </header>
 
   <main class="wrap">
@@ -112,7 +114,7 @@ export default function handler(req, res) {
 
     <section>
       <h2>Metadata &amp; episodes</h2>
-      <p class="section-lead">The addon accepts MAL IDs such as <code>mal:39535</code> and returns Nuvio-compatible series metadata. v2.0.0 uses AniList/Jikan franchise relationships, AniZip episode data, source-aware filtering, normalization, and deduplication.</p>
+      <p class="section-lead">The addon accepts MAL IDs such as <code>mal:39535</code> and returns Nuvio-compatible series metadata. v${VERSION} uses AniList/Jikan franchise relationships, AniZip episode data, source-aware filtering, normalization, and deduplication.</p>
       <div class="features">
         <div class="feature"><h3>Multi-season</h3><p>Related TV entries are discovered as a franchise rather than assuming a single direct sequel chain.</p></div>
         <div class="feature"><h3>Long-running</h3><p>Long-running series are not artificially capped at 100 episodes. One Piece is the primary stress test.</p></div>
