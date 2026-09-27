@@ -53,30 +53,25 @@ export function titleOf(value) {
   return "";
 }
 
+export function isSpecial(item, title = titleOf(item?.title)) {
+  const type = String(item?.type || item?.episodeType || item?.kind || "").trim().toLowerCase();
+  if (/^(special|ova|ona|movie|recap|summary|compilation|digest|opening|ending|preview|trailer|credits)$/.test(type)) return true;
+
+  const aniDbEpisode = String(item?.episode || "").trim().toUpperCase();
+  if (/^[SCTPO]\d+(?:\.\d+)?$/.test(aniDbEpisode)) return true;
+
+  const season = Number(item?.seasonNumber ?? item?.season);
+  if (Number.isInteger(season) && season === 0) return true;
+
+  if (item?.isSpecial === true || item?.special === true || item?.is_ova === true || item?.is_ona === true) return true;
+
+  return SPECIAL_RE.test(title);
+}
+
 function better(a,b) {
   return (!b.thumbnail && a.thumbnail) ||
     (!b.released && a.released) ||
     (/^Episode \d+$/i.test(b.title) && !/^Episode \d+$/i.test(a.title));
-}
-
-function isSpecial(item, title) {
-  const type = String(item?.type || item?.episodeType || item?.kind || "").trim().toLowerCase();
-  if (/^(special|ova|ona|movie|recap|summary|compilation|digest|opening|ending|preview|trailer|credits)$/.test(type)) return true;
-
-  // Prefer explicit source episode codes. Numeric episode codes are regular TV
-  // episodes; S/C/T/P/O prefixes are AniDB special/credit/trailer/parody/other.
-  const aniDbEpisode = String(item?.episode || "").trim().toUpperCase();
-  if (/^[SCTPO]\d+(?:\.\d+)?$/.test(aniDbEpisode)) return true;
-
-  // TVDB specials use season 0. Never map them into a normal Nuvio season.
-  const season = Number(item?.seasonNumber ?? item?.season);
-  if (Number.isInteger(season) && season === 0) return true;
-
-  // Some providers expose an explicit non-standard flag without a type string.
-  if (item?.isSpecial === true || item?.special === true || item?.is_ova === true || item?.is_ona === true) return true;
-
-  // Last-resort title matching only.
-  return SPECIAL_RE.test(title);
 }
 
 function validDate(value) {
