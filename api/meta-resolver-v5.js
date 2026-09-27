@@ -1,5 +1,6 @@
 import { getAniListByMal, getJikanAnime, getAniZipMapping, getAniZipEpisodes, getJikanEpisodes, discoverTvGraph } from "./lib/providers.js";
 import { mergeEpisodeRows, normalizeJikanEpisode } from "./lib/episodes.js";
+import { reconcileEpisodeSequences } from "./lib/episode-sequences.js";
 
 const CACHE_SECONDS = 900;
 const MAX_GRAPH_NODES = 24;
@@ -62,7 +63,66 @@ function explicitSeason(node) { const titles = [...(node?.synonyms || []), node?
 function isPart(node) { const t = [...(node?.synonyms || []), node?.title?.english, node?.title?.romaji, node?.title?.native].filter(Boolean).join(" "); return /\b(?:part|cour)\s*[12]\b/i.test(t) || /第\s*[12]\s*クール/.test(t); }
 function startTime(entry) { const d = entry.node?.startDate; return d?.year ? Date.UTC(d.year, (d.month || 1) - 1, d.day || 1) : Date.UTC(2100,0,1); }
 
-async function buildVideos(groups) { const out = new Map(); for (const group of groups) { let offset = 0; for (const entry of group.entries) { const malId = Number(entry.jikan?.mal_id); if (!malId) continue; const expected = Number(entry.jikan?.episodes) || 0; const mapping = await getAniZipMapping(malId); const aniZipRows = mapping?.anilist_id ? mergeEpisodeRows(await getAniZipEpisodes(mapping.anilist_id, MAX_EPISODE_PAGES)) : []; const jikanRows = (await getJikanEpisodes(malId, MAX_EPISODE_PAGES)).map(normalizeJikanEpisode).filter(Boolean); const rows = chooseRows(jikanRows, aniZipRows, expected); if (!rows.length) continue; const identity = /^tt\d+$/i.test(String(mapping?.imdb_id || "")) ? String(mapping.imdb_id) : `mal:${malId}`; const sourceSeasons = new Set(rows.map(r => Number(r.sourceSeason)).filter(n => n > 0)); const useSourceSeasons = groups.length === 1 && sourceSeasons.size > 1; const counters = new Map(); for (const row of rows) { const targetSeason = useSourceSeasons ? Number(row.sourceSeason) : group.season; const episode = useSourceSeasons ? nextEpisode(counters, targetSeason) : offset + Number(row.number); if (!Number.isInteger(targetSeason) || targetSeason <= 0 || !Number.isInteger(episode) || episode <= 0) continue; const key = `${targetSeason}:${episode}`; const video = { id: `${identity}:${targetSeason}:${episode}`, title: row.title || `Episode ${episode}`, season: targetSeason, episode }; if (row.released) video.released = row.released; if (row.thumbnail) video.thumbnail = row.thumbnail; const old = out.get(key); if (!old || better(video, old)) out.set(key, video); } if (!useSourceSeasons) offset += rows.length; } } return [...out.values()].sort((a,b) => a.season - b.season || a.episode - b.episode); }
+async function buildVideos(groups) {
+  const out = new Map();
+
+  for (const group of groups) {
+    const sequences = [];
+
+    for (const entry of group.entries) {
+      const malId = Number(entry.jikan?.mal_id);
+      if (!malId) continue;
+
+      const expected = Number(entry.jikan?.episodes) || 0;
+      const mapping = await getAniZipMapping(malId);
+      const aniZipRows = mapping?.anilist_id
+        ? mergeEpisodeRows(await getAniZipEpisodes(mapping.anilist_id, MAX_EPISODE_PAGES))
+        : [];
+      const jikanRows = (await getJikanEpisodes(malId, MAX_EPISODE_PAGES))
+        .map(normalizeJikanEpisode)
+        .filter(Boolean);
+
+      const rows = chooseRows(jikanRows, aniZipRows, expected);
+      if (!rows.length) continue;
+
+      const identity = /^tt\d+$/i.test(String(mapping?.imdb_id || ""))
+        ? String(mapping.imdb_id)
+        : `mal:${malId}`;
+
+      sequences.push({ identity, rows });
+    }
+
+    const planned = reconcileEpisodeSequences(sequences);
+
+    for (const row of planned) {
+      const targetSeason =
+        groups.length === 1 && Number(row.sourceSeason) > 0
+          ? Number(row.sourceSeason)
+          : group.season;
+
+      const episode = Number(row.canonicalNumber);
+      if (!Number.isInteger(targetSeason) || targetSeason <= 0 || !Number.isInteger(episode) || episode <= 0) continue;
+
+      const identity = row.identity || "mal:unknown";
+      const key = `${targetSeason}:${episode}`;
+      const video = {
+        id: `${identity}:${targetSeason}:${episode}`,
+        title: row.title || `Episode ${episode}`,
+        season: targetSeason,
+        episode
+      };
+
+      if (row.released) video.released = row.released;
+      if (row.thumbnail) video.thumbnail = row.thumbnail;
+
+      const old = out.get(key);
+      if (!old || better(video, old)) out.set(key, video);
+    }
+  }
+
+  return [...out.values()].sort((a,b) => a.season - b.season || a.episode - b.episode);
+}
+
 export function chooseRows(jikanRows, aniZipRows, expected = 0) { if (expected > 0 && jikanRows.length >= expected) return enrichRows(jikanRows, aniZipRows); if (expected > 0 && aniZipRows.length >= expected) return aniZipRows; if (aniZipRows.length > jikanRows.length) return enrichRows(aniZipRows, jikanRows); return enrichRows(jikanRows, aniZipRows); }
 function enrichRows(primary, secondary) { const enrich = new Map(secondary.map(x => [Number(x.number), x])); return primary.map(row => { const e = enrich.get(row.number); return e ? { ...row, title: row.title === `Episode ${row.number}` ? e.title : row.title, released: row.released || e.released, thumbnail: row.thumbnail || e.thumbnail, sourceSeason: row.sourceSeason || e.sourceSeason } : row; }); }
 function nextEpisode(counters, season) { const n = (counters.get(season) || 0) + 1; counters.set(season, n); return n; }
