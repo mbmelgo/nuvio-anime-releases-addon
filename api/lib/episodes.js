@@ -1,4 +1,4 @@
-const SPECIAL_RE = /\\b(?:recaps?|recap\\s+episode|compilation|digest|summary|summaries|pre-broadcast|broadcast\\s+special|tv\\s+special|special\\s+episode|opening|ending|preview|ova|ona|episode\\s+of|fan\\s+letter|barto['’]?s\\s+secret\\s+room)\\b/i;
+const SPECIAL_RE = /\b(?:recaps?|recap\s+episode|compilation|digest|summary|summaries|pre-broadcast|broadcast\s+special|tv\s+special|special\s+episode|opening|ending|preview|ova|ona|episode\s+of|fan\s+letter|barto['’]?s\s+secret\s+room)\b/i;
 
 export function normalizeAniZipEpisode(item) {
   if (!item || typeof item !== "object") return null;
