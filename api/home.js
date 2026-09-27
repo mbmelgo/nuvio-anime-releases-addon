@@ -82,19 +82,19 @@ export default function handler(req, res) {
   <header class="wrap">
     <div class="eyebrow">Nuvio / BingeCat / Stremio addon · v${VERSION}</div>
     <h1>Anime Releases for Nuvio</h1>
-    <p class="lead">A free, season-aware anime catalog and metadata addon with dynamic airing catalogs and a refactored metadata resolver designed for multi-season and long-running anime.</p>
+    <p class="lead">A free, season-aware anime catalog and metadata addon with ten dynamic series catalogs and a multi-season metadata resolver designed for long-running anime.</p>
     <div class="actions">
       <a class="button primary" href="${MANIFEST_URL}">Install in Nuvio</a>
       <a class="button" href="${GITHUB_URL}">View on GitHub</a>
       <a class="button" href="#catalogs">View catalogs</a>
     </div>
-    <div class="notice"><strong>v2.0.0:</strong> The metadata architecture now separates franchise discovery, episode retrieval, episode classification, deduplication, and Nuvio response formatting. The resolver no longer imposes an arbitrary 100-episode limit.</div>
+    <div class="notice"><strong>Current v2.0.0 status:</strong> GitHub is the source of truth, automatic Vercel Git deployments are disabled, and production metadata currently routes to the v4 resolver while the v5 refactor is being validated.</div>
   </header>
 
   <main class="wrap">
     <section class="install" id="install">
       <h2>Install</h2>
-      <p class="section-lead">Use this manifest URL in Nuvio, BingeCat, or another compatible Stremio addon client.</p>
+      <p class="section-lead">Use the current manifest URL in Nuvio, BingeCat, or another compatible Stremio addon client.</p>
       <div class="url"><code>${MANIFEST_URL}</code></div>
       <ol>
         <li>Open the Addons section.</li>
