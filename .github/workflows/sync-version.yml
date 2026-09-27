@@ -1,0 +1,67 @@
+name: Sync addon version
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - api/version.js
+      - api/stremio.js
+      - api/home.js
+      - README.md
+      - .github/workflows/sync-version.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync-version:
+    if: ${{ !contains(github.event.head_commit.message, '[skip version-sync]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Read canonical version
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(sed -nE 's/.*ADDON_VERSION = "([^"]+)".*/\1/p' api/version.js)
+          test -n "$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Sync version strings
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          version = os.environ["VERSION"]
+
+          stremio = Path("api/stremio.js")
+          text = stremio.read_text()
+          import re
+          text, count = re.subn(r'version:\s*"[^"]+"', f'version: "{version}"', text, count=1)
+          if count != 1:
+              raise SystemExit("Could not find manifest version in api/stremio.js")
+          stremio.write_text(text)
+
+          readme = Path("README.md")
+          text = readme.read_text()
+          text = re.sub(r'(?i)(\bversion\s+|\bv)\d+\.\d+\.\d+', lambda m: m.group(1) + version, text)
+          readme.write_text(text)
+          PY
+
+      - name: Commit synchronized version
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add api/stremio.js README.md
+          if git diff --cached --quiet; then
+            echo "Version already synchronized."
+            exit 0
+          fi
+          git commit -m "Sync addon version to ${{ steps.version.outputs.version }} [skip version-sync]"
+          git push
