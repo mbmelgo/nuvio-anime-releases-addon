@@ -47,7 +47,7 @@ export function looksLikeSameSequence(aRows, bRows) {
 function sameEpisodeIdentity(a, b) {
   const titleA = normalizeTitle(a?.title);
   const titleB = normalizeTitle(b?.title);
-  if (titleA && titleB && titleA === titleB) return true;
+  if (titleA && titleB) return titleA === titleB;
 
   const dateA = String(a?.released || "").slice(0, 10);
   const dateB = String(b?.released || "").slice(0, 10);
