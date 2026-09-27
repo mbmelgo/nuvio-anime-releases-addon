@@ -105,11 +105,11 @@ Single-season baseline: **37 episodes, S1E1–S1E37**.
 
 ### Mushoku Tensei — MAL 39535
 
-Multi-season/cour test. Multi-season/cour test. Exact output must be revalidated against current upstream data.
+Multi-season/cour test. Exact output must be revalidated against current upstream data.
 
 ### One Piece — MAL 21
 
-Long-running stress test. The old implementation stopped at 100 episodes. Long-running stress test. The current architecture has no arbitrary 100-episode ceiling; exact output must be revalidated against current upstream data.
+Long-running stress test. The old implementation stopped at 100 episodes. The current architecture has no arbitrary 100-episode ceiling; exact output must be revalidated against current upstream data.
 
 Additional candidates: Naruto, Bleach, Gintama, Fairy Tail, Dragon Ball, Hunter × Hunter, Re:ZERO, Attack on Titan, and JoJo's Bizarre Adventure.
 
