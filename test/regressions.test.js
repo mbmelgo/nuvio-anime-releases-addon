@@ -45,6 +45,7 @@ test("Attack on Titan regression: distinct split-cour sequences remain separate 
 test("One Piece regression: ordinary use of the word special is not enough to reject an episode", () => {
   assert.equal(isSpecial({ episodeNumber: 1 }, "A Special Moment"), false);
   assert.equal(isSpecial({ episodeNumber: 1 }, "Episode 1000 Special Broadcast"), true);
+  assert.equal(isSpecial({ episodeNumber: 1 }, "A Special Moment"), false);
 });
 
 test("One Piece regression: explicit special flags still override a normal-looking title", () => {
@@ -90,4 +91,13 @@ test("Mushoku Tensei regression fixture: explicit season names remain authoritat
   const groups = numberSeasons(entries, 39535);
   assert.deepEqual(groups.map((group) => group.season), [1, 2]);
   assert.deepEqual(groups.map((group) => group.entries[0].jikan.episodes), [23, 24]);
+});
+
+
+test("reconciled episode rows retain canonical numbering and source identity", () => {
+  const result = reconcileEpisodeSequences([
+    { identity: "mal:1535", rows: [{ number: 1, title: "Pilot" }, { number: 2, title: "Confrontation" }] }
+  ]);
+  assert.deepEqual(result.map((row) => row.canonicalNumber), [1, 2]);
+  assert.deepEqual(result.map((row) => row.title), ["Pilot", "Confrontation"]);
 });
