@@ -1,4 +1,4 @@
-import { getAniListByMal, getJikanAnime, getAniZipMapping, getAniZipEpisodes, getJikanEpisodes, discoverTvGraph } from "./lib/providers.js";
+import { getAniListByMal, getJikanAnime, getAniZipMapping, getAniZipEpisodes, getJikanEpisodes, getTvMazeEpisodes, discoverTvGraph } from "./lib/providers.js";
 import { mergeEpisodeRows, normalizeJikanEpisode } from "./lib/episodes.js";
 import { reconcileEpisodeSequences } from "./lib/episode-sequences.js";
 
@@ -160,7 +160,11 @@ async function buildVideos(groups) {
       const mapping = await getAniZipMapping(malId);
       const aniZipRows = mapping?.anilist_id ? mergeEpisodeRows(await getAniZipEpisodes(mapping.anilist_id)) : [];
       const jikanRows = (await getJikanEpisodes(malId, MAX_EPISODE_PAGES)).map(normalizeJikanEpisode).filter(Boolean);
-      const rows = chooseRows(jikanRows, aniZipRows, expected, ongoing);
+      let rows = chooseRows(jikanRows, aniZipRows, expected, ongoing);
+      if (ongoing && /^tt\\d+$/i.test(String(mapping?.imdb_id || \"\").trim()) && maxEpisodeNumber(rows) >= 100) {
+        const tvMazeRows = await getTvMazeEpisodes(mapping.imdb_id);
+        rows = mergeFreshAbsoluteEpisodes(rows, tvMazeRows, latestSourceSeason(rows));
+      }
       if (!rows.length) continue;
       const identity = /^tt\d+$/i.test(String(mapping?.imdb_id || "")) ? String(mapping.imdb_id) : `mal:${malId}`;
       sequences.push({ identity, rows });
@@ -183,6 +187,48 @@ async function buildVideos(groups) {
 }
 
 export function isOngoing(anime) { return Boolean(anime?.airing) || /currently\s+airing/i.test(String(anime?.status || "")); }
+
+export function mergeFreshAbsoluteEpisodes(primaryRows, fallbackRows, sourceSeason = 1) {
+  const primary = Array.isArray(primaryRows) ? primaryRows.map(row => ({ ...row })) : [];
+  const fallback = Array.isArray(fallbackRows) ? fallbackRows : [];
+  const existingAbsolute = new Set(
+    primary
+      .map(row => Number(row?.absoluteEpisodeNumber || row?.number || 0))
+      .filter(number => Number.isInteger(number) && number > 0)
+  );
+  const targetSeason = Number(sourceSeason) > 0 ? Number(sourceSeason) : (latestSourceSeason(primary) || 1);
+
+  for (const row of fallback) {
+    const absolute = Number(row?.absoluteEpisodeNumber || 0);
+    if (!Number.isInteger(absolute) || absolute <= 0 || existingAbsolute.has(absolute)) continue;
+    primary.push({
+      ...row,
+      number: absolute,
+      sourceSeason: targetSeason,
+      absoluteEpisodeNumber: absolute
+    });
+    existingAbsolute.add(absolute);
+  }
+
+  return primary.sort((a, b) => {
+    const absA = Number(a?.absoluteEpisodeNumber || 0);
+    const absB = Number(b?.absoluteEpisodeNumber || 0);
+    if (absA > 0 && absB > 0 && absA !== absB) return absA - absB;
+    return Number(a?.number || 0) - Number(b?.number || 0);
+  });
+}
+
+function maxEpisodeNumber(rows) {
+  return (Array.isArray(rows) ? rows : []).reduce((max, row) => {
+    const value = Number(row?.absoluteEpisodeNumber || row?.number || 0);
+    return Number.isInteger(value) ? Math.max(max, value) : max;
+  }, 0);
+}
+
+function latestSourceSeason(rows) {
+  const sorted = Array.isArray(rows) ? rows.filter(row => Number(row?.sourceSeason) > 0).sort((a,b) => Number(b.sourceSeason) - Number(a.sourceSeason)) : [];
+  return sorted.length ? Number(sorted[0].sourceSeason) : 1;
+}
 
 export function chooseRows(jikanRows, aniZipRows, expected = 0, ongoing = false) {
   const jikan = Array.isArray(jikanRows) ? jikanRows : [];
