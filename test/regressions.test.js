@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { reconcileEpisodeSequences, looksLikeSameSequence } from "../api/lib/episode-sequences.js";
-import { isSpecial } from "../api/lib/episodes.js";
+import { isSpecial, normalizeAniZipEpisode } from "../api/lib/episodes.js";
 import { numberSeasons } from "../api/meta-resolver-v5.js";
 
-const titles = (prefix, count) =>
+const titles = (prefix, count, start = 1) =>
   Array.from({ length: count }, (_, index) => ({
-    number: index + 1,
+    number: start + index,
     title: `${prefix} Episode ${index + 1}`,
     released: `2024-01-${String(index + 1).padStart(2, "0")}T00:00:00.000Z`,
   }));
@@ -25,6 +25,13 @@ test("Attack on Titan regression: identical alternate episode sequences are reco
   assert.equal(result.length, 10);
   assert.deepEqual(result.map((row) => row.canonicalNumber), Array.from({ length: 10 }, (_, i) => i + 1));
   assert.ok(result.every((row) => row.thumbnail));
+});
+
+test("Attack on Titan regression: offset duplicate sequences are recognized by episode identity, not only episode number", () => {
+  const first = titles("Town", 12, 1);
+  const shifted = titles("Town", 12, 13);
+
+  assert.equal(looksLikeSameSequence(first, shifted), true);
 });
 
 test("Attack on Titan regression: distinct split-cour sequences remain separate and continue numbering", () => {
@@ -51,6 +58,40 @@ test("One Piece regression: ordinary use of the word special is not enough to re
 test("One Piece regression: explicit special flags still override a normal-looking title", () => {
   assert.equal(isSpecial({ episodeNumber: 1, type: "special" }, "Normal Title"), true);
   assert.equal(isSpecial({ episodeNumber: 1, seasonNumber: 0 }, "Normal Title"), true);
+});
+
+test("One Piece regression: future episodes are excluded from normalized output", () => {
+  const future = normalizeAniZipEpisode({
+    episodeNumber: 9999,
+    seasonNumber: 1,
+    title: "Future Episode",
+    airDateUtc: "2099-01-01T00:00:00.000Z",
+  });
+
+  assert.equal(future, null);
+});
+
+test("One Piece regression: absolute episode numbering can be used when provider season numbering is misleading", () => {
+  const result = reconcileEpisodeSequences([
+    {
+      identity: "mal:21",
+      rows: [
+        { number: 1, absoluteEpisodeNumber: 1, title: "Episode 1" },
+        { number: 2, absoluteEpisodeNumber: 2, title: "Episode 2" },
+        { number: 197, absoluteEpisodeNumber: 197, title: "Episode 197" },
+      ],
+    },
+  ]);
+
+  assert.deepEqual(result.map((row) => row.canonicalNumber), [1, 2, 3]);
+});
+
+test("Episode identity regression: reconciled rows retain the source identity needed for stable Nuvio IDs", () => {
+  const result = reconcileEpisodeSequences([
+    { identity: "mal:1535", rows: [{ number: 1, title: "Pilot" }] },
+  ]);
+
+  assert.equal(result[0].identity, "mal:1535");
 });
 
 test("Naruto regression fixture: the root and sequel entries each remain represented in their own season", () => {
@@ -92,7 +133,6 @@ test("Mushoku Tensei regression fixture: explicit season names remain authoritat
   assert.deepEqual(groups.map((group) => group.season), [1, 2]);
   assert.deepEqual(groups.map((group) => group.entries[0].jikan.episodes), [23, 24]);
 });
-
 
 test("reconciled episode rows retain canonical numbering and source identity", () => {
   const result = reconcileEpisodeSequences([
