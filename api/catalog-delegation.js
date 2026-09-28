@@ -37,15 +37,13 @@ export async function delegateCompatibleIds(metas) {
   const anilistIds = rows.map((meta) => parseId(meta?.id, "anilist")).filter(Boolean);
   if (!malIds.length && !anilistIds.length) return rows;
 
-  const query = `query ($malIds:[Int],$anilistIds:[Int]) { Page(perPage:50) { media(type:ANIME,idMal_in:$malIds,id_in:$anilistIds) { id idMal externalLinks { site url } } } }`;
-  const payload = await fetchJson(ANILIST_URL, {
-    method: "POST",
-    headers: { "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify({ query, variables: { malIds, anilistIds } }),
-  });
-  const media = payload?.data?.Page?.media || [];
+  const [malMedia, anilistMedia] = await Promise.all([
+    malIds.length ? queryMedia({ idMal_in: malIds }) : Promise.resolve([]),
+    anilistIds.length ? queryMedia({ id_in: anilistIds }) : Promise.resolve([]),
+  ]);
+
   const byKey = new Map();
-  for (const item of media) {
+  for (const item of [...malMedia, ...anilistMedia]) {
     if (item.idMal) byKey.set(`mal:${item.idMal}`, item);
     if (item.id) byKey.set(`anilist:${item.id}`, item);
   }
@@ -58,6 +56,17 @@ export async function delegateCompatibleIds(metas) {
   });
 }
 
+async function queryMedia(filter) {
+  const variableName = Object.keys(filter)[0];
+  const query = `query ($ids:[Int]) { Page(perPage:50) { media(type:ANIME,${variableName}:$ids) { id idMal externalLinks { site url } } } }`;
+  const payload = await fetchJson(ANILIST_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify({ query, variables: { ids: Object.values(filter)[0] } }),
+  });
+  return payload?.data?.Page?.media || [];
+}
+
 function parseId(id, prefix) {
   const match = String(id || "").match(new RegExp(`^${prefix}:(\\d+)$`, "i"));
   return match ? Number(match[1]) : null;
@@ -66,7 +75,7 @@ function parseId(id, prefix) {
 function extractImdbId(links) {
   for (const link of Array.isArray(links) ? links : []) {
     if (!/imdb/i.test(String(link?.site || ""))) continue;
-    const match = String(link?.url || "").match(/tt\\d+/i);
+    const match = String(link?.url || "").match(/tt\d+/i);
     if (match) return match[0].toLowerCase();
   }
   return null;
