@@ -1,5 +1,6 @@
 import v5Handler from "./meta-resolver-v5.js";
-import { getAniListByMal, getJikanAnime, discoverTvGraph } from "./lib/providers.js";
+import { getJikanAnime, discoverTvGraph } from "./lib/providers.js";
+import { getRichAniListByMal } from "./lib/rich-anilist.js";
 import { enrichMeta } from "./lib/rich-meta.js";
 
 export default async function handler(req, res) {
@@ -23,9 +24,14 @@ export default async function handler(req, res) {
 
   try {
     const root = await getJikanAnime(malId);
-    const rootAniList = await getAniListByMal(malId);
+    const rootAniList = await getRichAniListByMal(malId);
     const graph = root ? await discoverTvGraph(malId, root, 24) : [];
-    const seasonGroups = buildSeasonGroups(graph, malId);
+    const richGraph = await Promise.all(graph.map(async entry => {
+      const id = Number(entry?.jikan?.mal_id || 0);
+      const node = id ? await getRichAniListByMal(id) : null;
+      return node ? { ...entry, node } : entry;
+    }));
+    const seasonGroups = buildSeasonGroups(richGraph, malId);
     const meta = enrichMeta(captured.body.meta, root, rootAniList, seasonGroups);
     return res.status(captured.statusCode).json({ ...captured.body, meta });
   } catch (error) {
@@ -52,7 +58,6 @@ function buildSeasonGroups(entries, requestedMalId) {
   const sorted = [...(entries || [])].sort((a, b) => startTime(a) - startTime(b));
   const groups = [];
   let nextSeason = 1;
-
   for (const entry of sorted) {
     const malId = Number(entry?.jikan?.mal_id || 0);
     if (!malId) continue;
@@ -65,7 +70,6 @@ function buildSeasonGroups(entries, requestedMalId) {
     groups.push({ season, entries: [entry] });
     nextSeason = Math.max(nextSeason, season + 1);
   }
-
   return groups.sort((a, b) => a.season - b.season);
 }
 
