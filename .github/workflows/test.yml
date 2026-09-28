@@ -22,10 +22,9 @@ jobs:
       - name: Run unit tests
         run: npm test
       - name: Verify production smoke-test contract
+        env:
+          ROOT_BASE: https://nuvio-anime-releases-addon-rho.vercel.app
         run: |
-          # Keep the production smoke-test contract explicit in CI so the
-          # resolver routing regression test can verify that the deployment
-          # validation covers both the promoted root routes and v5 metadata.
           root_manifest="$ROOT_BASE/manifest.json"
           root_meta="$ROOT_BASE/meta/series/mal%3A39535.json"
           root_check='root.get("id") != "com.marki.nuvio.anime-releases.v5"'
