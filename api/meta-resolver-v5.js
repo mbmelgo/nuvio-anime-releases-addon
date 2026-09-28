@@ -19,13 +19,13 @@ export default async function handler(req, res) {
 
 export async function resolveBase(requestedId, type = "series") {
   const malId = parseMalId(requestedId);
-  if (type !== "series" || !malId) return { statusCode: 404, meta: null, graph: [], videos: [], root: null };
+  if (type !== "series" || !malId) return { statusCode: 404, meta: null, graph: [], seasons: [], videos: [], root: null };
   try {
     const rootJikan = await getJikanAnime(malId), rootAniList = await getAniListByMal(malId);
-    if (!rootJikan && !rootAniList) return { statusCode: 404, meta: null, graph: [], videos: [], root: null };
+    if (!rootJikan && !rootAniList) return { statusCode: 404, meta: null, graph: [], seasons: [], videos: [], root: null };
     const root = rootJikan || aniListToJikan(rootAniList), graph = await discoverTvGraph(malId, root, MAX_GRAPH_NODES), seasons = numberSeasons(graph, malId), videos = await buildVideos(seasons), meta = buildMeta(root, requestedId, videos);
-    return { statusCode: 200, meta, graph, videos, root };
-  } catch (error) { console.error("[meta-resolver-v5]", error); return { statusCode: 502, meta: null, graph: [], videos: [], root: null }; }
+    return { statusCode: 200, meta, graph, seasons, videos, root };
+  } catch (error) { console.error("[meta-resolver-v5]", error); return { statusCode: 502, meta: null, graph: [], seasons: [], videos: [], root: null }; }
 }
 
 function setHeaders(res){res.setHeader("Access-Control-Allow-Origin","*");res.setHeader("Access-Control-Allow-Methods","GET,OPTIONS");res.setHeader("Access-Control-Allow-Headers","Content-Type");res.setHeader("Cache-Control",`public, s-maxage=${CACHE_SECONDS}, stale-while-revalidate=3600`);}
