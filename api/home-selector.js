@@ -4,16 +4,11 @@ const BASE_URL = "https://nuvio-anime-releases-addon-rho.vercel.app";
 const GITHUB_URL = "https://github.com/mbmelgo/nuvio-anime-releases-addon";
 
 const CATALOGS = [
-  ["Ongoing", "ongoing", "Current and previous-season anime that are releasing"],
-  ["Airing Today", "airing_today", "Anime with an episode airing today in Asia/Manila time"],
-  ["New Episodes — Last 7 Days", "new_episodes", "Anime with recently aired episodes"],
-  ["Next Episodes — Next 7 Days", "next_episodes", "Anime with scheduled episodes in the next 7 days"],
-  ["Upcoming", "upcoming", "Not-yet-released anime in the next season"],
-  ["Finished — Current Season", "finished_current", "Anime that finished during the current season"],
+  ["Upcoming Season", "upcoming_season", "Anime scheduled for the next season"],
+  ["Current Season", "current_season", "Anime in the current season"],
   ["Previous Season", "previous_season", "Anime from the immediately preceding season"],
-  ["Popular — Current Season", "popular_current", "Current-season anime ordered by popularity"],
-  ["Top Rated — Current Season", "top_rated_current", "Current-season anime ordered by AniList score"],
-  ["Trending — Current Season", "trending_current", "Current-season anime ordered by AniList trending score"],
+  ["Latest Anime — Last 7 Days", "new_episodes", "Anime with episodes released within the rolling last 7 days; refreshed hourly"],
+  ["Upcoming Anime — Next 7 Days", "upcoming_episodes", "Anime with episodes scheduled within the rolling next 7 days; refreshed hourly"],
 ];
 
 export default function handler(req, res) {
@@ -33,7 +28,7 @@ export default function handler(req, res) {
   <header class="wrap">
     <div class="eyebrow">Nuvio / BingeCat / Stremio catalog addon · v${ADDON_VERSION}</div>
     <h1>Anime Releases for Nuvio</h1>
-    <p class="lead">Season-aware anime release, airing, seasonal, and ranking catalogs. Detailed metadata is delegated to BingeCat.</p>
+    <p class="lead">Season-aware anime release catalogs with rolling seven-day release windows. Detailed metadata is delegated to BingeCat.</p>
   </header>
   <main class="wrap">
     <section class="panel">
@@ -47,7 +42,7 @@ export default function handler(req, res) {
 
     <section class="panel">
       <h2>Supported catalogs</h2>
-      <p class="note">Catalogs are generated dynamically from the current date and AniList data. Seasonal catalogs automatically move to the next season/year.</p>
+      <p class="note">Seasonal catalogs are generated dynamically from the current date. The latest/upcoming episode catalogs use rolling seven-day windows and are cached for up to one hour.</p>
       ${CATALOGS.map(([name, id, description]) => `
       <div class="catalog">
         <div><h3>${name}</h3><p>${description}</p></div>
