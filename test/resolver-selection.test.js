@@ -32,13 +32,12 @@ test("resolver manifests use separate addon IDs while sharing the catalog contra
 test("Vercel routes resolver-specific manifests and metadata to the matching resolver", () => {
   const vercel = JSON.parse(fs.readFileSync(new URL("../vercel.json", import.meta.url), "utf8"));
   const rewrites = vercel.rewrites;
-
   const route = (source) => rewrites.find((entry) => entry.source === source)?.destination;
 
   assert.equal(route("/v4/manifest.json"), "/api/resolver-manifest?resolver=v4");
   assert.equal(route("/v5/manifest.json"), "/api/resolver-manifest?resolver=v5");
   assert.equal(route("/v4/meta/:type/:id.json"), "/api/meta-resolver-v4?type=:type&id=:id");
-  assert.equal(route("/v5/meta/:type/:id.json"), "/api/meta-resolver-v5?type=:type&id=:id");
+  assert.equal(route("/v5/meta/:type/:id.json"), "/api/meta-resolver-v5-rich?type=:type&id=:id");
   assert.equal(route("/v4/catalog/:type/:id.json"), "/api/stremio?resource=catalog&type=:type&id=:id");
   assert.equal(route("/v5/catalog/:type/:id.json"), "/api/stremio?resource=catalog&type=:type&id=:id");
 });
@@ -59,8 +58,8 @@ test("root addon routes are promoted to the v5 resolver while explicit v4 remain
   const route = (source) => rewrites.find((entry) => entry.source === source)?.destination;
 
   assert.equal(route("/manifest.json"), "/api/resolver-manifest?resolver=v5");
-  assert.equal(route("/meta/:type/:id.json"), "/api/meta-resolver-v5?type=:type&id=:id");
-  assert.equal(route("/api/meta/series/:id.json"), "/api/meta-resolver-v5?type=series&id=:id");
+  assert.equal(route("/meta/:type/:id.json"), "/api/meta-resolver-v5-rich?type=:type&id=:id");
+  assert.equal(route("/api/meta/series/:id.json"), "/api/meta-resolver-v5-rich?type=series&id=:id");
   assert.equal(route("/v4/manifest.json"), "/api/resolver-manifest?resolver=v4");
   assert.equal(route("/v4/meta/:type/:id.json"), "/api/meta-resolver-v4?type=:type&id=:id");
 });
