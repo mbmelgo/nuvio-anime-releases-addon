@@ -1,5 +1,4 @@
 const ANILIST_URL = "https://graphql.anilist.co";
-const JIKAN_URL = "https://api.jikan.moe/v4";
 const TIME_ZONE = "Asia/Manila";
 const PAGE_SIZE = 50;
 const MAX_SCHEDULE_PAGES = 8;
@@ -30,16 +29,6 @@ export default async function handler(req, res) {
     }
   }
 
-  if (resource === "meta" && type === "series") {
-    try {
-      const meta = await buildDetailedMeta(id);
-      return meta ? send(res, { meta }) : send(res, { meta: null }, 404);
-    } catch (error) {
-      console.error("[meta]", error);
-      return send(res, { meta: null }, 500);
-    }
-  }
-
   return send(res, { error: "Not found" }, 404);
 }
 
@@ -48,11 +37,8 @@ function buildManifest(info) {
     id: "com.marki.nuvio.anime-releases",
     version: "2.18.2",
     name: "Anime Releases for Nuvio",
-    description: "Season-aware anime catalogs and detailed series metadata for Nuvio and Stremio-compatible clients.",
-    resources: [
-      { name: "catalog", types: ["series"] },
-      { name: "meta", types: ["series"], idPrefixes: ["mal:", "anilist:"] },
-    ],
+    description: "Season-aware anime release catalogs for Nuvio and Stremio-compatible clients. Detailed metadata is delegated to Bingecat.",
+    resources: [{ name: "catalog", types: ["series"] }],
     types: ["series"],
     catalogs: catalogDefinitions(info),
   };
@@ -129,81 +115,6 @@ async function queryAiringSchedule(start, end, futureOnly) {
   return all;
 }
 
-async function buildDetailedMeta(id) {
-  const parsed = parseExternalId(id);
-  if (!parsed) return null;
-  const media = await getAnimeMedia(parsed);
-  if (!media) return null;
-  let episodes = [];
-  if (media.idMal) {
-    try { episodes = await jikanEpisodeList(media.idMal); } catch (error) { console.warn("[meta] Jikan episode enrichment failed:", error.message); }
-  }
-  const meta = toDetailedMeta(media);
-  meta.videos = buildEpisodeVideos(meta.id, media, episodes);
-  return meta;
-}
-
-function parseExternalId(id) { const match = String(id || "").trim().match(/^(mal|anilist):([0-9]+)$/i); return match ? { source: match[1].toLowerCase(), value: Number(match[2]) } : null; }
-async function getAnimeMedia(parsed) {
-  const query = `query ($id:Int,$idMal:Int) { Media(id:$id,idMal:$idMal,type:ANIME) { ${MEDIA_FIELDS} relations { edges { relationType node { id idMal type format status episodes season seasonYear title { romaji english native } startDate { year month day } endDate { year month day } coverImage { large } } } } } }`;
-  const data = await anilist(query, parsed.source === "mal" ? { idMal: parsed.value } : { id: parsed.value });
-  return data?.Media || null;
-}
-async function jikanEpisodeList(malId) {
-  const all = [];
-  for (let page = 1; page <= 5; page++) {
-    const response = await fetchWithTimeout(`${JIKAN_URL}/anime/${malId}/episodes?page=${page}`);
-    if (!response.ok) throw new Error(`Jikan HTTP ${response.status}`);
-    const json = await response.json();
-    const rows = Array.isArray(json?.data) ? json.data : [];
-    all.push(...rows);
-    if (!json?.pagination?.has_next_page || rows.length === 0) break;
-  }
-  return all;
-}
-
-function toDetailedMeta(media) {
-  const id = media.idMal ? `mal:${media.idMal}` : `anilist:${media.id}`;
-  const meta = { id, type: "series", name: media.title?.english || media.title?.romaji || media.title?.native || `Anime ${media.id}`, posterShape: "poster", extra: { anilistId: media.id, ...(media.idMal ? { malId: media.idMal } : {}), ...(media.averageScore ? { anilistScore: media.averageScore / 10 } : {}), ...(media.popularity != null ? { popularity: media.popularity } : {}), ...(media.trending != null ? { trending: media.trending } : {}), ...(media.favourites != null ? { favourites: media.favourites } : {}), ...(media.episodes != null ? { totalEpisodes: media.episodes } : {}), ...(media.source ? { source: media.source } : {}), ...(media.status ? { status: media.status } : {}) } };
-  if (media.coverImage?.large) meta.poster = media.coverImage.large;
-  if (media.bannerImage) meta.background = media.bannerImage;
-  if (media.description) meta.description = cleanDescription(media.description);
-  if (media.genres?.length) meta.genres = media.genres;
-  if (media.duration) meta.runtime = `${media.duration} min`;
-  if (media.countryOfOrigin) meta.country = media.countryOfOrigin;
-  if (media.siteUrl) meta.website = media.siteUrl;
-  if (media.averageScore != null) meta.imdbRating = String(media.averageScore / 10);
-  if (media.startDate?.year) {
-    const startYear = media.startDate.year;
-    const endYear = media.endDate?.year;
-    meta.releaseInfo = media.status === "RELEASING" ? `${startYear}-` : endYear && endYear !== startYear ? `${startYear}-${endYear}` : String(startYear);
-    if (media.startDate.month && media.startDate.day) meta.released = new Date(Date.UTC(media.startDate.year, media.startDate.month - 1, media.startDate.day)).toISOString();
-  }
-  const links = [];
-  if (media.siteUrl) links.push({ name: "AniList", category: "database", url: media.siteUrl });
-  if (media.idMal) links.push({ name: "MyAnimeList", category: "database", url: `https://myanimelist.net/anime/${media.idMal}` });
-  if (links.length) meta.links = links;
-  return meta;
-}
-
-function buildEpisodeVideos(metaId, media, episodes) {
-  const rows = Array.isArray(episodes) ? episodes : [];
-  const total = media.episodes || 0;
-  const count = rows.length || total;
-  if (!count) return [];
-  const season = inferSeasonNumber(media);
-  const baseDate = media.startDate?.year ? new Date(Date.UTC(media.startDate.year, (media.startDate.month || 1) - 1, media.startDate.day || 1)).toISOString() : new Date(0).toISOString();
-  return Array.from({ length: count }, (_, index) => {
-    const row = rows[index] || {};
-    const episode = row.mal_id || index + 1;
-    return { id: `${metaId}:${season}:${episode}`, title: row.title || `Episode ${episode}`, released: row.aired?.from || baseDate, season, episode, ...(row.synopsis ? { overview: cleanDescription(row.synopsis) } : {}), ...(row.images?.jpg?.image_url ? { thumbnail: row.images.jpg.image_url } : {}), ...(media.duration ? { runtime: `${media.duration} min` } : {}) };
-  });
-}
-function inferSeasonNumber(media) {
-  const titles = [media.title?.english, media.title?.romaji, media.title?.native].filter(Boolean);
-  for (const title of titles) { const match = String(title).match(/season\s*(\d+)/i) || String(title).match(/(\d+)(?:st|nd|rd|th)?\s+season/i); if (match) return Number(match[1]); }
-  return 1;
-}
 function toMeta(media, episode) {
   if (!media) return null;
   const id = media.idMal ? `mal:${media.idMal}` : `anilist:${media.id}`;
@@ -219,13 +130,19 @@ function toMeta(media, episode) {
   if (media.duration) meta.runtime = `${media.duration} min`;
   if (media.countryOfOrigin) meta.country = media.countryOfOrigin;
   if (media.siteUrl) meta.website = media.siteUrl;
-  if (media.startDate?.year) { const startYear = media.startDate.year; const endYear = media.endDate?.year; meta.releaseInfo = media.status === "RELEASING" ? `${startYear}-` : endYear && endYear !== startYear ? `${startYear}-${endYear}` : String(startYear); if (media.startDate.month && media.startDate.day) meta.released = new Date(Date.UTC(media.startDate.year, media.startDate.month - 1, media.startDate.day)).toISOString(); }
+  if (media.startDate?.year) {
+    const startYear = media.startDate.year;
+    const endYear = media.endDate?.year;
+    meta.releaseInfo = media.status === "RELEASING" ? `${startYear}-` : endYear && endYear !== startYear ? `${startYear}-${endYear}` : String(startYear);
+    if (media.startDate.month && media.startDate.day) meta.released = new Date(Date.UTC(media.startDate.year, media.startDate.month - 1, media.startDate.day)).toISOString();
+  }
   const links = [];
   if (media.siteUrl) links.push({ name: "AniList", category: "database", url: media.siteUrl });
   if (media.idMal) links.push({ name: "MyAnimeList", category: "database", url: `https://myanimelist.net/anime/${media.idMal}` });
   if (links.length) meta.links = links;
   return meta;
 }
+
 function cleanDescription(value) { return String(value).replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "").replace(/\r\n/g, "\n").trim(); }
 async function anilist(query, variables) { const response = await fetchWithTimeout(ANILIST_URL, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ query, variables }) }); const json = await response.json().catch(() => ({})); if (!response.ok || json.errors) throw new Error(json.errors?.map((x) => x.message).join("; ") || `AniList HTTP ${response.status}`); return json.data; }
 async function fetchWithTimeout(url, options = {}) { const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS); try { return await fetch(url, { ...options, signal: controller.signal }); } finally { clearTimeout(timer); } }
