@@ -86,6 +86,24 @@ test("One Piece regression: absolute episode numbering can be used when provider
   assert.deepEqual(result.map((row) => row.canonicalNumber), [1, 2, 3]);
 });
 
+test("One Piece regression: provider seasons may reuse episode numbers without collapsing rows", () => {
+  const result = reconcileEpisodeSequences([
+    {
+      identity: "tt0388629",
+      rows: [
+        { number: 1, sourceSeason: 1, title: "First Season Episode 1" },
+        { number: 2, sourceSeason: 1, title: "First Season Episode 2" },
+        { number: 1, sourceSeason: 2, title: "Second Season Episode 1" },
+        { number: 2, sourceSeason: 2, title: "Second Season Episode 2" },
+      ],
+    },
+  ]);
+
+  assert.equal(result.length, 4);
+  assert.deepEqual(result.map((row) => row.canonicalNumber), [1, 2, 3, 4]);
+  assert.deepEqual(result.map((row) => row.sourceSeason), [1, 1, 2, 2]);
+});
+
 test("One Piece regression: an incomplete Jikan tranche does not beat a complete AniZip sequence", () => {
   const jikan = titles("Jikan", 100);
   const aniZip = titles("AniZip", 1200);
