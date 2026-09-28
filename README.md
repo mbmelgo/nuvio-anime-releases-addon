@@ -1,11 +1,11 @@
-# Anime Releases for Nuvio — v2.16.54
+# Anime Releases for Nuvio — v2.16.55
 
 A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `2.16.54`
+- **Development version:** `2.16.55`
 - **Next minor release baseline:** `2.17.0`
 - **Latest production tag:** `v2.16.0`
 - **Latest production source commit:** `e0a6411a57dd87ad91570b54ca5376c80fcb3532`
