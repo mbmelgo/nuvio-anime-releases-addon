@@ -9,22 +9,35 @@ permissions:
 
 jobs:
   release:
-    if: ${{ contains(github.event.head_commit.message, '[deploy-prod]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Determine release request
+        id: gate
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          if [[ "$COMMIT_MESSAGE" == *"[deploy-prod]"* ]]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Checkout release candidate
+        if: steps.gate.outputs.release == 'true'
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Setup Node.js
+        if: steps.gate.outputs.release == 'true'
         uses: actions/setup-node@v7
         with:
           node-version: 24
           package-manager-cache: false
       - name: Run full CI before production deployment
+        if: steps.gate.outputs.release == 'true'
         run: npm test
       - name: Validate release state
+        if: steps.gate.outputs.release == 'true'
         run: |
           python - <<'PY'
           import json
@@ -40,6 +53,7 @@ jobs:
           print(f'Release gate passed: {version}')
           PY
       - name: Trigger Vercel deployment
+        if: steps.gate.outputs.release == 'true'
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
@@ -47,6 +61,7 @@ jobs:
           test -n "$VERCEL_DEPLOY_HOOK_URL"
           curl --fail --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
       - name: Production smoke test
+        if: steps.gate.outputs.release == 'true'
         run: |
           set -euo pipefail
           expected="$(sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p' api/version.js)"
@@ -71,6 +86,7 @@ jobs:
           done
           echo "Production smoke test failed."; exit 1
       - name: Create annotated release tag and update release state
+        if: steps.gate.outputs.release == 'true'
         shell: bash
         run: |
           set -euo pipefail

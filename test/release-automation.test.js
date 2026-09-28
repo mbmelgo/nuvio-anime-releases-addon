@@ -2,12 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-const deployWorkflow = fs.readFileSync(new URL("../.github/workflows/test.yml", import.meta.url), "utf8");
+const deployWorkflow = fs.readFileSync(new URL("../.github/workflows/prod-release.yml", import.meta.url), "utf8");
 
-test("production deployment workflow runs full CI before deployment", () => {
+test("production deployment workflow runs full CI before production deployment", () => {
   assert.match(deployWorkflow, /Run full CI before production deployment/);
   assert.match(deployWorkflow, /npm test/);
-  assert.match(deployWorkflow, /contains\(github\.event\.head_commit\.message, '\[deploy-prod\]'\)/);
+  assert.match(deployWorkflow, /\[deploy-prod\]/);
 });
 
 test("production deployment workflow creates the annotated release tag after deployment smoke tests", () => {
