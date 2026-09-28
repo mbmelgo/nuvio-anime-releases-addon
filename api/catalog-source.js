@@ -38,37 +38,34 @@ export function catalogDefinitions(info) {
   const previous = `${prettySeason(info.previous.season)} ${info.previous.year}`;
   const upcoming = `${prettySeason(info.upcoming.season)} ${info.upcoming.year}`;
   return [
-    { type: "series", id: "ongoing", name: `Ongoing — ${current}` },
-    { type: "series", id: "airing_today", name: "Airing Today" },
-    { type: "series", id: "new_episodes", name: "New Episodes — Last 7 Days" },
-    { type: "series", id: "next_episodes", name: "Next Episodes — Next 7 Days" },
-    { type: "series", id: "upcoming", name: `Upcoming — ${upcoming}` },
-    { type: "series", id: "finished_current", name: `Finished — ${current}` },
+    { type: "series", id: "upcoming_season", name: `Upcoming Season — ${upcoming}` },
+    { type: "series", id: "current_season", name: `Current Season — ${current}` },
     { type: "series", id: "previous_season", name: `Previous Season — ${previous}` },
-    { type: "series", id: "popular_current", name: `Popular — ${current}` },
-    { type: "series", id: "top_rated_current", name: `Top Rated — ${current}` },
-    { type: "series", id: "trending_current", name: `Trending — ${current}` },
+    { type: "series", id: "new_episodes", name: "Latest Anime — Last 7 Days" },
+    { type: "series", id: "upcoming_episodes", name: "Upcoming Anime — Next 7 Days" },
   ];
 }
 
 async function buildCatalog(id, info, now, skip) {
   const page = Math.floor(skip / PAGE_SIZE) + 1;
   const offset = skip % PAGE_SIZE;
-  if (id === "airing_today") { const r = getManilaDayRange(now, 0, 1); return scheduleCatalog(r.start, r.end, false, offset); }
-  if (id === "new_episodes") { const r = getLast7DaysRangeManila(now); return scheduleCatalog(r.start, r.end, false, offset); }
-  if (id === "next_episodes") { const r = getManilaDayRange(now, 0, 7); return scheduleCatalog(r.start, r.end, true, offset); }
-  if (id === "ongoing") {
-    const results = await Promise.all([
-      queryAnime({ season: info.ongoing, status: "RELEASING", sort: ["START_DATE", "TITLE_ROMAJI"], page }),
-      queryAnime({ season: info.previous, status: "RELEASING", sort: ["START_DATE", "TITLE_ROMAJI"], page }),
-    ]);
-    return dedupe(results.flat()).slice(offset, offset + PAGE_SIZE);
+  if (id === "new_episodes") {
+    const range = getLast7DaysRangeManila(now);
+    return scheduleCatalog(range.start, range.end, false, offset);
   }
-  if (id === "upcoming") return (await queryAnime({ season: info.upcoming, status: "NOT_YET_RELEASED", sort: ["START_DATE", "TITLE_ROMAJI"], page })).slice(offset, offset + PAGE_SIZE);
-  if (id === "finished_current") return (await queryAnime({ season: info.ongoing, status: "FINISHED", sort: ["END_DATE_DESC", "SCORE_DESC", "TITLE_ROMAJI"], page })).slice(offset, offset + PAGE_SIZE);
-  if (id === "previous_season") return (await queryAnime({ season: info.previous, sort: ["START_DATE", "SCORE_DESC", "TITLE_ROMAJI"], page })).slice(offset, offset + PAGE_SIZE);
-  const ranked = { popular_current: ["POPULARITY_DESC", "SCORE_DESC", "TITLE_ROMAJI"], top_rated_current: ["SCORE_DESC", "POPULARITY_DESC", "TITLE_ROMAJI"], trending_current: ["TRENDING_DESC", "POPULARITY_DESC", "TITLE_ROMAJI"] };
-  if (ranked[id]) return (await queryAnime({ season: info.ongoing, sort: ranked[id], page })).slice(offset, offset + PAGE_SIZE);
+  if (id === "upcoming_episodes") {
+    const range = getNext7DaysRangeManila(now);
+    return scheduleCatalog(range.start, range.end, true, offset);
+  }
+  if (id === "current_season") {
+    return (await queryAnime({ season: info.ongoing, sort: ["START_DATE", "TITLE_ROMAJI"], page })).slice(offset, offset + PAGE_SIZE);
+  }
+  if (id === "previous_season") {
+    return (await queryAnime({ season: info.previous, sort: ["START_DATE", "SCORE_DESC", "TITLE_ROMAJI"], page })).slice(offset, offset + PAGE_SIZE);
+  }
+  if (id === "upcoming_season") {
+    return (await queryAnime({ season: info.upcoming, status: "NOT_YET_RELEASED", sort: ["START_DATE", "TITLE_ROMAJI"], page })).slice(offset, offset + PAGE_SIZE);
+  }
   return [];
 }
 
@@ -87,7 +84,11 @@ async function scheduleCatalog(start, end, futureOnly, offset) {
     const existing = latestByAnime.get(media.id);
     if (!existing || schedule.airingAt > existing.airingAt) latestByAnime.set(media.id, schedule);
   }
-  return [...latestByAnime.values()].sort((a, b) => futureOnly ? a.airingAt - b.airingAt : b.airingAt - a.airingAt).slice(offset, offset + PAGE_SIZE).map((s) => toMeta(s.media, { episode: s.episode, airingAt: s.airingAt })).filter(Boolean);
+  return [...latestByAnime.values()]
+    .sort((a, b) => futureOnly ? a.airingAt - b.airingAt : b.airingAt - a.airingAt)
+    .slice(offset, offset + PAGE_SIZE)
+    .map((s) => toMeta(s.media, { episode: s.episode, airingAt: s.airingAt }))
+    .filter(Boolean);
 }
 
 async function queryAiringSchedule(start, end, futureOnly) {
@@ -135,9 +136,9 @@ async function anilist(query, variables) { const response = await fetchWithTimeo
 async function fetchWithTimeout(url, options = {}) { const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS); try { return await fetch(url, { ...options, signal: controller.signal }); } finally { clearTimeout(timer); } }
 export function getSeasonInfo(date) { const { month, year } = getManilaDateParts(date); if (month <= 3) return { previous: { season: "FALL", year: year - 1 }, ongoing: { season: "WINTER", year }, upcoming: { season: "SPRING", year } }; if (month <= 6) return { previous: { season: "WINTER", year }, ongoing: { season: "SPRING", year }, upcoming: { season: "SUMMER", year } }; if (month <= 9) return { previous: { season: "SPRING", year }, ongoing: { season: "SUMMER", year }, upcoming: { season: "FALL", year } }; return { previous: { season: "SUMMER", year }, ongoing: { season: "FALL", year }, upcoming: { season: "WINTER", year: year + 1 } }; }
 function getManilaDateParts(date) { const formatter = new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, year: "numeric", month: "numeric", day: "numeric" }); const result = {}; for (const part of formatter.formatToParts(date)) if (part.type !== "literal") result[part.type] = Number(part.value); return result; }
-function getLast7DaysRangeManila(date) { return getManilaDayRange(date, -6, 1); }
+export function getLast7DaysRangeManila(date) { return getManilaDayRange(date, -6, 1); }
+export function getNext7DaysRangeManila(date) { return getManilaDayRange(date, 0, 7); }
 function getManilaDayRange(date, startOffset, endOffset) { const p = getManilaDateParts(date); return { start: manilaDateToUtc(p.year, p.month, p.day + startOffset, 0, 0, 0).getTime(), end: manilaDateToUtc(p.year, p.month, p.day + endOffset, 0, 0, 0).getTime() }; }
 function manilaDateToUtc(year, month, day, hour, minute, second) { return new Date(Date.UTC(year, month - 1, day, hour - 8, minute, second)); }
 function prettySeason(season) { return season.charAt(0) + season.slice(1).toLowerCase(); }
-function dedupe(items) { const map = new Map(); for (const item of items) if (item && !map.has(item.id)) map.set(item.id, item); return [...map.values()].sort((a, b) => (a.extra?.airingAt ?? Infinity) - (b.extra?.airingAt ?? Infinity)); }
 function send(res, body, status = 200) { res.status(status); res.setHeader("Content-Type", "application/json; charset=utf-8"); res.setHeader("Access-Control-Allow-Origin", "*"); res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS"); res.setHeader("Access-Control-Allow-Headers", "Content-Type"); res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=86400, stale-if-error=86400"); return res.json(body); }
