@@ -4,8 +4,8 @@
   "totalDeployments": 15,
   "paused": false,
   "lastDeploymentSha": "55f716bc65dbae127c48215065f5de10aa82c9d1",
-  "lastDeploymentId": null,
-  "lastDeploymentVersion": "2.10.3",
-  "nextReleaseVersion": "2.11.0",
+  "lastDeploymentId": "dpl_4C6f6R8TTqDXxGSWy9vDyqyQfzB4",
+  "lastDeploymentVersion": "2.11.0",
+  "nextReleaseVersion": "2.12.0",
   "lastDeploymentTag": "v2.11.0"
 }

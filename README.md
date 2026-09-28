@@ -1,117 +1,95 @@
-# Anime Releases for Nuvio — v2.11.6
+# Anime Releases for Nuvio — v2.11.7
 
 A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio-compatible clients**.
 
-## Current project
-
-- **GitHub:** https://github.com/mbmelgo/nuvio-anime-releases-addon
-- **Vercel:** https://nuvio-anime-releases-addon-rho.vercel.app
-- **Manifest:** https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json
-- **Resolver selector:** https://nuvio-anime-releases-addon-rho.vercel.app/
-- **Branch:** `main`
-
 ## Current status
 
-GitHub is the source of truth. Automatic Vercel Git deployments are intentionally disabled. Production deployments are **test-gated**: a normal GitHub push runs CI without deploying, while a commit containing `[deploy-prod]` triggers the Vercel Deploy Hook only after the unit-test job passes.
+- **Branch:** `main`
+- **Development version:** `2.11.7`
+- **Latest production release:** `v2.11.0`
+- **Latest production source commit:** `55f716bc65dbae127c48215065f5de10aa82c9d1`
+- **Production resolver:** **v5**
+- **Legacy resolver:** **v4**, retained for side-by-side validation
+- **Active deployment checkpoint:** **0/5**
+- **Total production deployments:** **15**
 
-Release tags are created for successful deployment minor releases (`vX.Y.0`) and major releases (`vX.0.0`). Annotated tags include a human-readable summary of the source changes included in that release. Historical deployment tags are currently non-blocking.
+Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated: normal commits run CI without deploying; `[deploy-prod]` is used only after CI passes and the deployment is worth consuming one checkpoint slot.
 
-The current production metadata routing uses **v5**. **v4** remains available as an explicit legacy resolver for side-by-side validation.
+## URLs
 
-## Resolver selection
+- GitHub: https://github.com/mbmelgo/nuvio-anime-releases-addon
+- Vercel: https://nuvio-anime-releases-addon-rho.vercel.app
+- Production manifest: https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json
+- Resolver selector: https://nuvio-anime-releases-addon-rho.vercel.app/
+- v4 manifest: https://nuvio-anime-releases-addon-rho.vercel.app/v4/manifest.json
+- v5 manifest: https://nuvio-anime-releases-addon-rho.vercel.app/v5/manifest.json
 
-The landing page now provides a resolver selector. It generates a resolver-specific manifest URL so v4 and v5 can be installed and tested independently.
+## Resolver architecture
 
 ```text
-Home / selector
+/manifest.json
     ↓
-Choose v4 or v5
+  v5 production resolver
+
+/meta/series/:id.json
     ↓
-/v4/manifest.json       → v4 metadata routes
-/v5/manifest.json       → v5 metadata routes
+  v5 production resolver
+
+/api/meta/series/:id.json
+    ↓
+  v5 compatibility route
+
+/v4/...
+    ↓
+  v4 legacy resolver
 ```
 
-The manifests use separate addon IDs, allowing side-by-side installation in compatible clients. The root `/manifest.json` now uses the v5 resolver; explicit `/v4/manifest.json` remains available for the v4 resolver.
+The landing page provides a resolver selector so v4 and v5 can be installed and tested independently.
 
-Stremio supports parameterized addon repository paths, where the selected path segment can be carried through the addon resource routes. citeturn4search1turn4search2
+## Resolver behavior covered by regression tests
 
-## Current release workflow
+- Franchise continuation detection, including parent-side sequel relationships
+- `Final Season` continuation handling
+- Roman-numeral season markers `II` through `X`
+- Protection against treating ordinary standalone `I` as a season marker
+- Long-running anime without an arbitrary 100-episode ceiling
+- Episode ID uniqueness and normalization
+- Episode sequence reconciliation across sources
+- Special/recap/OVA/ONA/movie filtering
+- Finished-series primary-source selection
+- Ongoing-series freshness fallback
+- v4/v5 manifest selection and production routing
+
+## Data sources
+
+AniList is the primary source for metadata, season/status information, artwork, scores, popularity, airing schedules, and franchise relationships. Jikan and AniZip provide MAL mappings, episode data, and fallbacks. TVMaze is limited to freshness supplementation for ongoing long-running series.
+
+## Release workflow
 
 ```text
-GitHub push
+GitHub commit
     ↓
 npm test
     ↓
-FAIL → stop; no Vercel deployment
+FAIL → stop; no production deployment
     ↓
 PASS
     ↓
 [deploy-prod]?
-    ├── No → patch-version automation
+    ├── No → continue development
     └── Yes → deployment checkpoint
-                 ├── < 5 deployments → Vercel production
-                 └── 5 deployments → PAUSE
+                 ├── < 5 → production deployment
+                 └── 5 → PAUSE
 ```
 
-The autonomous loop pauses after every **5 Vercel production deployments**. The checkpoint is stored in `ops/release-state.json`.
+The deployment checkpoint is stored in `ops/release-state.json`.
 
-### Version rules
+### Versioning
 
-- Normal source commit → increment **patch**: `2.7.0 → 2.7.1`
-- Successful Vercel deployment → increment **minor** and reset patch: `2.7.5 → 2.8.0`
-- Major release → increment **major** manually: `2.8.0 → 3.0.0`
-
-Generated version commits use `[skip-version-automation]` to prevent recursion.
-
-## Resolver selector
-
-Open the Vercel home page to choose between the production v5 resolver and the legacy v4 resolver. Each selection has its own manifest URL, so both resolver versions can be installed side-by-side:
-
-```text
-https://nuvio-anime-releases-addon-rho.vercel.app/v4/manifest.json
-https://nuvio-anime-releases-addon-rho.vercel.app/v5/manifest.json
-```
-
-The root manifest now resolves to v5. The explicit v4 manifest continues to use the v4 resolver, so existing v4 testing remains available.
-
-## Resolver versions
-
-### v4 — legacy / side-by-side validation
-
-`api/meta-resolver-v4.js` is the legacy resolver retained for side-by-side validation.
-
-Install/test directly:
-
-`https://nuvio-anime-releases-addon-rho.vercel.app/v4/manifest.json`
-
-### v5 — production
-
-`api/meta-resolver-v5.js` is the production resolver. It is covered by the regression suite and is now the root production resolver.
-
-Install/test directly:
-
-`https://nuvio-anime-releases-addon-rho.vercel.app/v5/manifest.json`
-
-Recent regression coverage includes franchise continuation detection for titles such as **Attack on Titan: The Final Season**, while separately titled sequel series remain excluded.
-
-## Metadata and episodes
-
-The resolver accepts MAL IDs such as `mal:39535` and returns Nuvio-compatible series metadata.
-
-## Regression tests
-
-The TDD regression suite covers:
-
-- Death Note — MAL 1535
-- Mushoku Tensei — MAL 39535
-- One Piece — MAL 21
-- Long-running anime without an arbitrary 100-episode ceiling
-- Season/franchise continuation grouping
-- `Final Season` continuation titles
-- Episode ID uniqueness and normalization
-- Special/recap/OVA/ONA/movie filtering
-- Production routing regressions
-- v4/v5 resolver manifest selection and addon IDs
+- Every source commit increments the patch version.
+- Every successful production deployment creates the next minor release (`2.11.x → 2.12.0`).
+- Major releases are manually decided.
+- Minor and major releases receive annotated Git tags with human-readable change summaries.
 
 ## Key endpoints
 
@@ -120,31 +98,17 @@ The TDD regression suite covers:
 /manifest.json            Production v5 addon manifest
 /v4/manifest.json         Explicit v4 addon manifest
 /v5/manifest.json         Explicit v5 addon manifest
-/catalog/series/:id.json  Series catalog (production)
-/meta/series/:id.json     Series metadata (production v5)
+/catalog/series/:id.json  Production series catalog
+/meta/series/:id.json     Production v5 series metadata
 /v4/meta/series/:id.json Explicit v4 metadata
 /v5/meta/series/:id.json Explicit v5 metadata
-/api/meta/series/:id.json Series metadata compatibility route (v5)
+/api/meta/series/:id.json v5 metadata compatibility route
 ```
-
-## Data sources
-
-AniList is the primary source for metadata, season/status information, artwork, scores, popularity, airing schedules, and franchise relationships. Jikan and AniZip provide MAL mappings, episode data, and fallbacks. TVMaze is limited to freshness supplementation for ongoing long-running series and does not replace missing primary data for finished series.
-
-## Version and deployment state
-
-The repository's version file is currently the source of truth for the patch-level development version. `package.json`, `api/stremio.js`, and the README version are synchronized by the workflow.
-
-The current autonomous deployment checkpoint is **0/5** for the active cycle. The latest successful deployment recorded in `ops/release-state.json` is source commit `55f716bc65dbae127c48215065f5de10aa82c9d1`, deployed as version **2.10.3**, with the next deployment baseline **2.11.0**. The current development version is **2.11.5**.
-
-## Vercel rewrites
-
-Production metadata routing currently remains on v4. The new `/v5/*` namespace is available for candidate validation but has **not been deployed yet**.
 
 ## Streams
 
 This is a **catalog and metadata addon only**. It does not provide video streams, downloads, torrent hashes, or playback sources.
 
-## Version
+## Release state
 
-**2.11.0**
+The latest production deployment is `v2.11.0`, sourced from commit `55f716bc65dbae127c48215065f5de10aa82c9d1`. The current development line is `2.11.7`; these development commits have not yet been promoted to production.
