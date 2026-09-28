@@ -38,6 +38,11 @@ test("catalog source is the only retained catalog runtime implementation", async
   await assert.rejects(access("api/stremio.js"));
 });
 
+test("every api runtime module retains a valid serverless default export", async () => {
+  const source = await readFile("api/catalog-delegation.js", "utf8");
+  assert.match(source, /export default function handler\s*\(/);
+});
+
 test("home page uses only canonical unversioned catalog URLs", async () => {
   const source = await readFile("api/home-selector.js", "utf8");
   assert.doesNotMatch(source, /\/v5\//);
