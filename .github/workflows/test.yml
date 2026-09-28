@@ -8,7 +8,9 @@ on:
 
 jobs:
   test:
+    name: CI unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -25,8 +27,9 @@ jobs:
   deploy-production:
     name: Deploy to Vercel production
     needs: test
-    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[deploy-prod]')
+    if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[deploy-prod]') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -85,8 +88,9 @@ jobs:
   tag-production-release:
     name: Record production release
     needs: deploy-production
-    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[deploy-prod]')
+    if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[deploy-prod]') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:
