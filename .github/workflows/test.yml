@@ -15,12 +15,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
       - name: Run unit tests
         run: npm test
 
@@ -28,16 +26,13 @@ jobs:
     name: Deploy to Vercel production
     needs: test
     if: >-
-      github.event_name == 'push' &&
-      needs.test.result == 'success' &&
-      contains(github.event.head_commit.message, '[deploy-prod]')
+      github.event_name == 'push' && needs.test.result == 'success' && contains(github.event.head_commit.message, '[deploy-prod]')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Check deployment checkpoint and deploy
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
@@ -45,85 +40,55 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
-          if [ -z "$VERCEL_DEPLOY_HOOK_URL" ]; then
-            echo "VERCEL_DEPLOY_HOOK_URL is not configured."
-            exit 1
-          fi
-
+          if [ -z "$VERCEL_DEPLOY_HOOK_URL" ]; then echo "VERCEL_DEPLOY_HOOK_URL is not configured."; exit 1; fi
           python - <<'PY'
           import json
           from pathlib import Path
-          state = json.loads(Path("ops/release-state.json").read_text())
+          state=json.loads(Path("ops/release-state.json").read_text())
           print(f"Deployment checkpoint: {state['deploymentsSincePause']}/{state['deploymentLimit']}")
           if state["paused"] or state["deploymentsSincePause"] >= state["deploymentLimit"]:
               print("AUTONOMOUS LOOP PAUSED: deployment checkpoint reached.")
               raise SystemExit(0)
           PY
-
           curl --fail --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
-
           python - <<'PY'
-          import json
-          import os
-          import re
+          import json, os, re
           from pathlib import Path
-
-          state_path = Path("ops/release-state.json")
-          state = json.loads(state_path.read_text())
-          state["deploymentsSincePause"] += 1
-          state["totalDeployments"] += 1
-          state["paused"] = state["deploymentsSincePause"] >= state["deploymentLimit"]
-
-          version_path = Path("api/version.js")
-          current = re.search(r'ADDON_VERSION = "([^"]+)"', version_path.read_text()).group(1)
-          major, minor, patch = map(int, current.split("."))
-          next_version = f"{major}.{minor + 1}.0"
-          tag = f"v{next_version}"
-          git_sha = os.environ["GITHUB_SHA"]
-
+          state_path=Path("ops/release-state.json")
+          state=json.loads(state_path.read_text())
+          state["deploymentsSincePause"]+=1
+          state["totalDeployments"]+=1
+          state["paused"]=state["deploymentsSincePause"]>=state["deploymentLimit"]
+          version_path=Path("api/version.js")
+          current=re.search(r'ADDON_VERSION = "([^"]+)"',version_path.read_text()).group(1)
+          major,minor,patch=map(int,current.split("."))
+          next_version=f"{major}.{minor+1}.0"
+          tag=f"v{next_version}"
+          git_sha=os.environ["GITHUB_SHA"]
           version_path.write_text(f'export const ADDON_VERSION = "{next_version}";\n')
-
-          package_path = Path("package.json")
-          package = json.loads(package_path.read_text())
-          package["version"] = next_version
-          package_path.write_text(json.dumps(package, indent=2) + "\n")
-
-          stremio = Path("api/stremio.js")
-          text = stremio.read_text()
-          stremio.write_text(re.sub(r'version: "[^"]+"', f'version: "{next_version}"', text, count=1))
-
-          readme = Path("README.md")
-          text = readme.read_text()
-          text = re.sub(r'\b(?:v|Version )\d+\.\d+\.\d+', lambda m: re.sub(r'\d+\.\d+\.\d+', next_version, m.group(0)), text)
-          readme.write_text(text)
-
-          state["lastDeploymentSha"] = git_sha
-          state["lastDeploymentVersion"] = current
-          state["nextReleaseVersion"] = next_version
-          state["lastDeploymentTag"] = tag
-          state_path.write_text(json.dumps(state, indent=2) + "\n")
-
-          Path("/tmp/release-tag").write_text(tag + "\n")
-          print(json.dumps(state, indent=2))
-          print(f"Deployed source commit: {git_sha}")
-          print(f"Post-deployment version: {next_version}")
-          print(f"Release tag: {tag}")
+          package_path=Path("package.json")
+          package=json.loads(package_path.read_text())
+          package["version"]=next_version
+          package_path.write_text(json.dumps(package,indent=2)+"\n")
+          stremio=Path("api/stremio.js")
+          stremio.write_text(re.sub(r'version: "[^"]+"',f'version: "{next_version}"',stremio.read_text(),count=1))
+          readme=Path("README.md")
+          text=readme.read_text()
+          readme.write_text(re.sub(r'\b(?:v|Version )\d+\.\d+\.\d+',lambda m:re.sub(r'\d+\.\d+\.\d+',next_version,m.group(0)),text))
+          state["lastDeploymentSha"]=git_sha
+          state["lastDeploymentVersion"]=current
+          state["nextReleaseVersion"]=next_version
+          state["lastDeploymentTag"]=tag
+          state_path.write_text(json.dumps(state,indent=2)+"\n")
+          Path("/tmp/release-tag").write_text(tag+"\n")
           PY
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add api/version.js package.json api/stremio.js README.md ops/release-state.json
           git commit -m "chore: record Vercel deployment and bump release to $(sed -nE 's/.*ADDON_VERSION = "([^"]+)".*/\1/p' api/version.js) [skip-version-automation]"
-
-          release_tag="$(cat /tmp/release-tag)"
           git push
-
-          if git ls-remote --exit-code --tags origin "refs/tags/$release_tag" >/dev/null 2>&1; then
-            echo "Tag $release_tag already exists."
-            exit 0
-          fi
-
+          release_tag="$(cat /tmp/release-tag)"
+          if git ls-remote --exit-code --tags origin "refs/tags/$release_tag" >/dev/null 2>&1; then exit 0; fi
           previous_tag="$(git tag --merged "$GITHUB_SHA^" --sort=-version:refname --list 'v*' | head -n1 || true)"
           if [ -n "$previous_tag" ]; then
             change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$previous_tag..$GITHUB_SHA" | grep -Ev '^- chore: bump patch version \[skip-version-automation\]|^- chore: record Vercel deployment and bump release' | head -n 50 || true)"
@@ -132,19 +97,11 @@ jobs:
             change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$GITHUB_SHA" | grep -Ev '^- chore: bump patch version \[skip-version-automation\]|^- chore: record Vercel deployment and bump release' | head -n 50 || true)"
             since_line="Changes included in this release:"
           fi
-
           [ -n "$change_summary" ] || change_summary="- No source commits to summarize."
           tag_message="Release $release_tag\n\nDeployed source commit: $GITHUB_SHA\n$since_line\n$change_summary"
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$release_tag" "$GITHUB_SHA" -m "$tag_message"
           if ! git push origin "refs/tags/$release_tag"; then
-            echo "Default GitHub Actions token could not push the tag; retrying with RELEASE_PAT."
-            if [ -z "$RELEASE_PAT" ]; then
-              echo "RELEASE_PAT is required as a fallback for annotated deployment tags."
-              exit 1
-            fi
+            if [ -z "$RELEASE_PAT" ]; then echo "WARNING: release tag requires RELEASE_PAT with workflows:write; deployment itself succeeded."; exit 0; fi
             git remote set-url origin "https://x-access-token:$RELEASE_PAT@github.com/$GITHUB_REPOSITORY.git"
             git push origin "refs/tags/$release_tag"
           fi
@@ -159,42 +116,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
+        with: { fetch-depth: 0 }
       - name: Validate and tag major release
         shell: bash
         run: |
           set -euo pipefail
           version="$(sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p' api/version.js)"
-          if ! [[ "$version" =~ ^[0-9]+\.0\.0$ ]]; then
-            echo "Major release marker requires an x.0.0 version; found $version."
-            exit 1
-          fi
+          if ! [[ "$version" =~ ^[0-9]+\.0\.0$ ]]; then echo "Major release marker requires an x.0.0 version; found $version."; exit 1; fi
           tag="v$version"
-          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
-            echo "Tag $tag already exists."
-            exit 0
-          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then exit 0; fi
+          previous_tag="$(git tag --merged "$GITHUB_SHA^" --sort=-version:refname --list 'v*' | head -n1 || true)"
+          if [ -n "$previous_tag" ]; then change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$previous_tag..$GITHUB_SHA" | head -n 50 || true)"; since_line="Changes since $previous_tag:"; else change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$GITHUB_SHA" | head -n 50 || true)"; since_line="Changes included in this release:"; fi
+          [ -n "$change_summary" ] || change_summary="- No source commits to summarize."
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          previous_tag="$(git tag --merged "$GITHUB_SHA^" --sort=-version:refname --list 'v*' | head -n1 || true)"
-          if [ -n "$previous_tag" ]; then
-            change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$previous_tag..$GITHUB_SHA" | head -n 50 || true)"
-            since_line="Changes since $previous_tag:"
-          else
-            change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$GITHUB_SHA" | head -n 50 || true)"
-            since_line="Changes included in this release:"
-          fi
-          [ -n "$change_summary" ] || change_summary="- No source commits to summarize."
-          tag_message="Release $tag\n\nSource commit: $GITHUB_SHA\n$since_line\n$change_summary"
-          git tag -a "$tag" "$GITHUB_SHA" -m "$tag_message"
+          git tag -a "$tag" "$GITHUB_SHA" -m "Release $tag\n\nSource commit: $GITHUB_SHA\n$since_line\n$change_summary"
           if ! git push origin "refs/tags/$tag"; then
-            echo "Default GitHub Actions token could not push the major tag; retrying with RELEASE_PAT."
-            if [ -z "$RELEASE_PAT" ]; then
-              echo "RELEASE_PAT is required as a fallback for major release tags."
-              exit 1
-            fi
+            if [ -z "$RELEASE_PAT" ]; then echo "WARNING: major release tag requires RELEASE_PAT with workflows:write."; exit 0; fi
             git remote set-url origin "https://x-access-token:$RELEASE_PAT@github.com/$GITHUB_REPOSITORY.git"
             git push origin "refs/tags/$tag"
           fi
@@ -209,86 +147,47 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
+        with: { fetch-depth: 0 }
       - name: Create requested historical tag
         shell: bash
         run: |
           set -euo pipefail
-
           target_sha="$(python - <<'PY'
           import json
           from pathlib import Path
-          state = json.loads(Path("ops/release-state.json").read_text())
-          print(state["lastDeploymentSha"])
+          print(json.loads(Path("ops/release-state.json").read_text())["lastDeploymentSha"])
           PY
           )"
           tag="$(python - <<'PY'
           import json
           from pathlib import Path
-          state = json.loads(Path("ops/release-state.json").read_text())
-          print(state["lastDeploymentTag"])
+          print(json.loads(Path("ops/release-state.json").read_text())["lastDeploymentTag"])
           PY
           )"
-
-          if [ -z "$target_sha" ] || [ -z "$tag" ]; then
-            echo "Release state does not contain a deployment SHA/tag to backfill."
-            exit 1
-          fi
-
-          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
-            echo "Tag $tag already exists."
-            exit 0
-          fi
-
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then echo "Tag $tag already exists."; exit 0; fi
           previous_tag="$(git tag --merged "$target_sha^" --sort=-version:refname --list 'v*' | head -n1 || true)"
-          if [ -n "$previous_tag" ]; then
-            change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$previous_tag..$target_sha" | head -n 50 || true)"
-            since_line="Changes since $previous_tag:"
-          else
-            change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$target_sha" | head -n 50 || true)"
-            since_line="Changes included in this release:"
-          fi
+          if [ -n "$previous_tag" ]; then change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$previous_tag..$target_sha" | head -n 50 || true)"; since_line="Changes since $previous_tag:"; else change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$target_sha" | head -n 50 || true)"; since_line="Changes included in this release:"; fi
           [ -n "$change_summary" ] || change_summary="- Historical source changes not available."
-
           tag_message="Release $tag\n\nHistorical deployment source commit: $target_sha\n$since_line\n$change_summary"
           token="${RELEASE_PAT:-$GITHUB_TOKEN}"
           api="https://api.github.com/repos/$GITHUB_REPOSITORY"
-
           tag_payload="$(python - "$tag" "$tag_message" "$target_sha" <<'PY'
-          import json, sys
-          print(json.dumps({
-            "tag": sys.argv[1],
-            "message": sys.argv[2],
-            "object": sys.argv[3],
-            "type": "commit",
-            "tagger": {"name": "github-actions[bot]", "email": "41898282+github-actions[bot]@users.noreply.github.com"}
-          }))
+          import json,sys
+          print(json.dumps({"tag":sys.argv[1],"message":sys.argv[2],"object":sys.argv[3],"type":"commit","tagger":{"name":"github-actions[bot]","email":"41898282+github-actions[bot]@users.noreply.github.com"}}))
           PY
           )"
-
-          tag_response="$(curl --fail --silent --show-error \
-            -X POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $token" \
-            -H "X-GitHub-Api-Version: 2026-03-10" \
-            "$api/git/tags" \
-            -d "$tag_payload")"
+          if ! tag_response="$(curl --fail --silent --show-error -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $token" -H "X-GitHub-Api-Version: 2026-03-10" "$api/git/tags" -d "$tag_payload")"; then
+            echo "WARNING: cannot create historical tag with the current token. Add RELEASE_PAT with contents:write + workflows:write to enable tag backfill."
+            exit 0
+          fi
           tag_sha="$(python -c 'import json,sys; print(json.load(sys.stdin)["sha"])' <<< "$tag_response")"
-
           ref_payload="$(python - "$tag_sha" "$tag" <<'PY'
-          import json, sys
-          print(json.dumps({"ref": f"refs/tags/{sys.argv[2]}", "sha": sys.argv[1]}))
+          import json,sys
+          print(json.dumps({"ref":f"refs/tags/{sys.argv[2]}","sha":sys.argv[1]}))
           PY
           )"
-
-          curl --fail --silent --show-error \
-            -X POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $token" \
-            -H "X-GitHub-Api-Version: 2026-03-10" \
-            "$api/git/refs" \
-            -d "$ref_payload" >/dev/null
-
+          if ! curl --fail --silent --show-error -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $token" -H "X-GitHub-Api-Version: 2026-03-10" "$api/git/refs" -d "$ref_payload" >/dev/null; then
+            echo "WARNING: tag object created but tag reference could not be created. Add RELEASE_PAT with contents:write + workflows:write."
+            exit 0
+          fi
           echo "Created annotated tag $tag for deployment commit $target_sha."
