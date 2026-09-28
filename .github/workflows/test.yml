@@ -79,9 +79,6 @@ jobs:
           current = re.search(r'ADDON_VERSION = "([^"]+)"', version_path.read_text()).group(1)
           major, minor, patch = map(int, current.split("."))
           next_version = f"{major}.{minor + 1}.0"
-
-          # Tags identify the exact source commit that was deployed.
-          # The tag version is the post-deployment release version.
           tag = f"v{next_version}"
           git_sha = os.environ["GITHUB_SHA"]
 
@@ -129,29 +126,15 @@ jobs:
 
           previous_tag="$(git tag --merged "$GITHUB_SHA^" --sort=-version:refname --list 'v*' | head -n1 || true)"
           if [ -n "$previous_tag" ]; then
-            change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$previous_tag..$GITHUB_SHA" |
-              grep -Ev '^- chore: bump patch version \[skip-version-automation\]|^- chore: record Vercel deployment and bump release' |
-              head -n 50 || true)"
+            change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$previous_tag..$GITHUB_SHA" | grep -Ev '^- chore: bump patch version \[skip-version-automation\]|^- chore: record Vercel deployment and bump release' | head -n 50 || true)"
             since_line="Changes since $previous_tag:"
           else
-            change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$GITHUB_SHA" |
-              grep -Ev '^- chore: bump patch version \[skip-version-automation\]|^- chore: record Vercel deployment and bump release' |
-              head -n 50 || true)"
+            change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$GITHUB_SHA" | grep -Ev '^- chore: bump patch version \[skip-version-automation\]|^- chore: record Vercel deployment and bump release' | head -n 50 || true)"
             since_line="Changes included in this release:"
           fi
 
-          if [ -z "$change_summary" ]; then
-            change_summary="- No source commits to summarize."
-          fi
-
-          tag_message="$(cat <<EOF
-          Release $release_tag
-
-          Deployed source commit: $GITHUB_SHA
-          $since_line
-          $change_summary
-          EOF
-          )"
+          [ -n "$change_summary" ] || change_summary="- No source commits to summarize."
+          tag_message="Release $release_tag\n\nDeployed source commit: $GITHUB_SHA\n$since_line\n$change_summary"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -165,7 +148,6 @@ jobs:
             git remote set-url origin "https://x-access-token:$RELEASE_PAT@github.com/$GITHUB_REPOSITORY.git"
             git push origin "refs/tags/$release_tag"
           fi
-
 
   tag-major-release:
     name: Tag major release
@@ -194,10 +176,8 @@ jobs:
             echo "Tag $tag already exists."
             exit 0
           fi
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           previous_tag="$(git tag --merged "$GITHUB_SHA^" --sort=-version:refname --list 'v*' | head -n1 || true)"
           if [ -n "$previous_tag" ]; then
             change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$previous_tag..$GITHUB_SHA" | head -n 50 || true)"
@@ -206,20 +186,8 @@ jobs:
             change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$GITHUB_SHA" | head -n 50 || true)"
             since_line="Changes included in this release:"
           fi
-
-          if [ -z "$change_summary" ]; then
-            change_summary="- No source commits to summarize."
-          fi
-
-          tag_message="$(cat <<EOF
-          Release $tag
-
-          Source commit: $GITHUB_SHA
-          $since_line
-          $change_summary
-          EOF
-          )"
-
+          [ -n "$change_summary" ] || change_summary="- No source commits to summarize."
+          tag_message="Release $tag\n\nSource commit: $GITHUB_SHA\n$since_line\n$change_summary"
           git tag -a "$tag" "$GITHUB_SHA" -m "$tag_message"
           if ! git push origin "refs/tags/$tag"; then
             echo "Default GitHub Actions token could not push the major tag; retrying with RELEASE_PAT."
@@ -237,6 +205,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -247,6 +216,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           target_sha="$(python - <<'PY'
           import json
           from pathlib import Path
@@ -272,9 +242,6 @@ jobs:
             exit 0
           fi
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           previous_tag="$(git tag --merged "$target_sha^" --sort=-version:refname --list 'v*' | head -n1 || true)"
           if [ -n "$previous_tag" ]; then
             change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$previous_tag..$target_sha" | head -n 50 || true)"
@@ -283,27 +250,45 @@ jobs:
             change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$target_sha" | head -n 50 || true)"
             since_line="Changes included in this release:"
           fi
+          [ -n "$change_summary" ] || change_summary="- Historical source changes not available."
 
-          if [ -z "$change_summary" ]; then
-            change_summary="- Historical source changes not available."
-          fi
+          tag_message="Release $tag\n\nHistorical deployment source commit: $target_sha\n$since_line\n$change_summary"
+          token="${RELEASE_PAT:-$GITHUB_TOKEN}"
+          api="https://api.github.com/repos/$GITHUB_REPOSITORY"
 
-          tag_message="$(cat <<EOF
-          Release $tag
-
-          Historical deployment source commit: $target_sha
-          $since_line
-          $change_summary
-          EOF
+          tag_payload="$(python - "$tag" "$tag_message" "$target_sha" <<'PY'
+          import json, sys
+          print(json.dumps({
+            "tag": sys.argv[1],
+            "message": sys.argv[2],
+            "object": sys.argv[3],
+            "type": "commit",
+            "tagger": {"name": "github-actions[bot]", "email": "41898282+github-actions[bot]@users.noreply.github.com"}
+          }))
+          PY
           )"
 
-          git tag -a "$tag" "$target_sha" -m "$tag_message"
-          if ! git push origin "refs/tags/$tag"; then
-            echo "Default GitHub Actions token could not push the backfill tag; retrying with RELEASE_PAT."
-            if [ -z "$RELEASE_PAT" ]; then
-              echo "RELEASE_PAT is required as a fallback for release-tag backfills."
-              exit 1
-            fi
-            git remote set-url origin "https://x-access-token:$RELEASE_PAT@github.com/$GITHUB_REPOSITORY.git"
-            git push origin "refs/tags/$tag"
-          fi
+          tag_response="$(curl --fail --silent --show-error \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $token" \
+            -H "X-GitHub-Api-Version: 2026-03-10" \
+            "$api/git/tags" \
+            -d "$tag_payload")"
+          tag_sha="$(python -c 'import json,sys; print(json.load(sys.stdin)["sha"])' <<< "$tag_response")"
+
+          ref_payload="$(python - "$tag_sha" "$tag" <<'PY'
+          import json, sys
+          print(json.dumps({"ref": f"refs/tags/{sys.argv[2]}", "sha": sys.argv[1]}))
+          PY
+          )"
+
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $token" \
+            -H "X-GitHub-Api-Version: 2026-03-10" \
+            "$api/git/refs" \
+            -d "$ref_payload" >/dev/null
+
+          echo "Created annotated tag $tag for deployment commit $target_sha."
