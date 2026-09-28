@@ -74,6 +74,8 @@ https://nuvio-anime-releases-addon-rho.vercel.app/v5/manifest.json
 
 The root manifest remains the v4-compatible production manifest. Selecting v5 does not change the v4 installation.
 
+The resolver selector candidate has passed the full Node 20 regression suite and is ready for consolidated production validation.
+
 ## Resolver versions
 
 ### v4 — production
