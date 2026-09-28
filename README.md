@@ -15,6 +15,8 @@ Version **2.1.0** documents the refactored metadata architecture and current dep
 
 GitHub is the source of truth. Automatic Vercel Git deployments are intentionally disabled. Production deployments are now **test-gated**: a normal GitHub push runs CI without deploying, while a commit containing `[deploy-prod]` triggers the Vercel Deploy Hook only after the unit-test job passes.
 
+Release tag automation supports deployment-tag backfills from `ops/release-state.json`.
+
 The current production metadata routing uses **v4**. **v5** is the refactored candidate and remains available for validation.
 
 
