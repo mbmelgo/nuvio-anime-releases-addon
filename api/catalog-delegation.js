@@ -1,8 +1,10 @@
 import stremioHandler from "./stremio.js";
 
 const ANILIST_URL = "https://graphql.anilist.co";
+const ANIZIP_URL = "https://api.ani.zip/v1/mappings";
 const WIKIDATA_URL = "https://query.wikidata.org/sparql";
 const FETCH_TIMEOUT_MS = 8000;
+const ANIZIP_CONCURRENCY = 6;
 
 export default async function handler(req, res) {
   const captured = { statusCode: 200, headers: {}, body: null };
@@ -49,13 +51,16 @@ export async function delegateCompatibleIds(metas) {
 
   const unresolved = rows.filter((meta) => !extractCompatibleId(byKey.get(String(meta?.id || ""))?.externalLinks));
   const relationMappings = queryRelatedMappings(unresolved, byKey);
-  const wikidata = await queryWikidataMappings(unresolved, byKey);
+  const afterRelations = unresolved.filter((meta) => !relationMappings.has(String(meta?.id || "")));
+  const anizip = await queryAniZipMappings(afterRelations);
+  const afterAniZip = afterRelations.filter((meta) => !anizip.has(String(meta?.id || "")));
+  const wikidata = await queryWikidataMappings(afterAniZip, byKey);
 
   return rows.map((meta) => {
     const sourceId = String(meta?.id || "");
     const direct = extractCompatibleId(byKey.get(sourceId)?.externalLinks);
     const related = relationMappings.get(sourceId);
-    const mapped = direct || related || wikidata.get(sourceId);
+    const mapped = direct || related || anizip.get(sourceId) || wikidata.get(sourceId);
     return mapped ? { ...meta, id: mapped } : meta;
   });
 }
@@ -92,6 +97,54 @@ function queryRelatedMappings(metas, byKey) {
 function relationPriority(type) {
   const priorities = { PREQUEL: 0, SEQUEL: 1, SIDE_STORY: 2, ALTERNATIVE: 3, PARENT: 4 };
   return priorities[String(type || "").toUpperCase()] ?? 10;
+}
+
+async function queryAniZipMappings(metas) {
+  const result = new Map();
+  const jobs = metas.map((meta) => async () => {
+    const sourceId = String(meta?.id || "");
+    const malId = parseId(sourceId, "mal");
+    const anilistId = parseId(sourceId, "anilist");
+    if (!malId && !anilistId) return;
+
+    const queryKey = malId ? `mal_id=${malId}` : `anilist_id=${anilistId}`;
+    try {
+      const payload = await fetchJson(`${ANIZIP_URL}?${queryKey}`, {
+        headers: { accept: "application/json" },
+      });
+      const mapping = payload?.mappings || payload;
+      const compatible = extractAniZipCompatibleId(mapping);
+      if (compatible) result.set(sourceId, compatible);
+    } catch (error) {
+      console.warn(`[catalog-delegation] AniZip lookup failed for ${sourceId}:`, error.message);
+    }
+  });
+
+  await runWithConcurrency(jobs, ANIZIP_CONCURRENCY);
+  return result;
+}
+
+function extractAniZipCompatibleId(mapping) {
+  const imdb = String(mapping?.imdb_id || "").trim();
+  if (/^tt\d+$/i.test(imdb)) return imdb.toLowerCase();
+
+  const tmdb = String(mapping?.themoviedb_id || "").trim();
+  if (tmdb) return `tmdb:${tmdb.replace(/^tv:/i, "")}`;
+
+  const tvdb = String(mapping?.thetvdb_id || "").trim();
+  if (/^\d+$/.test(tvdb)) return `tvdb:${tvdb}`;
+  return null;
+}
+
+async function runWithConcurrency(jobs, limit) {
+  let index = 0;
+  const workers = Array.from({ length: Math.min(limit, jobs.length) }, async () => {
+    while (index < jobs.length) {
+      const current = index++;
+      await jobs[current]();
+    }
+  });
+  await Promise.all(workers);
 }
 
 async function queryWikidataMappings(metas, byKey) {
@@ -133,7 +186,7 @@ async function queryWikidataMappings(metas, byKey) {
     headers: {
       accept: "application/sparql-results+json",
       "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
-      "user-agent": "Nuvio-Anime-Releases-Addon/2.17.8 (+https://nuvio-anime-releases-addon-rho.vercel.app/)",
+      "user-agent": "Nuvio-Anime-Releases-Addon/2.17.9 (+https://nuvio-anime-releases-addon-rho.vercel.app/)",
     },
     body: new URLSearchParams({ query, format: "json" }).toString(),
   });
