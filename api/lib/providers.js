@@ -15,5 +15,27 @@ function dateParts(x) { return x?.year && x?.month && x?.day ? `${String(x.year)
 export async function getJikanAnime(malId) { const key = `jk:a:${malId}`, cached = getCached(key); if (cached !== undefined) return cached; try { const json = await requestJson(`${JIKAN_URL}/anime/${malId}/full`, { retries: 2, cacheKey: key }); return setCached(key, json?.data || null); } catch { setCached(key, null); return null; } }
 export async function getJikanEpisodes(malId, maxPages = 20) { const rows = []; for (let page = 1; page <= maxPages; page++) { try { const json = await requestJson(`${JIKAN_URL}/anime/${malId}/episodes?page=${page}`, { retries: 2, cacheKey: `jk:e:${malId}:${page}` }); const batch = Array.isArray(json?.data) ? json.data : []; rows.push(...batch); if (batch.length < 100) break; } catch { break; } } return rows; }
 export async function getAniZipMapping(malId) { const key = `az:m:${malId}`, cached = getCached(key); if (cached !== undefined) return cached; try { const json = await requestJson(`${ANIZIP_URL}/mappings?mal_id=${encodeURIComponent(malId)}`, { retries: 2, cacheKey: key }); return setCached(key, json?.mappings || json || {}); } catch { setCached(key, null); return null; } }
-export async function getAniZipEpisodes(anilistId, maxPages = 20) { const all = [], seen = new Set(); for (let page = 1; page <= maxPages; page++) { try { const suffix = page === 1 ? "" : `&page=${page}`; const json = await requestJson(`${ANIZIP_URL}/episodes?anilist_id=${encodeURIComponent(anilistId)}${suffix}`, { retries: 2, cacheKey: `az:e:${anilistId}:${page}` }); const batch = Array.isArray(json?.episodes) ? json.episodes : Object.values(json?.episodes || {}); let added = 0; for (const item of batch) { const season = Number(item?.seasonNumber ?? item?.season ?? 1) || 1; const episode = Number(item?.episodeNumber ?? item?.number ?? item?.episode); const air = item?.airDateUtc ?? item?.airDate ?? item?.airdate ?? ""; const key = `${season}:${episode}:${air}`; if (Number.isInteger(episode) && episode > 0 && !seen.has(key)) { seen.add(key); all.push(item); added++; } } if (!added) break; } catch { break; } } return all; }
+
+export function extractAniZipEpisodeBatch(json) {
+  if (Array.isArray(json?.episodes)) return json.episodes;
+  if (json?.episodes && typeof json.episodes === "object") return Object.values(json.episodes);
+  return [];
+}
+
+export async function getAniZipEpisodes(anilistId) {
+  const key = `az:e:${anilistId}`;
+  const cached = getCached(key);
+  if (cached !== undefined) return cached;
+  try {
+    // AniZip's episode endpoint returns the complete mapped episode collection.
+    // Treating it as a paginated endpoint caused long-running anime to be
+    // truncated to the first provider tranche (notably One Piece at 100).
+    const json = await requestJson(`${ANIZIP_URL}/episodes?anilist_id=${encodeURIComponent(anilistId)}`, { retries: 2, cacheKey: key });
+    return setCached(key, extractAniZipEpisodeBatch(json));
+  } catch {
+    setCached(key, []);
+    return [];
+  }
+}
+
 export async function discoverTvGraph(startMalId, rootJikan, maxNodes = 24) { const queue = [Number(startMalId)], seen = new Set(), result = new Map(); while (queue.length && result.size < maxNodes) { const malId = Number(queue.shift()); if (!malId || seen.has(malId)) continue; seen.add(malId); const [node, jikan] = await Promise.all([getAniListByMal(malId), malId === Number(startMalId) ? Promise.resolve(rootJikan) : getJikanAnime(malId)]); const tvNode = node && String(node.format).toUpperCase() === "TV" ? node : null; const tvJikan = jikan && String(jikan.type).toUpperCase() === "TV" ? jikan : (tvNode ? aniListToJikan(tvNode) : null); if (!tvNode && !tvJikan) continue; result.set(malId, { node: tvNode, jikan: tvJikan }); for (const edge of tvNode?.relations?.edges || []) { const rel = String(edge.relationType || "").toUpperCase(), child = edge.node, childMal = Number(child?.idMal || 0); if (["PREQUEL","SEQUEL"].includes(rel) && childMal && String(child?.format || "").toUpperCase() === "TV" && !seen.has(childMal)) queue.push(childMal); } for (const rel of jikan?.relations || []) { if (!/^(Sequel|Prequel)$/i.test(String(rel.relation || ""))) continue; for (const child of rel.entry || []) if (Number(child?.mal_id) && !seen.has(Number(child.mal_id))) queue.push(Number(child.mal_id)); } } return [...result.values()]; }
