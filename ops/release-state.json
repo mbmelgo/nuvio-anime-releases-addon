@@ -1,8 +1,8 @@
 {
   "deploymentLimit": 5,
-  "deploymentsSincePause": 5,
+  "deploymentsSincePause": 0,
   "totalDeployments": 35,
-  "paused": true,
+  "paused": false,
   "lastDeploymentSha": "279f40d68081801c700cabf363321e70de569836",
   "lastDeploymentId": "",
   "lastDeploymentVersion": "2.22.0",
