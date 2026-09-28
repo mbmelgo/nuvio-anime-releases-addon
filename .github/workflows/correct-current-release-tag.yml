@@ -1,0 +1,44 @@
+name: Correct current production release tag
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  correct:
+    if: contains(github.event.head_commit.message, '[fix-release-tag]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Correct current deployment tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_version=$(jq -r '.lastDeploymentVersion' ops/release-state.json)
+          target_sha=$(jq -r '.lastDeploymentSha' ops/release-state.json)
+          major=$(printf '%s' "$source_version" | cut -d. -f1)
+          minor=$(printf '%s' "$source_version" | cut -d. -f2)
+          expected_tag="v${major}.${minor}.0"
+          wrong_tag="v${source_version}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --tags origin
+          if ! git ls-remote --exit-code --tags origin "refs/tags/$expected_tag" >/dev/null 2>&1; then
+            git tag -a "$expected_tag" "$target_sha" -m "Release $expected_tag
+
+Deployed source version: $source_version
+Deployed source commit: $target_sha
+
+Rich metadata production release including richer series details, cast, trailers, networks, recommendations, season posters, and episode presentation data."
+            git push origin "refs/tags/$expected_tag"
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$wrong_tag" >/dev/null 2>&1 && [ "$wrong_tag" != "$expected_tag" ]; then
+            git push origin --delete "$wrong_tag"
+          fi
+          echo "Corrected current production release tag to $expected_tag."
