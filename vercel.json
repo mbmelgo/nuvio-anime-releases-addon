@@ -10,7 +10,7 @@
     },
     {
       "source": "/catalog/:type/:id.json",
-      "destination": "/api/catalog-delegation?resource=catalog&type=:type&id=:id"
+      "destination": "/api/catalog-source?resource=catalog&type=:type&id=:id"
     },
     {
       "source": "/",
