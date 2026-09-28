@@ -45,6 +45,10 @@ Automatic Vercel Git deployments are intentionally disabled. Production deployme
 
 The root manifest is the recommended installation URL. The explicit `/v5/...` routes remain available for compatibility/testing, but there is no longer a v4 resolver.
 
+## Rich metadata delegation
+
+The addon is catalog-only for external metadata delegation. Seasonal catalog entries are dynamically resolved and their MAL/AniList identities are translated to compatible IMDb/TMDB/TVDB identities when available. For later-season entries, the mapper first checks related original/prequel anime metadata, then falls back to original/base-name candidates with seasonal suffixes removed. This allows compatible metadata addons such as BingeCat to resolve the franchise identity without maintaining a duplicate metadata resolver.
+
 ## Resolver behavior covered by regression tests
 
 - Franchise continuation detection, including parent-side sequel relationships
