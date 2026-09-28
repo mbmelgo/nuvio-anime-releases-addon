@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { filterCatalogMetasBySearch, catalogDefinitions } from "../api/catalog-source.js";
 
+// Regression coverage for Nuvio catalog Search.
 test("all user-facing catalogs advertise optional search support", () => {
   for (const catalog of catalogDefinitions({ ongoing: { season: "SUMMER", year: 2026 }, previous: { season: "SPRING", year: 2026 }, upcoming: { season: "FALL", year: 2026 } })) {
     assert.deepEqual(catalog.extra, [{ name: "search", isRequired: false }, { name: "skip", isRequired: false }]);
