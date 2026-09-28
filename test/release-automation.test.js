@@ -18,8 +18,8 @@ test("historical release tag recovery is automatic when the backfill manifest ch
   assert.match(recoveryWorkflow, /workflow_dispatch:/);
   assert.match(recoveryWorkflow, /push:/);
   assert.match(recoveryWorkflow, /ops\/historical-release-tags\.json/);
-  assert.match(recoveryWorkflow, /git tag[\s\S]*\"git\", \"tag\", \"-a\"/);
-  assert.match(recoveryWorkflow, /git push[\s\S]*\"origin\", \"--tags\"/);
+  assert.match(recoveryWorkflow, /\"git\",\s*\"tag\",\s*\"-a\"/);
+  assert.match(recoveryWorkflow, /\"git\",\s*\"push\",\s*\"origin\",\s*\"--tags\"/);
   assert.deepEqual(historicalTags.releases.map((release) => release.tag), ["v2.16.0", "v2.17.0", "v2.18.0"]);
   for (const release of historicalTags.releases) {
     assert.match(release.target, /^[0-9a-f]{40}$/);
