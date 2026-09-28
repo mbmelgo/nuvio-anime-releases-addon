@@ -19,7 +19,7 @@ test("promotes a seasonal entry to the root series TVDB identity", async () => {
     { match: (url) => url.includes("kitsu.io/api/edge/anime/200/mappings"), body: { data: [] } },
     { match: (url) => url.includes("kitsu.io/api/edge/anime/200") && !url.includes("/mappings"), body: { data: { id: "200", attributes: { canonicalTitle: "Example Anime Season 2", titles: { en: "Example Anime Season 2" } } } } },
     {
-      match: (url) => url.includes("anilist.co/graphql") && url.includes("2000"),
+      match: (url) => url.includes("graphql.anilist.co") && url.includes("2000"),
       body: {
         data: {
           Media: {
@@ -65,7 +65,7 @@ test("preserves the seasonal identity when no root TVDB mapping exists", async (
     { match: (url) => url.includes("kitsu.io/api/edge/anime/200/mappings"), body: { data: [] } },
     { match: (url) => url.includes("kitsu.io/api/edge/anime/200") && !url.includes("/mappings"), body: { data: { id: "200", attributes: { canonicalTitle: "Example Anime Season 2", titles: { en: "Example Anime Season 2" } } } } },
     {
-      match: (url) => url.includes("anilist.co/graphql") && url.includes("2000"),
+      match: (url) => url.includes("graphql.anilist.co") && url.includes("2000"),
       body: {
         data: {
           Media: {
