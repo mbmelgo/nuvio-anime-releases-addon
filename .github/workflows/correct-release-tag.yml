@@ -1,0 +1,45 @@
+name: Correct rich metadata release tag
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  correct-tag:
+    if: contains(github.event.head_commit.message, '[correct-release-tag]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Replace erroneous patch tag with the minor release tag
+        env:
+          TARGET_SHA: 1e733067921e9d514d8e870d880a51652d3bee79
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --tags origin
+          if git ls-remote --exit-code --tags origin refs/tags/v2.13.0 >/dev/null 2>&1; then
+            echo "v2.13.0 already exists."
+          else
+            git tag -a v2.13.0 "$TARGET_SHA" -m "Release v2.13.0
+
+Rich metadata release for Nuvio.
+
+Changes included:
+- Added richer series release/status metadata.
+- Added country and language metadata.
+- Added certification metadata.
+- Added season poster enrichment.
+- Added richer episode runtime, thumbnails, and release data.
+- Moved shared resolver libraries outside the Vercel API function tree to stay within the function limit."
+            git push origin refs/tags/v2.13.0
+          fi
+          if git ls-remote --exit-code --tags origin refs/tags/v2.13.6 >/dev/null 2>&1; then
+            git push origin --delete v2.13.6
+          fi
