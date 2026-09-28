@@ -124,7 +124,7 @@ async function queryAiringSchedule(start, end, futureOnly) {
 function toMeta(media, episode) {
   if (!media) return null;
   const id = media.idMal ? `mal:${media.idMal}` : `anilist:${media.id}`;
-  const extra = { anilistId: media.id, ...(media.idMal ? { malId: media.idMal } : {}), ...(media.averageScore ? { anilistScore: media.averageScore / 10 } : {}), ...(media.popularity != null ? { popularity: media.popularity } : {}), ...(media.trending != null ? { trending: media.trending } : {}), ...(media.favourites != null ? { favourites: media.favourites } : {}), ...(media.episodes != null ? { totalEpisodes: media.episodes } : {}), ...(media.source ? { source: media.source } : {}), ...(media.status ? { status: media.status } : {}) };
+  const extra = { anilistId: media.id, ...(media.idMal ? { malId: media.idMal } : {}), ...(media.title?.english ? { titleEnglish: media.title.english } : {}), ...(media.title?.romaji ? { titleRomaji: media.title.romaji } : {}), ...(media.title?.native ? { titleNative: media.title.native } : {}), ...(media.averageScore ? { anilistScore: media.averageScore / 10 } : {}), ...(media.popularity != null ? { popularity: media.popularity } : {}), ...(media.trending != null ? { trending: media.trending } : {}), ...(media.favourites != null ? { favourites: media.favourites } : {}), ...(media.episodes != null ? { totalEpisodes: media.episodes } : {}), ...(media.source ? { source: media.source } : {}), ...(media.status ? { status: media.status } : {}) };
   if (episode?.episode != null) extra.episode = episode.episode;
   if (episode?.airingAt != null) extra.airingAt = episode.airingAt;
   if (media.nextAiringEpisode) { extra.nextEpisode = media.nextAiringEpisode.episode; extra.nextAiringAt = media.nextAiringEpisode.airingAt; }
