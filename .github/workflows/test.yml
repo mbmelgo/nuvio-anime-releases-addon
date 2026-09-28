@@ -61,6 +61,7 @@ jobs:
 
           python - <<'PY'
           import json
+          import os
           import re
           from pathlib import Path
 
@@ -74,6 +75,11 @@ jobs:
           current = re.search(r'ADDON_VERSION = "([^"]+)"', version_path.read_text()).group(1)
           major, minor, patch = map(int, current.split("."))
           next_version = f"{major}.{minor + 1}.0"
+
+          # Tags identify the exact source commit that was deployed.
+          # The tag version is the post-deployment release version.
+          tag = f"v{next_version}"
+          git_sha = os.environ["GITHUB_SHA"]
 
           version_path.write_text(f'export const ADDON_VERSION = "{next_version}";\n')
 
@@ -91,15 +97,25 @@ jobs:
           text = re.sub(r'\b(?:v|Version )\d+\.\d+\.\d+', lambda m: re.sub(r'\d+\.\d+\.\d+', next_version, m.group(0)), text)
           readme.write_text(text)
 
+          state["lastDeploymentSha"] = git_sha
+          state["lastDeploymentVersion"] = current
           state["nextReleaseVersion"] = next_version
+          state["lastDeploymentTag"] = tag
           state_path.write_text(json.dumps(state, indent=2) + "\n")
 
+          Path("/tmp/release-tag").write_text(tag + "\n")
           print(json.dumps(state, indent=2))
+          print(f"Deployed source commit: {git_sha}")
           print(f"Post-deployment version: {next_version}")
+          print(f"Release tag: {tag}")
           PY
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add api/version.js package.json api/stremio.js README.md ops/release-state.json
           git commit -m "chore: record Vercel deployment and bump release to $(sed -nE 's/.*ADDON_VERSION = "([^"]+)".*/\1/p' api/version.js) [skip-version-automation]"
+
+          release_tag="$(cat /tmp/release-tag)"
           git push
+          git tag -a "$release_tag" "$GITHUB_SHA" -m "Release $release_tag"
+          git push origin "$release_tag"
