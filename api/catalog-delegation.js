@@ -50,7 +50,7 @@ export async function delegateCompatibleIds(metas) {
   }
 
   const unresolved = rows.filter((meta) => !extractCompatibleId(byKey.get(String(meta?.id || ""))?.externalLinks));
-  const relationMappings = queryRelatedMappings(unresolved, byKey);
+  const relationMappings = await queryRelatedMappings(unresolved, byKey);
   const afterRelations = unresolved.filter((meta) => !relationMappings.has(String(meta?.id || "")));
   const anizip = await queryAniZipMappings(afterRelations);
   const afterAniZip = afterRelations.filter((meta) => !anizip.has(String(meta?.id || "")));
@@ -76,20 +76,38 @@ async function queryMedia(filter) {
   return payload?.data?.Page?.media || [];
 }
 
-function queryRelatedMappings(metas, byKey) {
+async function queryRelatedMappings(metas, byKey) {
   const result = new Map();
+  const relationCandidates = [];
+  const candidateSources = new Map();
+
   for (const meta of metas) {
     const sourceId = String(meta?.id || "");
     const media = byKey.get(sourceId);
     const edges = Array.isArray(media?.relations?.edges) ? media.relations.edges : [];
     const ordered = [...edges].sort((a, b) => relationPriority(a?.relationType) - relationPriority(b?.relationType));
+
     for (const edge of ordered) {
       const compatible = extractCompatibleId(edge?.node?.externalLinks);
       if (compatible) {
         result.set(sourceId, compatible);
         break;
       }
+
+      const node = edge?.node;
+      if (!node?.id && !node?.idMal) continue;
+      const candidateId = node.idMal ? `mal:${node.idMal}` : `anilist:${node.id}`;
+      if (!candidateSources.has(candidateId)) candidateSources.set(candidateId, []);
+      candidateSources.get(candidateId).push(sourceId);
+      relationCandidates.push({ id: candidateId, type: "series", name: node.title?.english || node.title?.romaji || node.title?.native || "" });
+      break;
     }
+  }
+
+  if (!relationCandidates.length) return result;
+  const relatedMappings = await queryAniZipMappings(relationCandidates);
+  for (const [candidateId, compatible] of relatedMappings) {
+    for (const sourceId of candidateSources.get(candidateId) || []) result.set(sourceId, compatible);
   }
   return result;
 }
@@ -166,6 +184,15 @@ async function queryWikidataMappings(metas, byKey) {
       if (!sourceIdsByName.has(name.toLowerCase())) sourceIdsByName.set(name.toLowerCase(), []);
       sourceIdsByName.get(name.toLowerCase()).push(id);
     }
+
+    const edges = Array.isArray(media?.relations?.edges) ? media.relations.edges : [];
+    for (const edge of edges) {
+      for (const name of originalNameCandidates(edge?.node)) {
+        names.push(name);
+        if (!sourceIdsByName.has(name.toLowerCase())) sourceIdsByName.set(name.toLowerCase(), []);
+        sourceIdsByName.get(name.toLowerCase()).push(id);
+      }
+    }
   }
   if (!malIds.length && !anilistIds.length && !names.length) return new Map();
 
@@ -186,7 +213,7 @@ async function queryWikidataMappings(metas, byKey) {
     headers: {
       accept: "application/sparql-results+json",
       "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
-      "user-agent": "Nuvio-Anime-Releases-Addon/2.17.9 (+https://nuvio-anime-releases-addon-rho.vercel.app/)",
+      "user-agent": "Nuvio-Anime-Releases-Addon/2.17.11 (+https://nuvio-anime-releases-addon-rho.vercel.app/)",
     },
     body: new URLSearchParams({ query, format: "json" }).toString(),
   });
