@@ -1,4 +1,4 @@
-# Anime Releases for Nuvio — v2.5.0
+# Anime Releases for Nuvio — v2.5.1
 
 A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio-compatible clients**.
 
@@ -20,7 +20,7 @@ The current production metadata routing uses **v4**. **v5** is the refactored ca
 
 
 > Deployment candidate: TVMaze fallback is now supplemental-only for finished series and cannot replace missing primary episode datasets. [deploy-prod]
-## v2.5.0 highlights
+## v2.5.1 highlights
 
 - Refactored metadata resolver architecture.
 - Franchise discovery separated from episode retrieval, classification, and Nuvio response formatting.
