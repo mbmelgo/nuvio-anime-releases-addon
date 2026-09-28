@@ -14,8 +14,6 @@ export default async function handler(req, res) {
 
   await stremioHandler(req, proxyRes);
 
-  // This endpoint is only mounted on catalog routes, so do not depend on
-  // Vercel rewrite query propagation to decide whether delegation runs.
   if (!captured.body?.metas) return sendCaptured(res, captured);
 
   try {
@@ -72,18 +70,23 @@ async function queryMedia(filter) {
 }
 
 async function queryWikidataMappings(metas) {
-  const ids = metas
-    .map((meta) => {
-      const id = String(meta?.id || "");
-      const mal = parseId(id, "mal");
-      const anilist = parseId(id, "anilist");
-      return mal ? { key: id, property: "P4086", value: mal } : anilist ? { key: id, property: "P8729", value: anilist } : null;
-    })
-    .filter(Boolean);
-  if (!ids.length) return new Map();
+  const malIds = [];
+  const anilistIds = [];
+  for (const meta of metas) {
+    const id = String(meta?.id || "");
+    const mal = parseId(id, "mal");
+    const anilist = parseId(id, "anilist");
+    if (mal) malIds.push(String(mal));
+    if (anilist) anilistIds.push(String(anilist));
+  }
+  if (!malIds.length && !anilistIds.length) return new Map();
 
-  const values = ids.map(({ property, value }) => `(wdt:${property} "${value}")`).join(" ");
-  const query = `SELECT ?item ?mal ?anilist ?imdb ?tmdb ?tvdb WHERE { VALUES (?property ?value) { ${values} } ?item ?property ?value . OPTIONAL { ?item wdt:P4086 ?mal } OPTIONAL { ?item wdt:P8729 ?anilist } OPTIONAL { ?item wdt:P345 ?imdb } OPTIONAL { ?item wdt:P4983 ?tmdb } OPTIONAL { ?item wdt:P4835 ?tvdb } } LIMIT 200`;
+  const values = [
+    malIds.length ? `{ VALUES ?mal { ${malIds.map((id) => `"${id}"`).join(" ")} } ?item wdt:P4086 ?mal . }` : "",
+    anilistIds.length ? `{ VALUES ?anilist { ${anilistIds.map((id) => `"${id}"`).join(" ")} } ?item wdt:P8729 ?anilist . }` : "",
+  ].filter(Boolean).join(" UNION ");
+
+  const query = `SELECT ?item ?mal ?anilist ?imdb ?tmdb ?tvdb WHERE { { ${values} } OPTIONAL { ?item wdt:P4086 ?mal } OPTIONAL { ?item wdt:P8729 ?anilist } OPTIONAL { ?item wdt:P345 ?imdb } OPTIONAL { ?item wdt:P4983 ?tmdb } OPTIONAL { ?item wdt:P4835 ?tvdb } } LIMIT 200`;
   const payload = await fetchJson(`${WIKIDATA_URL}?query=${encodeURIComponent(query)}&format=json`, {
     headers: {
       accept: "application/sparql-results+json",
