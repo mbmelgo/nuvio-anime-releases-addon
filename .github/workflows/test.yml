@@ -6,6 +6,7 @@ on:
   pull_request:
     branches: [main]
 
+# Deployment candidate promotion marker: One Piece sequence reconciliation
 jobs:
   test:
     runs-on: ubuntu-latest
