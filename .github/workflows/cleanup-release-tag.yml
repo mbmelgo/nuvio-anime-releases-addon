@@ -1,0 +1,39 @@
+name: Cleanup release tag
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Correct release tag
+        env:
+          TARGET_SHA: 1e733067921e9d514d8e870d880a51652d3bee79
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_COMMIT_MESSAGE" != *"[correct-release-tag]"* ]]; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --tags origin
+          git tag -a v2.13.0 "$TARGET_SHA" -m "Release v2.13.0
+
+Rich metadata release for Nuvio.
+
+Changes included:
+- Rich series release/status metadata.
+- Country, language, certification, and season poster metadata.
+- Richer episode runtime, thumbnails, and release data.
+- Shared resolver libraries moved outside the Vercel API function tree."
+          git push origin refs/tags/v2.13.0
+          git push origin --delete v2.13.6
