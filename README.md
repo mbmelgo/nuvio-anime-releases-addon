@@ -1,19 +1,20 @@
-# Anime Releases for Nuvio — v2.17.13
+# Anime Releases for Nuvio — v2.18.0
 
-A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio-compatible clients**.
+A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `2.17.13`
-- **Production candidate:** `v2.17.11`
-- **Next minor release baseline:** `2.17.0`
-- **Latest production tag:** `v2.16.0`
+- **Development version:** `2.18.0`
+- **Production candidate:** `v2.18.0`
+- **Next minor release baseline:** `2.19.0`
+- **Latest existing production tag:** `v2.16.0`
 - **Production resolver:** **v5**
 - **Legacy resolver:** **retired**
-- **CI status:** **green**
+- **Metadata ownership:** delegated to the user's preferred metadata addon
+- **CI status:** **green before release deployment**
 
-The production addon now uses a single v5 resolver. The former v4 implementation and side-by-side resolver selector have been removed to reduce maintenance and routing complexity.
+The production addon is catalog-only. It supplies anime release/airing catalogs and delegates detailed metadata to the user's preferred metadata addon, such as BingeCat. Legacy metadata routes are retired from Vercel routing so this addon does not intercept metadata requests.
 
 Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated through GitHub Actions and the Vercel deployment hook.
 
@@ -29,26 +30,28 @@ Automatic Vercel Git deployments are intentionally disabled. Production deployme
 ```text
 /manifest.json
     ↓
-  v5 production resolver
-
-/meta/series/:id.json
-    ↓
-  v5 rich metadata resolver
-
-/api/meta/series/:id.json
-    ↓
-  v5 compatibility route
+  v5 catalog-only resolver
 
 /catalog/series/:id.json
     ↓
-  shared catalog resolver
+  season-aware anime release catalog
+    ↓
+  MAL/AniList identity
+    ↓
+  IMDb/TMDB/TVDB compatibility mapping
+    ↓
+  Nuvio metadata delegation
+    ↓
+  BingeCat / preferred metadata addon
 ```
 
-The root manifest is the recommended installation URL. The explicit `/v5/...` routes remain available for compatibility/testing, but there is no longer a v4 resolver.
+The root manifest is the recommended installation URL. The explicit `/v5/...` catalog route remains available for compatibility/testing. Metadata is intentionally not advertised or routed by this addon.
 
-## Rich metadata delegation
+## Metadata delegation
 
 The addon is catalog-only for external metadata delegation. Seasonal catalog entries are dynamically resolved and their MAL/AniList identities are translated to compatible IMDb/TMDB/TVDB identities when available. For later-season entries, the mapper first checks related original/prequel anime metadata, then uses AniZip's maintained cross-database mappings, then falls back to original/base-name candidates with seasonal suffixes removed. This allows compatible metadata addons such as BingeCat to resolve the franchise identity without maintaining a duplicate metadata resolver.
+
+Unmapped entries retain their original MAL/AniList identity rather than being assigned an unsupported or guessed ID.
 
 ## Resolver behavior covered by regression tests
 
@@ -65,59 +68,48 @@ The addon is catalog-only for external metadata delegation. Seasonal catalog ent
 - Finished-series primary-source selection
 - Ongoing-series freshness fallback
 - Upcoming episode preservation with scheduled release dates
-- Rich series metadata including release information, country, language, certification, background art, networks, studios, cast, trailers, recommendations, external links, and season/episode presentation data
-
-## Rich metadata
-
-The production v5 metadata resolver currently exposes, when provider data is available:
-
-- Root/original series title and description for seasonal requests
-- Root-series artwork and genres where available
-- Release range and last-air date
-- Airing status and runtime
-- Country and language
-- Certification / age rating
-- Background/banner artwork
-- Season-specific posters
-- Broadcast/network information
-- Studios and producers
-- Cast, characters, voice actors, and cast images
-- Actual trailers, separate from streaming episodes
-- Streaming-episode metadata under `app_extras.streamingEpisodes`
-- Upcoming episodes from the provider airing schedule, merged with existing episode data and exposed with future `released` dates so compatible clients can display scheduled/unavailable episode cards
-- Recommendations / related anime
-- IMDb ID for client-side IMDb metadata enrichment, including a fallback from resolved episode-source identities when Jikan lacks an IMDb external link
-- External links
-- Season and episode presentation metadata
-
-Season-specific episode and airing data remains available while the primary series identity comes from the franchise root.
+- Original/base-name matching for seasonal titles
+- IMDb/TMDB/TVDB identity delegation
+- Catalog-only routing with legacy metadata endpoints disabled
 
 ## Performance
 
-The v5 rich metadata path is optimized to avoid repeating the expensive base resolver work. The rich layer reuses the resolved franchise graph and season groups instead of resolving the same MAL graph a second time. Franchise graph discovery is performed in bounded parallel batches, while provider caching remains enabled with Vercel-friendly `s-maxage`/stale-while-revalidate headers.
+The catalog resolver uses bounded provider lookups and caching to keep seasonal catalog generation practical for Vercel. Mapping work is performed only for catalog identities that need compatibility translation.
 
 Performance optimization remains a secondary priority while functional correctness and robustness are being finalized.
 
 ## Data sources
 
-AniList is the primary source for metadata, season/status information, artwork, scores, popularity, airing schedules, franchise relationships, cast, studios, trailers, recommendations, and external links. Jikan and AniZip provide MAL mappings, episode data, broadcast/provider information, and fallbacks. TVMaze is limited to freshness supplementation for ongoing long-running series.
+AniList is the primary source for anime metadata, season/status information, artwork, scores, popularity, airing schedules, franchise relationships, and external links. Jikan and AniZip provide MAL mappings, episode data, broadcast/provider information, and fallbacks. Wikidata provides an additional cross-database fallback when a compatible identity cannot be obtained from the primary mapping sources. TVMaze is limited to freshness supplementation for ongoing long-running series.
 
 ## Release workflow
 
 ```text
-GitHub commit
+Requirement / bug
     ↓
-npm test
+Regression test
     ↓
-FAIL → stop; no production deployment
+Implementation
+    ↓
+npm test / GitHub Actions
+    ↓
+FAIL → fix; no deployment
     ↓
 PASS
     ↓
-[deploy-prod]?
-    ├── No → continue development
-    └── Yes → deployment checkpoint
-                 ├── < 5 → production deployment
-                 └── 5 → PAUSE
+Batch related production-ready changes
+    ↓
+Version verification / release documentation
+    ↓
+[deploy-prod]
+    ↓
+Deployment checkpoint
+    ├── < 5 → production deployment
+    └── 5 → PAUSE
+    ↓
+Live validation
+    ↓
+Minor release tag
 ```
 
 The deployment checkpoint is stored in `ops/release-state.json`.
@@ -134,14 +126,14 @@ The deployment checkpoint is stored in `ops/release-state.json`.
 
 ```text
 /                         Installer home page
-/manifest.json            Production v5 addon manifest
-/v5/manifest.json         Explicit v5 manifest
+/manifest.json            Production v5 catalog-only addon manifest
+/v5/manifest.json         Explicit v5 catalog-only manifest
 /catalog/series/:id.json  Production series catalog
-/meta/series/:id.json     Production v5 rich series metadata
-/v5/meta/series/:id.json  Explicit v5 metadata
-/api/meta/series/:id.json v5 metadata compatibility route
+/v5/catalog/series/:id.json Explicit v5 series catalog
 ```
+
+There are intentionally no public `/meta` routes in the production Vercel configuration.
 
 ## Streams
 
-This is a **catalog and metadata addon only**. It does not provide video streams, downloads, torrent hashes, or playback sources.
+This is a **catalog addon only**. It does not provide video streams, downloads, torrent hashes, or playback sources.
