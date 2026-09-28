@@ -161,7 +161,7 @@ async function buildVideos(groups) {
       const aniZipRows = mapping?.anilist_id ? mergeEpisodeRows(await getAniZipEpisodes(mapping.anilist_id)) : [];
       const jikanRows = (await getJikanEpisodes(malId, MAX_EPISODE_PAGES)).map(normalizeJikanEpisode).filter(Boolean);
       let rows = chooseRows(jikanRows, aniZipRows, expected, ongoing);
-      if (ongoing && /^tt\\d+$/i.test(String(mapping?.imdb_id || \"\").trim()) && maxEpisodeNumber(rows) >= 100) {
+      if (ongoing && /^tt\d+$/i.test(String(mapping?.imdb_id || "").trim()) && maxEpisodeNumber(rows) >= 100) {
         const tvMazeRows = await getTvMazeEpisodes(mapping.imdb_id);
         rows = mergeFreshAbsoluteEpisodes(rows, tvMazeRows, latestSourceSeason(rows));
       }
