@@ -1,0 +1,23 @@
+name: Apply MALSync TVDB priority patch
+
+on:
+  push:
+    branches: [fix/malsync-tvdb-priority]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[patch-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prefer MALSync TVDB identity for MAL catalogs
+        run: |
+          python -c 'from pathlib import Path; p=Path("lib/kitsu-canonical.js"); s=p.read_text(); old="""  let preferredTvdbId = null;\n  const anilistSourceId = meta?.extra?.anilistId ? String(meta.extra.anilistId) : null;\n  try {\n    if (anilistSourceId) preferredTvdbId = await resolveWithWikidataTvdb(anilistSourceId, fetchImpl, now);\n    if (!preferredTvdbId && anilistSourceId) preferredTvdbId = await resolveWithAniBridgeTvdb(\"anilist\", anilistSourceId, fetchImpl, now);\n    if (!preferredTvdbId) preferredTvdbId = await resolveWithAniBridgeTvdb(source.source, source.id, fetchImpl, now);\n  } catch (error) {"""; new="""  let preferredTvdbId = null;\n  const anilistSourceId = meta?.extra?.anilistId ? String(meta.extra.anilistId) : null;\n  try {\n    if (source.source === \"mal\") preferredTvdbId = await resolveWithMalSyncTvdb(source.id, fetchImpl);\n    if (!preferredTvdbId && anilistSourceId) preferredTvdbId = await resolveWithWikidataTvdb(anilistSourceId, fetchImpl, now);\n    if (!preferredTvdbId && anilistSourceId) preferredTvdbId = await resolveWithAniBridgeTvdb(\"anilist\", anilistSourceId, fetchImpl, now);\n    if (!preferredTvdbId) preferredTvdbId = await resolveWithAniBridgeTvdb(source.source, source.id, fetchImpl, now);\n  } catch (error) {"""; assert old in s; s=s.replace(old,new,1); s=s.replace("""      if (!kitsuId) continue;\n      if (!(await verifyKitsuTitle(kitsuId, titles, fetchImpl, now))) continue;""","""      if (!kitsuId && !mappedTvdbId) continue;\n      if (kitsuId && !(await verifyKitsuTitle(kitsuId, titles, fetchImpl, now))) continue;""",1); old2="""async function resolveWithMalSync(id, _titles, fetchImpl) {\n  const data = await getJson(fetchImpl, `${MALSYNC_URL}/${encodeURIComponent(id)}`);\n  const sites = data?.Sites?.Kitsu || {};\n  for (const value of Object.values(sites)) if (value?.id) return String(value.id);\n  return null;\n}"""; new2="""async function resolveWithMalSync(id, _titles, fetchImpl) {\n  const data = await getJson(fetchImpl, `${MALSYNC_URL}/${encodeURIComponent(id)}`);\n  const kitsuSites = data?.Sites?.Kitsu || {};\n  const tvdbSites = data?.Sites?.TheTVDB || data?.Sites?.TVDB || {};\n  const kitsuId = Object.keys(kitsuSites)[0] || null;\n  const tvdbId = Object.keys(tvdbSites).find((value) => /^\\d+$/.test(String(value))) || null;\n  if (!kitsuId && !tvdbId) return null;\n  return { kitsuId: kitsuId ? String(kitsuId) : null, tvdbId: tvdbId ? String(tvdbId) : null };\n}\n\nasync function resolveWithMalSyncTvdb(id, fetchImpl) {\n  const data = await getJson(fetchImpl, `${MALSYNC_URL}/${encodeURIComponent(id)}`);\n  const sites = data?.Sites?.TheTVDB || data?.Sites?.TVDB || {};\n  return Object.keys(sites).find((value) => /^\\d+$/.test(String(value))) || null;\n}"""; assert old2 in s; s=s.replace(old2,new2,1); p.write_text(s)'
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lib/kitsu-canonical.js
+          git commit -m "fix: use MALSync TVDB identity for MAL catalogs [patch-applied]"
+          git push
