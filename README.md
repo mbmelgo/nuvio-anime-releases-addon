@@ -1,22 +1,22 @@
-# Anime Releases for Nuvio — v2.18.42
+# Anime Releases for Nuvio — v2.19.0
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `2.18.42` (patch version is automatically advanced by CI for development commits)
-- **Production release:** `v2.18.0`
+- **Development version:** `2.19.0` (production release baseline)
+- **Production release:** `v2.19.0` (pending deployment)
 - **Next minor release baseline:** `2.19.0`
 - **Latest production tag:** `v2.18.0`
 - **Architecture:** **catalog-only**
 - **Detailed metadata:** delegated to **BingeCat / the configured metadata addon**
 - **CI status:** **green**
-- **Deployment checkpoint:** **5/5 — PAUSED**
+- **Deployment checkpoint:** **0/5 — authorized deployment in progress**
 
 The addon is now intentionally responsible only for anime release, airing, seasonal, and ranking catalogs. Detailed metadata is delegated to BingeCat rather than being duplicated inside this addon. Legacy metadata routes and the old local metadata resolver have been retired.
 
-Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated through GitHub Actions and the Vercel deployment hook. Production deployment #6 requires explicit authorization because the current internal checkpoint is 5/5.
+Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated through GitHub Actions and the Vercel deployment hook. Production deployment #6 has been explicitly authorized to validate the current architecture in production.
 
 ## URLs
 
