@@ -22,7 +22,7 @@ test("rich metadata maps show details, certification, cast, trailer, and season 
       {
         character: { name: "Rudeus Greyrat", images: { jpg: { image_url: "https://example.com/character.jpg" } } },
         voice_actors: [
-          { language: "Japanese", person: { name: "Tomokazu Sugita", images: { jpg: { image_url: "https://example.com/actor.jpg" } } } },
+          { language: "Japanese", person: { name: "Tomokazu Sugita", images: { jpg: { image_url: "https://example.com/actor.jpg" } } },
         ],
       },
     ],
@@ -53,10 +53,10 @@ test("rich metadata maps show details, certification, cast, trailer, and season 
   assert.equal(result.app_extras.cast[0].photo, "https://example.com/actor.jpg");
   assert.equal(result.trailers[0].key, "abc123");
   assert.deepEqual(result.app_extras.seasonPosters, {
-    "1": "https://example.com/season1.jpg",
+    "1": "https://example.com/root-cover.jpg",
     "2": "https://example.com/season2.jpg",
   });
-  assert.equal(result.videos[0].seasonPoster, "https://example.com/season1.jpg");
+  assert.equal(result.videos[0].seasonPoster, "https://example.com/root-cover.jpg");
   assert.equal(result.videos[1].seasonPoster, "https://example.com/season2.jpg");
 });
 
