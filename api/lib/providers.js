@@ -24,7 +24,7 @@ export function extractAniZipEpisodeBatch(json) {
 
 export async function getTvMazeEpisodes(imdbId) {
   const normalizedImdbId = String(imdbId || "").trim();
-  if (!/^tt\\d+$/i.test(normalizedImdbId)) return [];
+  if (!/^tt\d+$/i.test(normalizedImdbId)) return [];
 
   const key = `tm:e:${normalizedImdbId}`;
   const cached = getCached(key);
@@ -66,7 +66,7 @@ function normalizeTvMazeEpisode(item) {
 }
 
 function extractAbsoluteEpisodeNumber(title) {
-  const match = String(title || "").match(/\\b(?:episode|ep\\.)\\s*#?\\s*(\\d+)\\b/i);
+  const match = String(title || "").match(/\b(?:episode|ep\.)\s*#?\s*(\d+)\b/i);
   return match ? Number(match[1]) : 0;
 }
 
