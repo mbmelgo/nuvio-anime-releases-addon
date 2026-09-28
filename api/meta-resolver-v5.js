@@ -43,7 +43,15 @@ function aniListToJikan(node) { return node ? { mal_id: Number(node.idMal), type
 function partsDate(x) { return x?.year && x?.month && x?.day ? `${x.year}-${String(x.month).padStart(2,"0")}-${String(x.day).padStart(2,"0")}T00:00:00.000Z` : null; }
 
 export function numberSeasons(entries, requestedMalId) {
-  const sorted = [...entries].sort((a,b) => startTime(a) - startTime(b));
+  const requested = entries.find(x => Number(x.jikan?.mal_id) === Number(requestedMalId));
+  const root = requested || entries.find(x => Number(x.jikan?.mal_id));
+  const filtered = entries.filter(entry => {
+    if (!root) return false;
+    const malId = Number(entry.jikan?.mal_id);
+    return malId === Number(requestedMalId) || isSeasonContinuation(root.node, entry.node);
+  });
+
+  const sorted = [...filtered].sort((a,b) => startTime(a) - startTime(b));
   const groups = [];
   for (const entry of sorted) {
     const explicit = explicitSeason(entry.node);
@@ -54,10 +62,15 @@ export function numberSeasons(entries, requestedMalId) {
     if (!group) { group = { season, entries: [] }; groups.push(group); }
     if (!group.entries.some(x => Number(x.jikan?.mal_id) === Number(entry.jikan?.mal_id))) group.entries.push(entry);
   }
-  const requested = entries.find(x => Number(x.jikan?.mal_id) === Number(requestedMalId));
   if (requested && !groups.some(g => g.entries.some(x => Number(x.jikan?.mal_id) === Number(requestedMalId)))) groups.unshift({ season: 1, entries: [requested] });
   return groups.sort((a,b) => a.season - b.season);
 }
+
+export function isSeasonContinuation(rootNode, candidateNode) {
+  if (!candidateNode) return false;
+  return Boolean(explicitSeason(candidateNode) || isPart(candidateNode));
+}
+
 function nextSeasonNumber(groups) { const max = groups.reduce((n, g) => Math.max(n, Number(g.season) || 0), 0); return max + 1; }
 function explicitSeason(node) { const titles = [...(node?.synonyms || []), node?.title?.english, node?.title?.romaji, node?.title?.native].filter(Boolean).map(String); for (const t of titles) { const m = t.match(/\bseason\s*(\d+)\b/i) || t.match(/\b(\d+)(?:st|nd|rd|th)\s+season\b/i) || t.match(/\bS(\d+)\b/i); if (m) return Number(m[1]); const r = t.match(/\b(II|III|IV|V)\b/i); if (r) return ({II:2,III:3,IV:4,V:5})[r[1].toUpperCase()]; } return null; }
 function isPart(node) { const t = [...(node?.synonyms || []), node?.title?.english, node?.title?.romaji, node?.title?.native].filter(Boolean).join(" "); return /\b(?:part|cour)\s*[12]\b/i.test(t) || /第\s*[12]\s*クール/.test(t); }
@@ -123,7 +136,12 @@ async function buildVideos(groups) {
   return [...out.values()].sort((a,b) => a.season - b.season || a.episode - b.episode);
 }
 
-export function chooseRows(jikanRows, aniZipRows, expected = 0) { if (expected > 0 && jikanRows.length >= expected) return enrichRows(jikanRows, aniZipRows); if (expected > 0 && aniZipRows.length >= expected) return aniZipRows; if (aniZipRows.length > jikanRows.length) return enrichRows(aniZipRows, jikanRows); return enrichRows(jikanRows, aniZipRows); }
+export function chooseRows(jikanRows, aniZipRows, expected = 0) {
+  if (expected > 0 && jikanRows.length >= expected) return enrichRows(jikanRows, aniZipRows);
+  if (expected > 0 && aniZipRows.length >= expected) return enrichRows(aniZipRows, jikanRows);
+  if (aniZipRows.length > jikanRows.length) return enrichRows(aniZipRows, jikanRows);
+  return enrichRows(jikanRows, aniZipRows);
+}
 function enrichRows(primary, secondary) {
   const enrich = new Map(secondary.map(x => [Number(x.number), x]));
   return primary.map((row) => {
@@ -148,8 +166,6 @@ function buildMeta(root, requestedId, videos) {
   if (root.duration) meta.runtime = root.duration;
   if (root.aired?.from) meta.released = root.aired.from;
 
-  // Derive releaseInfo from the actual resolved episode window instead of the
-  // root MAL entry, which often represents only the first season of a franchise.
   const startYear = root.aired?.from ? new Date(root.aired.from).getUTCFullYear() : (root.year || null);
   const releasedYears = videos
     .map((video) => video.released ? new Date(video.released).getUTCFullYear() : null)
