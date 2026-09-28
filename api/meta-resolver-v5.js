@@ -87,6 +87,7 @@ async function buildVideos(groups) {
       if (!malId) continue;
 
       const expected = Number(entry.jikan?.episodes) || 0;
+      const ongoing = isOngoing(entry.jikan);
       const mapping = await getAniZipMapping(malId);
       const aniZipRows = mapping?.anilist_id
         ? mergeEpisodeRows(await getAniZipEpisodes(mapping.anilist_id, MAX_EPISODE_PAGES))
@@ -95,7 +96,7 @@ async function buildVideos(groups) {
         .map(normalizeJikanEpisode)
         .filter(Boolean);
 
-      const rows = chooseRows(jikanRows, aniZipRows, expected);
+      const rows = chooseRows(jikanRows, aniZipRows, expected, ongoing);
       if (!rows.length) continue;
 
       const identity = /^tt\d+$/i.test(String(mapping?.imdb_id || ""))
@@ -136,15 +137,19 @@ async function buildVideos(groups) {
   return [...out.values()].sort((a,b) => a.season - b.season || a.episode - b.episode);
 }
 
-export function chooseRows(jikanRows, aniZipRows, expected = 0) {
+function isOngoing(anime) {
+  return Boolean(anime?.airing) || /currently\s+airing/i.test(String(anime?.status || "")) || !anime?.aired?.to;
+}
+
+export function chooseRows(jikanRows, aniZipRows, expected = 0, ongoing = false) {
   const jikan = Array.isArray(jikanRows) ? jikanRows : [];
   const aniZip = Array.isArray(aniZipRows) ? aniZipRows : [];
 
-  // A complete Jikan sequence is the preferred canonical source for ordinary
-  // anime because AniZip can contain provider-specific extras. But if Jikan is
-  // incomplete, the larger filtered AniZip sequence is authoritative. This is
-  // essential for long-running series where Jikan may return only an early
-  // tranche (for example, the first 100 episodes).
+  // A complete Jikan sequence is preferred for finished/ordinary anime because
+  // AniZip can contain provider-specific extras. For ongoing anime, however,
+  // Jikan's episode count can represent only the currently published tranche
+  // while AniZip may already contain a substantially longer canonical sequence.
+  if (ongoing && aniZip.length > jikan.length) return enrichRows(aniZip, jikan);
   if (expected > 0 && jikan.length === expected) return enrichRows(jikan, aniZip);
   if (expected > 0 && aniZip.length >= expected && jikan.length < expected) return enrichRows(aniZip, jikan);
   if (aniZip.length > jikan.length) return enrichRows(aniZip, jikan);
