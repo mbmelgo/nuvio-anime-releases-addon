@@ -90,7 +90,7 @@ async function queryWikidataMappings(metas) {
   const payload = await fetchJson(`${WIKIDATA_URL}?query=${encodeURIComponent(query)}&format=json`, {
     headers: {
       accept: "application/sparql-results+json",
-      "user-agent": "Nuvio-Anime-Releases-Addon/2.17.0 (+https://nuvio-anime-releases-addon-rho.vercel.app/)",
+      "user-agent": "Nuvio-Anime-Releases-Addon/2.17.2 (+https://nuvio-anime-releases-addon-rho.vercel.app/)",
     },
   });
 
