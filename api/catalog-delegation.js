@@ -188,8 +188,6 @@ async function runWithConcurrency(jobs, limit) {
 async function queryWikidataMappings(metas, byKey) {
   const malIds = [];
   const anilistIds = [];
-  const names = [];
-  const sourceIdsByName = new Map();
 
   for (const meta of metas) {
     const id = String(meta?.id || "");
@@ -197,53 +195,36 @@ async function queryWikidataMappings(metas, byKey) {
     const anilist = parseId(id, "anilist");
     if (mal) malIds.push(String(mal));
     if (anilist) anilistIds.push(String(anilist));
-
-    const media = byKey.get(id);
-    for (const name of originalNameCandidates(media)) {
-      names.push(name);
-      if (!sourceIdsByName.has(name.toLowerCase())) sourceIdsByName.set(name.toLowerCase(), []);
-      sourceIdsByName.get(name.toLowerCase()).push(id);
-    }
-
-    const edges = Array.isArray(media?.relations?.edges) ? media.relations.edges : [];
-    for (const edge of edges) {
-      for (const name of originalNameCandidates(edge?.node)) {
-        names.push(name);
-        if (!sourceIdsByName.has(name.toLowerCase())) sourceIdsByName.set(name.toLowerCase(), []);
-        sourceIdsByName.get(name.toLowerCase()).push(id);
-      }
-    }
   }
-  if (!malIds.length && !anilistIds.length && !names.length) return new Map();
+
+  // Wikidata title-only matching is intentionally disabled. Titles such as
+  // "One Piece", "Doraemon", "Detective Conan", and franchise names are
+  // shared by movies, older series, sequels, and unrelated works. An external
+  // ID is trustworthy here only when Wikidata links it to the exact source
+  // MAL/AniList identity.
+  if (!malIds.length && !anilistIds.length) return new Map();
 
   const values = [
     malIds.length ? `{ VALUES ?mal { ${malIds.map((id) => `"${id}"`).join(" ")} } ?item wdt:P4086 ?mal . }` : "",
     anilistIds.length ? `{ VALUES ?anilist { ${anilistIds.map((id) => `"${id}"`).join(" ")} } ?item wdt:P8729 ?anilist . }` : "",
   ].filter(Boolean).join(" UNION ");
 
-  const nameValues = names.length
-    ? `VALUES ?label { ${[...new Set(names)].map((name) => `"${escapeSparqlString(name)}"`).join(" ")} } ?item rdfs:label ?label . FILTER(LANG(?label) = "en" || LANG(?label) = "")`
-    : "";
-  const nameBranch = nameValues ? `{ ${nameValues} }` : "";
-  const branches = [values, nameBranch].filter(Boolean).join(" UNION ");
-
-  const query = `SELECT ?item ?mal ?anilist ?label ?imdb ?tmdb ?tvdb WHERE { { ${branches} } OPTIONAL { ?item wdt:P4086 ?mal } OPTIONAL { ?item wdt:P8729 ?anilist } OPTIONAL { ?item rdfs:label ?label } OPTIONAL { ?item wdt:P345 ?imdb } OPTIONAL { ?item wdt:P4983 ?tmdb } OPTIONAL { ?item wdt:P4835 ?tvdb } } LIMIT 500`;
+  const query = `SELECT ?item ?mal ?anilist ?label ?imdb ?tmdb ?tvdb WHERE { { ${values} } OPTIONAL { ?item wdt:P4086 ?mal } OPTIONAL { ?item wdt:P8729 ?anilist } OPTIONAL { ?item rdfs:label ?label } OPTIONAL { ?item wdt:P345 ?imdb } OPTIONAL { ?item wdt:P4983 ?tmdb } OPTIONAL { ?item wdt:P4835 ?tvdb } } LIMIT 500`;
   const payload = await fetchJson(WIKIDATA_URL, {
     method: "POST",
     headers: {
       accept: "application/sparql-results+json",
       "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
-      "user-agent": "Nuvio-Anime-Releases-Addon/2.17.11 (+https://nuvio-anime-releases-addon-rho.vercel.app/)",
+      "user-agent": "Nuvio-Anime-Releases-Addon/2.23.0 (+https://nuvio-anime-releases-addon-rho.vercel.app/)",
     },
     body: new URLSearchParams({ query, format: "json" }).toString(),
   });
 
-  return selectUniqueWikidataMappings(payload?.results?.bindings || [], sourceIdsByName);
+  return selectUniqueWikidataMappings(payload?.results?.bindings || [], new Map());
 }
 
-export function selectUniqueWikidataMappings(bindings, sourceIdsByName) {
+export function selectUniqueWikidataMappings(bindings, sourceIdsByName = new Map()) {
   const result = new Map();
-  const compatibleByLabel = new Map();
 
   for (const binding of Array.isArray(bindings) ? bindings : []) {
     const compatible = binding.imdb?.value
@@ -259,19 +240,6 @@ export function selectUniqueWikidataMappings(bindings, sourceIdsByName) {
     const anilist = binding.anilist?.value;
     if (mal) result.set(`mal:${mal}`, compatible);
     if (anilist) result.set(`anilist:${anilist}`, compatible);
-
-    const label = binding.label?.value;
-    if (!label) continue;
-    const key = label.toLowerCase();
-    if (!compatibleByLabel.has(key)) compatibleByLabel.set(key, new Set());
-    compatibleByLabel.get(key).add(compatible);
-  }
-
-  for (const [label, sourceIds] of sourceIdsByName.entries()) {
-    const compatible = compatibleByLabel.get(label);
-    if (!compatible || compatible.size !== 1) continue;
-    const [mapped] = compatible;
-    for (const sourceId of sourceIds || []) if (!result.has(sourceId)) result.set(sourceId, mapped);
   }
 
   return result;

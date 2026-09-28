@@ -52,7 +52,7 @@ test("rolling catalog windows are exactly seven days wide", () => {
   assert.ok(upcoming.start >= now.getTime());
 });
 
-test("Wikidata name fallback does not map an ambiguous title", () => {
+test("Wikidata title-only fallback does not map ambiguous or unique titles", () => {
   const result = selectUniqueWikidataMappings([
     { label: { value: "One Piece" }, imdb: { value: "tt0388629" } },
     { label: { value: "One Piece" }, imdb: { value: "tt9999999" } },
@@ -63,5 +63,5 @@ test("Wikidata name fallback does not map an ambiguous title", () => {
   ]));
 
   assert.equal(result.has("mal:21"), false);
-  assert.equal(result.get("mal:269"), "tt0434661");
+  assert.equal(result.has("mal:269"), false);
 });
