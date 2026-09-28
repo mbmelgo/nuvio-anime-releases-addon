@@ -48,25 +48,50 @@ export async function delegateCompatibleIds(metas) {
   }
 
   const unresolved = rows.filter((meta) => !extractCompatibleId(byKey.get(String(meta?.id || ""))?.externalLinks));
+  const relationMappings = queryRelatedMappings(unresolved, byKey);
   const wikidata = await queryWikidataMappings(unresolved, byKey);
 
   return rows.map((meta) => {
     const sourceId = String(meta?.id || "");
-    const anilistMapped = extractCompatibleId(byKey.get(sourceId)?.externalLinks);
-    const mapped = anilistMapped || wikidata.get(sourceId);
+    const direct = extractCompatibleId(byKey.get(sourceId)?.externalLinks);
+    const related = relationMappings.get(sourceId);
+    const mapped = direct || related || wikidata.get(sourceId);
     return mapped ? { ...meta, id: mapped } : meta;
   });
 }
 
 async function queryMedia(filter) {
   const variableName = Object.keys(filter)[0];
-  const query = `query ($ids:[Int]) { Page(perPage:50) { media(type:ANIME,${variableName}:$ids) { id idMal title { romaji english native } synonyms externalLinks { site url } } } }`;
+  const query = `query ($ids:[Int]) { Page(perPage:50) { media(type:ANIME,${variableName}:$ids) { id idMal title { romaji english native } synonyms externalLinks { site url } relations { edges { relationType node { id idMal title { romaji english native } externalLinks { site url } } } } } } }`;
   const payload = await fetchJson(ANILIST_URL, {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json" },
     body: JSON.stringify({ query, variables: { ids: Object.values(filter)[0] } }),
   });
   return payload?.data?.Page?.media || [];
+}
+
+function queryRelatedMappings(metas, byKey) {
+  const result = new Map();
+  for (const meta of metas) {
+    const sourceId = String(meta?.id || "");
+    const media = byKey.get(sourceId);
+    const edges = Array.isArray(media?.relations?.edges) ? media.relations.edges : [];
+    const ordered = [...edges].sort((a, b) => relationPriority(a?.relationType) - relationPriority(b?.relationType));
+    for (const edge of ordered) {
+      const compatible = extractCompatibleId(edge?.node?.externalLinks);
+      if (compatible) {
+        result.set(sourceId, compatible);
+        break;
+      }
+    }
+  }
+  return result;
+}
+
+function relationPriority(type) {
+  const priorities = { PREQUEL: 0, SEQUEL: 1, SIDE_STORY: 2, ALTERNATIVE: 3, PARENT: 4 };
+  return priorities[String(type || "").toUpperCase()] ?? 10;
 }
 
 async function queryWikidataMappings(metas, byKey) {
