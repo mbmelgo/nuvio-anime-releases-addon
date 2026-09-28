@@ -137,10 +137,18 @@ async function buildVideos(groups) {
 }
 
 export function chooseRows(jikanRows, aniZipRows, expected = 0) {
-  if (expected > 0 && jikanRows.length >= expected) return enrichRows(jikanRows, aniZipRows);
-  if (expected > 0 && aniZipRows.length >= expected) return enrichRows(aniZipRows, jikanRows);
-  if (aniZipRows.length > jikanRows.length) return enrichRows(aniZipRows, jikanRows);
-  return enrichRows(jikanRows, aniZipRows);
+  const jikan = Array.isArray(jikanRows) ? jikanRows : [];
+  const aniZip = Array.isArray(aniZipRows) ? aniZipRows : [];
+
+  // A complete Jikan sequence is the preferred canonical source for ordinary
+  // anime because AniZip can contain provider-specific extras. But if Jikan is
+  // incomplete, the larger filtered AniZip sequence is authoritative. This is
+  // essential for long-running series where Jikan may return only an early
+  // tranche (for example, the first 100 episodes).
+  if (expected > 0 && jikan.length === expected) return enrichRows(jikan, aniZip);
+  if (expected > 0 && aniZip.length >= expected && jikan.length < expected) return enrichRows(aniZip, jikan);
+  if (aniZip.length > jikan.length) return enrichRows(aniZip, jikan);
+  return enrichRows(jikan, aniZip);
 }
 function enrichRows(primary, secondary) {
   const enrich = new Map(secondary.map(x => [Number(x.number), x]));
@@ -157,6 +165,16 @@ function enrichRows(primary, secondary) {
 }
 function better(a,b) { return (/^Episode \d+$/i.test(b.title) && !/^Episode \d+$/i.test(a.title)) || (!b.thumbnail && a.thumbnail) || (!b.released && a.released); }
 
+export function getReleaseInfo(root, videos) {
+  const startYear = root?.aired?.from ? new Date(root.aired.from).getUTCFullYear() : (root?.year || null);
+  const releasedYears = (Array.isArray(videos) ? videos : [])
+    .map((video) => video?.released ? new Date(video.released).getUTCFullYear() : null)
+    .filter((year) => Number.isInteger(year));
+  const endYear = releasedYears.length ? Math.max(...releasedYears) : null;
+  if (!startYear) return null;
+  return `${startYear}${endYear && endYear >= startYear ? `-${endYear}` : "-"}`;
+}
+
 function buildMeta(root, requestedId, videos) {
   const meta = { id: requestedId, type: "series", name: root.title_english || root.title || root.title_japanese || requestedId, posterShape: "poster", videos };
   const poster = root.images?.jpg?.large_image_url || root.images?.jpg?.image_url;
@@ -165,13 +183,8 @@ function buildMeta(root, requestedId, videos) {
   if (Array.isArray(root.genres) && root.genres.length) meta.genres = root.genres.map(x => x.name).filter(Boolean);
   if (root.duration) meta.runtime = root.duration;
   if (root.aired?.from) meta.released = root.aired.from;
-
-  const startYear = root.aired?.from ? new Date(root.aired.from).getUTCFullYear() : (root.year || null);
-  const releasedYears = videos
-    .map((video) => video.released ? new Date(video.released).getUTCFullYear() : null)
-    .filter((year) => Number.isInteger(year));
-  const endYear = releasedYears.length ? Math.max(...releasedYears) : null;
-  if (startYear) meta.releaseInfo = `${startYear}${endYear && endYear >= startYear ? `-${endYear}` : "-"}`;
+  meta.releaseInfo = getReleaseInfo(root, videos);
+  if (!meta.releaseInfo) delete meta.releaseInfo;
 
   if (videos.length) meta.behaviorHints = { defaultVideoId: videos[0].id };
   return meta;
