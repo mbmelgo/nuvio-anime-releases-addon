@@ -9,7 +9,7 @@ export default function handler(req, res) {
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=1800");
+  res.setHeader("Cache-Control", "public, max-age=60, s-maxage=60, stale-while-revalidate=300");
 
   if (req.method === "OPTIONS") return res.json({});
   return res.json(buildManifest(current));
