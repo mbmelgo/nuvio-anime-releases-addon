@@ -115,6 +115,7 @@ export function isSeasonContinuation(rootNode, candidateNode, rootJikan = null, 
   const candidateKeys = titleKeys(candidateNode, candidateJikan);
   if (!rootKeys.length || !candidateKeys.length) return false;
   if (candidateKeys.some(key => rootKeys.includes(key))) return true;
+  if (candidateKeys.some(candidateKey => rootKeys.some(rootKey => candidateKey.startsWith(`${rootKey} `)))) return true;
 
   // Some providers give different subtitles for the same franchise entry
   // (e.g. Mushoku Tensei's English vs. Japanese titles). For an explicit
