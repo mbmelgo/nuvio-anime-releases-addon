@@ -9,9 +9,16 @@ permissions:
 
 jobs:
   tag:
-    if: contains(github.event.head_commit.message, '[tag-backfill]')
     runs-on: ubuntu-latest
     steps:
+      - name: Check for tag-backfill marker
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          if [[ "$COMMIT_MESSAGE" != *"[tag-backfill]"* ]]; then
+            echo "No [tag-backfill] marker; nothing to do."
+            exit 0
+          fi
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -21,6 +28,8 @@ jobs:
           set -euo pipefail
           target="$(python -c 'import json;print(json.load(open("ops/release-state.json"))["lastDeploymentSha"])')"
           tag="$(python -c 'import json;print(json.load(open("ops/release-state.json"))["lastDeploymentTag"])')"
+          test -n "$target"
+          test -n "$tag"
           git fetch --tags --force
           if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
             echo "Tag $tag already exists."
