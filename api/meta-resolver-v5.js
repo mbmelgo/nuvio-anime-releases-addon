@@ -74,7 +74,7 @@ function collectFranchiseEntries(entries, requestedMalId, root) {
       if (!malId || included.has(malId)) continue;
 
       const qualifiesFromRoot = parent === root && isSeasonContinuation(root.node, entry.node, root.jikan, entry.jikan);
-      const qualifiesFromContinuation = parent !== root && relatedByTvRelation(entry, Number(parent.jikan?.mal_id));
+      const qualifiesFromContinuation = parent !== root && relatedByTvRelation(entry, parent);
       if (!qualifiesFromRoot && !qualifiesFromContinuation) continue;
 
       included.set(malId, entry);
@@ -85,17 +85,29 @@ function collectFranchiseEntries(entries, requestedMalId, root) {
   return [...included.values()];
 }
 
-function relatedByTvRelation(entry, parentMalId) {
+function relatedByTvRelation(entry, parent) {
+  const parentMalId = Number(parent?.jikan?.mal_id || 0);
   if (!parentMalId) return false;
-  for (const edge of entry.node?.relations?.edges || []) {
-    const relationType = String(edge?.relationType || "").toUpperCase();
-    const malId = Number(edge?.node?.idMal || 0);
-    if (malId === parentMalId && ["PREQUEL", "SEQUEL"].includes(relationType)) return true;
-  }
-  for (const rel of entry.jikan?.relations || []) {
-    if (!/^(Sequel|Prequel)$/i.test(String(rel?.relation || ""))) continue;
-    if ((rel.entry || []).some(child => Number(child?.mal_id) === parentMalId)) return true;
-  }
+
+  const hasRelatedEdge = (edges = [], targetMalId) =>
+    edges.some((edge) => {
+      const relationType = String(edge?.relationType || "").toUpperCase();
+      const malId = Number(edge?.node?.idMal || 0);
+      return malId === targetMalId && ["PREQUEL", "SEQUEL"].includes(relationType);
+    });
+
+  if (hasRelatedEdge(entry.node?.relations?.edges, parentMalId)) return true;
+  if (hasRelatedEdge(parent?.node?.relations?.edges, Number(entry.jikan?.mal_id || 0))) return true;
+
+  const hasJikanRelation = (relations = [], targetMalId) =>
+    relations.some((rel) => {
+      if (!/^(Sequel|Prequel)$/i.test(String(rel?.relation || ""))) return false;
+      return (rel.entry || []).some(child => Number(child?.mal_id) === targetMalId);
+    });
+
+  if (hasJikanRelation(entry.jikan?.relations, parentMalId)) return true;
+  if (hasJikanRelation(parent?.jikan?.relations, Number(entry.jikan?.mal_id || 0))) return true;
+
   return false;
 }
 
