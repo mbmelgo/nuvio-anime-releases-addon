@@ -100,7 +100,7 @@ function relatedByTvRelation(entry, parentMalId) {
 }
 
 function hasContinuationMarker(node, jikan) {
-  return titleValues(node, jikan).some(value => /\b(?:arc|saga|war|story)\b/i.test(value));
+  return titleValues(node, jikan).some(value => /\b(?:final\s+season|arc|saga|war|story)\b/i.test(value));
 }
 
 export function isSeasonContinuation(rootNode, candidateNode, rootJikan = null, candidateJikan = null) {
