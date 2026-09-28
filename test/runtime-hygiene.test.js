@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readdir, readFile } from "node:fs/promises";
+import { access, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 async function collectJsFiles(dir) {
@@ -23,4 +23,16 @@ test("runtime source does not use deprecated url.parse API", async () => {
     if (/\burl\.parse\s*\(/.test(source)) offenders.push(file);
   }
   assert.deepEqual(offenders, []);
+});
+
+test("retired metadata and duplicate runtime entrypoints stay removed", async () => {
+  const retired = [
+    "api/stremio.js",
+    "api/home.js",
+    "lib/http.js",
+    "lib/release-version.js",
+  ];
+  for (const file of retired) {
+    await assert.rejects(access(file), undefined, `${file} should remain removed`);
+  }
 });
