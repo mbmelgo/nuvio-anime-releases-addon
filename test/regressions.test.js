@@ -1,3 +1,4 @@
+import { extractTvMazeShowId, extractTvMazeEpisodeBatch } from "../api/lib/providers.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { reconcileEpisodeSequences, looksLikeSameSequence } from "../api/lib/episode-sequences.js";
@@ -128,6 +129,18 @@ test("One Piece regression: an incomplete Jikan tranche does not beat a complete
   assert.equal(result.length, 1200);
   assert.equal(result[0].title, "AniZip Episode 1");
   assert.equal(result.at(-1).number, 1200);
+});
+
+test("TVMaze regression: IMDb lookup response is treated as a show object before fetching episodes", () => {
+  assert.equal(extractTvMazeShowId({ id: 12345, name: "One Piece" }), 12345);
+  assert.equal(extractTvMazeShowId({ id: "12345" }), 12345);
+  assert.equal(extractTvMazeShowId(null), 0);
+});
+
+test("TVMaze regression: episode payload supports the direct episode-list array", () => {
+  const episodes = [{ number: 1180, name: "Episode 1180", season: 23 }];
+  assert.deepEqual(extractTvMazeEpisodeBatch(episodes), episodes);
+  assert.deepEqual(extractTvMazeEpisodeBatch({ episodes }), episodes);
 });
 
 test("One Piece freshness regression: newer absolute episodes from a fallback source fill a stale ongoing sequence", () => {
