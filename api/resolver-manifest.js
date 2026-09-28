@@ -16,7 +16,7 @@ export default function handler(req, res) {
 
 export function buildManifest(info) {
   return {
-    id: "com.marki.nuvio.anime-releases.v5",
+    id: "com.marki.nuvio.anime-releases",
     version: ADDON_VERSION,
     name: "Anime Releases for Nuvio",
     description: "Season-aware anime release catalogs for Nuvio. Detailed metadata is delegated to the user's preferred metadata addon.",
