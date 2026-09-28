@@ -122,12 +122,6 @@ jobs:
           release_tag="$(cat /tmp/release-tag)"
           git push
 
-          if [ -z "$RELEASE_PAT" ]; then
-            echo "RELEASE_PAT is required to create annotated deployment tags."
-            exit 1
-          fi
-
-          git remote set-url origin "https://x-access-token:$RELEASE_PAT@github.com/$GITHUB_REPOSITORY.git"
           if git ls-remote --exit-code --tags origin "refs/tags/$release_tag" >/dev/null 2>&1; then
             echo "Tag $release_tag already exists."
             exit 0
@@ -162,7 +156,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$release_tag" "$GITHUB_SHA" -m "$tag_message"
-          git push origin "refs/tags/$release_tag"
+          if ! git push origin "refs/tags/$release_tag"; then
+            echo "Default GitHub Actions token could not push the tag; retrying with RELEASE_PAT."
+            if [ -z "$RELEASE_PAT" ]; then
+              echo "RELEASE_PAT is required as a fallback for annotated deployment tags."
+              exit 1
+            fi
+            git remote set-url origin "https://x-access-token:$RELEASE_PAT@github.com/$GITHUB_REPOSITORY.git"
+            git push origin "refs/tags/$release_tag"
+          fi
 
 
   tag-major-release:
@@ -187,12 +189,6 @@ jobs:
             echo "Major release marker requires an x.0.0 version; found $version."
             exit 1
           fi
-          if [ -z "$RELEASE_PAT" ]; then
-            echo "RELEASE_PAT is required to create major release tags."
-            exit 1
-          fi
-
-          git remote set-url origin "https://x-access-token:$RELEASE_PAT@github.com/$GITHUB_REPOSITORY.git"
           tag="v$version"
           if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
             echo "Tag $tag already exists."
@@ -225,7 +221,15 @@ jobs:
           )"
 
           git tag -a "$tag" "$GITHUB_SHA" -m "$tag_message"
-          git push origin "refs/tags/$tag"
+          if ! git push origin "refs/tags/$tag"; then
+            echo "Default GitHub Actions token could not push the major tag; retrying with RELEASE_PAT."
+            if [ -z "$RELEASE_PAT" ]; then
+              echo "RELEASE_PAT is required as a fallback for major release tags."
+              exit 1
+            fi
+            git remote set-url origin "https://x-access-token:$RELEASE_PAT@github.com/$GITHUB_REPOSITORY.git"
+            git push origin "refs/tags/$tag"
+          fi
 
   backfill-release-tag:
     name: Backfill an existing deployment tag
@@ -248,9 +252,25 @@ jobs:
             exit 1
           fi
 
-          target_sha="0cb81fc8b23c751029e470f8d7386603ee6b9ae8"
-          tag="v2.2.0"
-          git remote set-url origin "https://x-access-token:$RELEASE_PAT@github.com/$GITHUB_REPOSITORY.git"
+          target_sha="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          state = json.loads(Path("ops/release-state.json").read_text())
+          print(state["lastDeploymentSha"])
+          PY
+          )"
+          tag="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          state = json.loads(Path("ops/release-state.json").read_text())
+          print(state["lastDeploymentTag"])
+          PY
+          )"
+
+          if [ -z "$target_sha" ] || [ -z "$tag" ]; then
+            echo "Release state does not contain a deployment SHA/tag to backfill."
+            exit 1
+          fi
 
           if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
             echo "Tag $tag already exists."
@@ -283,4 +303,12 @@ jobs:
           )"
 
           git tag -a "$tag" "$target_sha" -m "$tag_message"
-          git push origin "refs/tags/$tag"
+          if ! git push origin "refs/tags/$tag"; then
+            echo "Default GitHub Actions token could not push the backfill tag; retrying with RELEASE_PAT."
+            if [ -z "$RELEASE_PAT" ]; then
+              echo "RELEASE_PAT is required as a fallback for release-tag backfills."
+              exit 1
+            fi
+            git remote set-url origin "https://x-access-token:$RELEASE_PAT@github.com/$GITHUB_REPOSITORY.git"
+            git push origin "refs/tags/$tag"
+          fi
