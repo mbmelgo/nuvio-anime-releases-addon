@@ -54,6 +54,11 @@ test("does not treat a separately titled sequel as a season of the requested MAL
   assert.deepEqual(groups.flatMap(g => g.entries.map(x => x.jikan.mal_id)), [20]);
 });
 
+test("recognizes Final Season titles as continuations", () => {
+  const root = { title: { english: "Attack on Titan" } };
+  assert.equal(isSeasonContinuation(root, { title: { english: "Attack on Titan: The Final Season" } }), true);
+});
+
 test("recognizes explicit season and part titles as continuations", () => {
   const root = { title: { english: "Mushoku Tensei: Jobless Reincarnation" } };
   assert.equal(isSeasonContinuation(root, { title: { english: "Mushoku Tensei: Jobless Reincarnation Season 2" } }), true);
