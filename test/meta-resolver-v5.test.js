@@ -56,7 +56,16 @@ test("does not treat a separately titled sequel as a season of the requested MAL
 
 test("recognizes Final Season titles as continuations", () => {
   const root = { title: { english: "Attack on Titan" } };
-  assert.equal(isSeasonContinuation(root, { title: { english: "Attack on Titan: The Final Season" } }), true);
+  const continuation = { title: { english: "Attack on Titan: The Final Season" } };
+  assert.equal(isSeasonContinuation(root, continuation), true);
+
+  const entries = [
+    { jikan: { mal_id: 16498, title: "Attack on Titan", episodes: 25 }, node: { ...root, startDate: { year: 2013, month: 4, day: 7 } } },
+    { jikan: { mal_id: 40028, title: "Attack on Titan: The Final Season", episodes: 16 }, node: { ...continuation, startDate: { year: 2020, month: 12, day: 7 } } }
+  ];
+  const groups = numberSeasons(entries, 16498);
+  assert.deepEqual(groups.map(group => group.season), [1, 2]);
+  assert.deepEqual(groups.flatMap(group => group.entries.map(entry => entry.jikan.mal_id)), [16498, 40028]);
 });
 
 test("recognizes explicit season and part titles as continuations", () => {
