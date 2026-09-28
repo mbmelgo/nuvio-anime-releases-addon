@@ -31,17 +31,35 @@ export async function getTvMazeEpisodes(imdbId) {
   if (cached !== undefined) return cached;
 
   try {
-    const json = await requestJson(
-      `https://api.tvmaze.com/lookup/shows?imdb=${encodeURIComponent(normalizedImdbId)}&embed=episodes`,
-      { retries: 2, cacheKey: key }
+    // TVMaze's IMDb lookup intentionally redirects to the show URL and drops
+    // embed parameters, so resolve the show ID first and then fetch episodes.
+    const show = await requestJson(
+      `https://api.tvmaze.com/lookup/shows?imdb=${encodeURIComponent(normalizedImdbId)}`,
+      { retries: 2, cacheKey: `tm:s:${normalizedImdbId}` }
     );
-    const episodes = Array.isArray(json?.episodes) ? json.episodes : [];
+    const showId = extractTvMazeShowId(show);
+    if (!showId) return setCached(key, []);
+
+    const episodesJson = await requestJson(
+      `https://api.tvmaze.com/shows/${showId}/episodes`,
+      { retries: 2, cacheKey: `tm:e:${showId}` }
+    );
+    const episodes = extractTvMazeEpisodeBatch(episodesJson);
     const rows = episodes.map(normalizeTvMazeEpisode).filter(Boolean);
     return setCached(key, rows);
   } catch {
     setCached(key, []);
     return [];
   }
+}
+
+export function extractTvMazeShowId(value) {
+  const id = Number(value?.id);
+  return Number.isInteger(id) && id > 0 ? id : 0;
+}
+
+export function extractTvMazeEpisodeBatch(value) {
+  return Array.isArray(value) ? value : Array.isArray(value?.episodes) ? value.episodes : [];
 }
 
 function normalizeTvMazeEpisode(item) {
