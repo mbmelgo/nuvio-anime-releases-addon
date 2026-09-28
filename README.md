@@ -1,8 +1,8 @@
-# Anime Releases for Nuvio — v2.0.0
+# Anime Releases for Nuvio — v2.1.0
 
 A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio-compatible clients**.
 
-Version **2.0.0** documents the refactored metadata architecture and current deployment workflow.
+Version **2.1.0** documents the refactored metadata architecture and current deployment workflow.
 
 ## Current project
 
@@ -17,7 +17,7 @@ GitHub is the source of truth. Automatic Vercel Git deployments are intentionall
 
 The current production metadata routing uses **v4**. **v5** is the refactored candidate and remains available for validation.
 
-## v2.0.0 highlights
+## v2.1.0 highlights
 
 - Refactored metadata resolver architecture.
 - Franchise discovery separated from episode retrieval, classification, and Nuvio response formatting.
@@ -187,12 +187,10 @@ Other providers such as Kitsu, AniMap, or TVMaze may be used selectively for spe
 
 ## Vercel deployment workflow
 
-**Automatic Git deployments are intentionally disabled.**
+**Automatic Vercel Git deployments are disabled.** Production deployment is test-gated by GitHub Actions and uses the `[deploy-prod]` commit marker.
 
 ```text
 GitHub push
-    ↓
-GitHub Actions
     ↓
 npm test
     ↓
@@ -200,12 +198,26 @@ FAIL → stop
     ↓
 PASS
     ↓
-Commit contains [deploy-prod]?
-    ├── No → stop
-    └── Yes → Vercel Deploy Hook → production
+[deploy-prod]?
+    ├── No → patch-version automation
+    └── Yes → deployment checkpoint
+                 ├── < 5 deployments → Vercel production
+                 └── 5 deployments → PAUSE
 ```
 
-Normal commits therefore do not consume Vercel deployment quota. A consolidated candidate can be deployed automatically by adding `[deploy-prod]` to its commit message, and deployment is blocked automatically if CI fails.
+The autonomous loop pauses after every **5 Vercel production deployments**. The checkpoint is stored in `ops/release-state.json`. After a pause, live status and TODOs are reported before the loop is resumed.
+
+### Version rules
+
+Starting from the current baseline:
+
+- Normal source commit → increment **patch**: `2.1.0 → 2.1.1 → 2.1.2`
+- Successful Vercel deployment → increment **minor** and reset patch: `2.1.2 → 2.2.0`
+- Major release → increment **major** manually: `2.2.0 → 3.0.0`
+
+Deployment commits therefore establish the next minor-release baseline after the successful deployment. Generated version commits are marked `[skip-version-automation]` to prevent recursion.
+
+The current checkpoint is intentionally paused at **5/5 deployments** after deployment `dpl_GnG8JUzVuRhqXxL96i6KCayF5Son`. Production remained on version 2.0.0; the repository baseline is now 2.1.0 for the next development cycle.
 
 The GitHub Actions workflow uses the `VERCEL_DEPLOY_HOOK_URL` repository secret. The hook URL is never stored in the repository.
 
@@ -268,4 +280,4 @@ This is a **catalog and metadata addon only**. It does not provide video streams
 
 ## Version
 
-**2.0.0**
+**2.1.0**

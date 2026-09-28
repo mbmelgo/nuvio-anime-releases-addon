@@ -1,67 +1,61 @@
-name: Sync addon version
+name: Automatic patch versioning
 
 on:
   push:
     branches: [main]
-    paths:
-      - api/version.js
-      - api/stremio.js
-      - api/home.js
-      - README.md
-      - .github/workflows/sync-version.yml
 
 permissions:
   contents: write
 
 jobs:
-  sync-version:
-    if: ${{ !contains(github.event.head_commit.message, '[skip version-sync]') }}
+  bump-patch:
+    if: >-
+      !contains(github.event.head_commit.message, '[skip-version-automation]') &&
+      !contains(github.event.head_commit.message, '[deploy-prod]')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Read canonical version
-        id: version
+      - name: Bump patch version and sync metadata
         shell: bash
         run: |
-          VERSION=$(sed -nE 's/.*ADDON_VERSION = "([^"]+)".*/\1/p' api/version.js)
-          test -n "$VERSION"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
 
-      - name: Sync version strings
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
           python - <<'PY'
-          import os
+          import json
+          import re
           from pathlib import Path
 
-          version = os.environ["VERSION"]
+          version_path = Path("api/version.js")
+          current = re.search(r'ADDON_VERSION = "([^"]+)"', version_path.read_text()).group(1)
+          major, minor, patch = map(int, current.split("."))
+          next_version = f"{major}.{minor}.{patch + 1}"
+
+          version_path.write_text(f'export const ADDON_VERSION = "{next_version}";\n')
+
+          package_path = Path("package.json")
+          package = json.loads(package_path.read_text())
+          package["version"] = next_version
+          package_path.write_text(json.dumps(package, indent=2) + "\n")
 
           stremio = Path("api/stremio.js")
           text = stremio.read_text()
-          import re
-          text, count = re.subn(r'version:\s*"[^"]+"', f'version: "{version}"', text, count=1)
-          if count != 1:
-              raise SystemExit("Could not find manifest version in api/stremio.js")
-          stremio.write_text(text)
+          stremio.write_text(re.sub(r'version: "[^"]+"', f'version: "{next_version}"', text, count=1))
 
           readme = Path("README.md")
           text = readme.read_text()
-          text = re.sub(r'(?i)(\bversion\s+|\bv)\d+\.\d+\.\d+', lambda m: m.group(1) + version, text)
+          text = re.sub(r'\b(?:v|Version )\d+\.\d+\.\d+', lambda m: re.sub(r'\d+\.\d+\.\d+', next_version, m.group(0)), text)
           readme.write_text(text)
+
+          print(f"Automatic patch version: {current} -> {next_version}")
           PY
 
-      - name: Commit synchronized version
+      - name: Commit patch version
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add api/stremio.js README.md
-          if git diff --cached --quiet; then
-            echo "Version already synchronized."
-            exit 0
-          fi
-          git commit -m "Sync addon version to ${{ steps.version.outputs.version }} [skip version-sync]"
+          git add api/version.js package.json api/stremio.js README.md
+          git commit -m "chore: bump patch version [skip-version-automation]"
           git push

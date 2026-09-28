@@ -1,0 +1,10 @@
+{
+  "deploymentLimit": 5,
+  "deploymentsSincePause": 5,
+  "totalDeployments": 5,
+  "paused": true,
+  "lastDeploymentSha": "e5388fdf4fde55a00a89119564ac5e9f544f8cbd",
+  "lastDeploymentId": "dpl_GnG8JUzVuRhqXxL96i6KCayF5Son",
+  "lastDeploymentVersion": "2.0.0",
+  "nextReleaseVersion": "2.1.0"
+}

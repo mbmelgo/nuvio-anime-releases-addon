@@ -6,7 +6,9 @@ on:
   pull_request:
     branches: [main]
 
-# Deployment candidate promotion marker: One Piece sequence reconciliation
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -28,14 +30,76 @@ jobs:
     if: github.event_name == 'push' && contains(github.event.head_commit.message, '[deploy-prod]')
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Vercel deployment
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check deployment checkpoint and deploy
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        shell: bash
         run: |
+          set -euo pipefail
+
           if [ -z "$VERCEL_DEPLOY_HOOK_URL" ]; then
             echo "VERCEL_DEPLOY_HOOK_URL is not configured."
             exit 1
           fi
-          curl --fail --silent --show-error \
-            --request POST \
-            "$VERCEL_DEPLOY_HOOK_URL"
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          state = json.loads(Path("ops/release-state.json").read_text())
+          print(f"Deployment checkpoint: {state['deploymentsSincePause']}/{state['deploymentLimit']}")
+          if state["paused"] or state["deploymentsSincePause"] >= state["deploymentLimit"]:
+              print("AUTONOMOUS LOOP PAUSED: deployment checkpoint reached.")
+              raise SystemExit(0)
+          PY
+
+          curl --fail --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
+
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          state_path = Path("ops/release-state.json")
+          state = json.loads(state_path.read_text())
+          state["deploymentsSincePause"] += 1
+          state["totalDeployments"] += 1
+          state["paused"] = state["deploymentsSincePause"] >= state["deploymentLimit"]
+
+          version_path = Path("api/version.js")
+          current = re.search(r'ADDON_VERSION = "([^"]+)"', version_path.read_text()).group(1)
+          major, minor, patch = map(int, current.split("."))
+          next_version = f"{major}.{minor + 1}.0"
+
+          version_path.write_text(f'export const ADDON_VERSION = "{next_version}";\n')
+
+          package_path = Path("package.json")
+          package = json.loads(package_path.read_text())
+          package["version"] = next_version
+          package_path.write_text(json.dumps(package, indent=2) + "\n")
+
+          stremio = Path("api/stremio.js")
+          text = stremio.read_text()
+          stremio.write_text(re.sub(r'version: "[^"]+"', f'version: "{next_version}"', text, count=1))
+
+          readme = Path("README.md")
+          text = readme.read_text()
+          text = re.sub(r'\b(?:v|Version )\d+\.\d+\.\d+', lambda m: re.sub(r'\d+\.\d+\.\d+', next_version, m.group(0)), text)
+          readme.write_text(text)
+
+          state["nextReleaseVersion"] = next_version
+          state_path.write_text(json.dumps(state, indent=2) + "\n")
+
+          print(json.dumps(state, indent=2))
+          print(f"Post-deployment version: {next_version}")
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add api/version.js package.json api/stremio.js README.md ops/release-state.json
+          git commit -m "chore: record Vercel deployment and bump release to $(sed -nE 's/.*ADDON_VERSION = "([^"]+)".*/\1/p' api/version.js) [skip-version-automation]"
+          git push
