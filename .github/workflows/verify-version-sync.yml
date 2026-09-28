@@ -2,7 +2,7 @@ name: Verify automatic version commits
 
 on:
   workflow_run:
-    workflows: ["Automatic patch versioning"]
+    workflows: ["CI, automatic patch versioning, and controlled Vercel release"]
     types: [completed]
 
 permissions:
