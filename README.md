@@ -13,7 +13,7 @@ Version **2.0.0** documents the refactored metadata architecture and current dep
 
 ## Current status
 
-GitHub is the source of truth. Automatic Vercel Git deployments are intentionally disabled, so GitHub commits do not automatically create Vercel deployments. Production deployments are performed manually when a consolidated candidate is ready.
+GitHub is the source of truth. Automatic Vercel Git deployments are intentionally disabled. Production deployments are now **test-gated**: a normal GitHub push runs CI without deploying, while a commit containing `[deploy-prod]` triggers the Vercel Deploy Hook only after the unit-test job passes.
 
 The current production metadata routing uses **v4**. **v5** is the refactored candidate and remains available for validation.
 
@@ -192,18 +192,22 @@ Other providers such as Kitsu, AniMap, or TVMaze may be used selectively for spe
 ```text
 GitHub push
     ↓
-No automatic Vercel deployment
+GitHub Actions
     ↓
-Iterate/test code in GitHub
+npm test
     ↓
-Consolidate candidate
+FAIL → stop
     ↓
-Manual Vercel deployment
+PASS
     ↓
-Regression testing
+Commit contains [deploy-prod]?
+    ├── No → stop
+    └── Yes → Vercel Deploy Hook → production
 ```
 
-This protects the Vercel Hobby deployment quota. Deployments should only happen when explicitly requested.
+Normal commits therefore do not consume Vercel deployment quota. A consolidated candidate can be deployed automatically by adding `[deploy-prod]` to its commit message, and deployment is blocked automatically if CI fails.
+
+The GitHub Actions workflow uses the `VERCEL_DEPLOY_HOOK_URL` repository secret. The hook URL is never stored in the repository.
 
 ## Project structure
 
@@ -217,6 +221,10 @@ api/
     ├── episodes.js
     ├── http.js
     └── providers.js
+
+.github/
+└── workflows/
+    └── test.yml
 
 vercel.json
 package.json
