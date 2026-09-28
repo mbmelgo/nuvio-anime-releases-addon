@@ -18,7 +18,6 @@ export default async function handler(req, res) {
   const seasonInfo = getSeasonInfo(now);
 
   if (req.method === "OPTIONS") return send(res, {}, 200);
-  if (resource === "manifest" || (parts.length === 1 && parts[0] === "manifest.json")) return send(res, buildManifest(seasonInfo));
 
   if (resource === "catalog" && type === "series") {
     if (!catalogDefinitions(seasonInfo).some((catalog) => catalog.id === id)) return send(res, { metas: [] }, 404);
@@ -34,21 +33,9 @@ export default async function handler(req, res) {
   return send(res, { error: "Not found" }, 404);
 }
 
-function buildManifest(info) {
-  return {
-    id: "com.marki.nuvio.anime-releases",
-    version: ADDON_VERSION,
-    name: "Anime Releases for Nuvio",
-    description: "Season-aware anime release catalogs for Nuvio and Stremio-compatible clients. Detailed metadata is delegated to Bingecat.",
-    resources: [{ name: "catalog", types: ["series"] }],
-    types: ["series"],
-    catalogs: catalogDefinitions(info),
-  };
-}
-
 const MEDIA_FIELDS = `id idMal title { romaji english native } coverImage { large } bannerImage description genres duration format status season seasonYear episodes averageScore popularity trending favourites countryOfOrigin source siteUrl startDate { year month day } endDate { year month day } nextAiringEpisode { episode airingAt }`;
 
-function catalogDefinitions(info) {
+export function catalogDefinitions(info) {
   const current = `${prettySeason(info.ongoing.season)} ${info.ongoing.year}`;
   const previous = `${prettySeason(info.previous.season)} ${info.previous.year}`;
   const upcoming = `${prettySeason(info.upcoming.season)} ${info.upcoming.year}`;
@@ -148,7 +135,7 @@ function toMeta(media, episode) {
 function cleanDescription(value) { return String(value).replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "").replace(/\r\n/g, "\n").trim(); }
 async function anilist(query, variables) { const response = await fetchWithTimeout(ANILIST_URL, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ query, variables }) }); const json = await response.json().catch(() => ({})); if (!response.ok || json.errors) throw new Error(json.errors?.map((x) => x.message).join("; ") || `AniList HTTP ${response.status}`); return json.data; }
 async function fetchWithTimeout(url, options = {}) { const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS); try { return await fetch(url, { ...options, signal: controller.signal }); } finally { clearTimeout(timer); } }
-function getSeasonInfo(date) { const { month, year } = getManilaDateParts(date); if (month <= 3) return { previous: { season: "FALL", year: year - 1 }, ongoing: { season: "WINTER", year }, upcoming: { season: "SPRING", year } }; if (month <= 6) return { previous: { season: "WINTER", year }, ongoing: { season: "SPRING", year }, upcoming: { season: "SUMMER", year } }; if (month <= 9) return { previous: { season: "SPRING", year }, ongoing: { season: "SUMMER", year }, upcoming: { season: "FALL", year } }; return { previous: { season: "SUMMER", year }, ongoing: { season: "FALL", year }, upcoming: { season: "WINTER", year: year + 1 } }; }
+export function getSeasonInfo(date) { const { month, year } = getManilaDateParts(date); if (month <= 3) return { previous: { season: "FALL", year: year - 1 }, ongoing: { season: "WINTER", year }, upcoming: { season: "SPRING", year } }; if (month <= 6) return { previous: { season: "WINTER", year }, ongoing: { season: "SPRING", year }, upcoming: { season: "SUMMER", year } }; if (month <= 9) return { previous: { season: "SPRING", year }, ongoing: { season: "SUMMER", year }, upcoming: { season: "FALL", year } }; return { previous: { season: "SUMMER", year }, ongoing: { season: "FALL", year }, upcoming: { season: "WINTER", year: year + 1 } }; }
 function getManilaDateParts(date) { const formatter = new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, year: "numeric", month: "numeric", day: "numeric" }); const result = {}; for (const part of formatter.formatToParts(date)) if (part.type !== "literal") result[part.type] = Number(part.value); return result; }
 function getLast7DaysRangeManila(date) { return getManilaDayRange(date, -6, 1); }
 function getManilaDayRange(date, startOffset, endOffset) { const p = getManilaDateParts(date); return { start: manilaDateToUtc(p.year, p.month, p.day + startOffset, 0, 0, 0).getTime(), end: manilaDateToUtc(p.year, p.month, p.day + endOffset, 0, 0, 0).getTime() }; }
