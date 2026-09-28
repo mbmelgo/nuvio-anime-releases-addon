@@ -13,6 +13,7 @@ A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio
 - **Legacy resolver:** **v4**, retained for side-by-side validation
 - **Active deployment checkpoint:** **1/5**
 - **Total production deployments:** **16**
+- **CI status for this release candidate:** **38/38 tests passing**
 
 Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated: normal commits run CI without deploying; `[deploy-prod]` is used only after CI passes and the deployment is worth consuming one checkpoint slot.
 
@@ -89,7 +90,7 @@ The deployment checkpoint is stored in `ops/release-state.json`.
 ### Versioning
 
 - Every source commit increments the patch version during normal development.
-- Each successful production deployment is a minor release (`2.11.x → 2.12.0 → 2.13.0`).
+- Each successful production deployment is a minor release baseline (`2.12.0 → 2.13.0 → 2.14.0`), while the deployed source may carry the current patch version within that baseline.
 - After deployment, development advances to the next minor baseline for subsequent patch commits.
 - Major releases are manually decided.
 - Minor and major releases receive annotated Git tags with human-readable change summaries.
@@ -114,4 +115,4 @@ This is a **catalog and metadata addon only**. It does not provide video streams
 
 ## Release state
 
-The latest production deployment is `v2.12.0`, sourced from commit `2fd117a9bccad9cc49d1cdbda627432abe274709`. The current development/release-candidate line is `2.13.0`; it contains the accumulated rich-metadata changes and is pending the next production deployment.
+The latest production deployment is `v2.12.0`, sourced from commit `2fd117a9bccad9cc49d1cdbda627432abe274709`. The current development/release-candidate line is `2.13.6`; it contains the accumulated rich-metadata changes and is pending the next production deployment.
