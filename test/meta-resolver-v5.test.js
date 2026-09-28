@@ -125,9 +125,9 @@ test("does not treat an ordinary standalone I in a title as a Roman numeral seas
 
 test("groups the original season first when the requested entry is a later season", () => {
   const entries = [
-    { jikan: { mal_id: 59193, title: "Mushoku Tensei III: Isekai Ittara Honki Dasu" }, node: { title: { english: "Mushoku Tensei III: Isekai Ittara Honki Dasu" }, startDate: { year: 2026, month: 7, day: 1 } } },
-    { jikan: { mal_id: 51179, title: "Mushoku Tensei II: Isekai Ittara Honki Dasu" }, node: { title: { english: "Mushoku Tensei II: Isekai Ittara Honki Dasu" }, startDate: { year: 2023, month: 7, day: 1 } } },
-    { jikan: { mal_id: 45576, title: "Mushoku Tensei: Isekai Ittara Honki Dasu Part 2" }, node: { title: { english: "Mushoku Tensei: Isekai Ittara Honki Dasu Part 2" }, startDate: { year: 2021, month: 10, day: 1 } } },
+    { jikan: { mal_id: 59193, title: "Mushoku Tensei III: Isekai Ittara Honki Dasu" }, node: { title: { english: "Mushoku Tensei III: Isekai Ittara Honki Dasu" }, startDate: { year: 2026, month: 7, day: 1 }, relations: { edges: [{ relationType: "PREQUEL", node: { idMal: 51179 } }] } } },
+    { jikan: { mal_id: 51179, title: "Mushoku Tensei II: Isekai Ittara Honki Dasu" }, node: { title: { english: "Mushoku Tensei II: Isekai Ittara Honki Dasu" }, startDate: { year: 2023, month: 7, day: 1 }, relations: { edges: [{ relationType: "PREQUEL", node: { idMal: 45576 } }] } } },
+    { jikan: { mal_id: 45576, title: "Mushoku Tensei: Isekai Ittara Honki Dasu Part 2" }, node: { title: { english: "Mushoku Tensei: Isekai Ittara Honki Dasu Part 2" }, startDate: { year: 2021, month: 10, day: 1 }, relations: { edges: [{ relationType: "PREQUEL", node: { idMal: 39535 } }] } } },
     { jikan: { mal_id: 39535, title: "Mushoku Tensei: Isekai Ittara Honki Dasu" }, node: { title: { english: "Mushoku Tensei: Isekai Ittara Honki Dasu" }, startDate: { year: 2021, month: 1, day: 1 } } }
   ];
   const groups = numberSeasons(entries, 59193);
