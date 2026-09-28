@@ -1,0 +1,120 @@
+name: Controlled Vercel production release
+
+on:
+  workflow_run:
+    workflows: ["Verify automatic version commits"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  deploy-production:
+    name: Deploy to Vercel production
+    if: ${{ github.event.workflow_run.conclusion == 'success' && contains(github.event.workflow_run.head_commit.message, '[deploy-prod]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout release candidate
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+      - name: Validate release state
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+          state = json.loads(Path('ops/release-state.json').read_text())
+          version = re.search(r'ADDON_VERSION = "([^"]+)"', Path('api/version.js').read_text()).group(1)
+          expected = state['nextReleaseVersion']
+          print(f"Deployment checkpoint: {state['deploymentsSincePause']}/{state['deploymentLimit']}")
+          print(f"Production version: {version}")
+          print(f"Expected release baseline: {expected}")
+          if state['paused'] or state['deploymentsSincePause'] >= state['deploymentLimit']:
+              raise SystemExit('Deployment checkpoint reached.')
+          if version != expected:
+              raise SystemExit(f'Production version {version} does not match next release baseline {expected}.')
+          PY
+      - name: Trigger Vercel deployment
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$VERCEL_DEPLOY_HOOK_URL"
+          curl --fail --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
+      - name: Production smoke test
+        run: |
+          set -euo pipefail
+          expected="$(sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p' api/version.js)"
+          for attempt in $(seq 1 30); do
+            root_manifest="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json || true)"
+            catalog="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/ongoing.json || true)"
+            meta_status="$(curl --silent --output /dev/null --write-out '%{http_code}' https://nuvio-anime-releases-addon-rho.vercel.app/meta/series/mal%3A39535.json || true)"
+            if EXPECTED="$expected" ROOT="$root_manifest" CATALOG="$catalog" META_STATUS="$meta_status" python - <<'PY'
+          import json, os, re
+          expected = os.environ['EXPECTED']
+          root = json.loads(os.environ['ROOT'])
+          catalog = json.loads(os.environ['CATALOG'])
+          assert root.get('version') == expected and root.get('id') == 'com.marki.nuvio.anime-releases'
+          assert root.get('resources') == [{"name": "catalog", "types": ["series"]}]
+          assert os.environ['META_STATUS'] == '404'
+          metas = catalog.get('metas', [])
+          assert metas
+          assert any(re.match(r'^(tt\d+|tmdb:\d+|tvdb:\d+)$', str(meta.get('id', ''))) for meta in metas)
+          PY
+            then echo "Production smoke test passed."; exit 0; fi
+            sleep 5
+          done
+          echo "Production smoke test failed."; exit 1
+      - name: Create annotated release tag and update release state
+        shell: bash
+        run: |
+          set -euo pipefail
+          target="$GITHUB_SHA"
+          release_version="$(python -c 'import json;print(json.load(open("ops/release-state.json"))["nextReleaseVersion"])')"
+          tag="v$release_version"
+          git fetch --tags --force
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists."
+            exit 1
+          fi
+          previous="$(git tag --merged "$target^" --sort=-version:refname --list 'v*' | head -n1 || true)"
+          if [ -n "$previous" ]; then
+            summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$previous..$target" | head -n 50 || true)"
+            since="Changes since $previous:"
+          else
+            summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$target" | head -n 50 || true)"
+            since="Changes included in this release:"
+          fi
+          [ -n "$summary" ] || summary='- No source commits to summarize.'
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git tag -a "$tag" "$target" -m "Release $tag
+
+Production deployment source commit: $target
+$since
+$summary"
+          git push origin "refs/tags/$tag"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('ops/release-state.json')
+          state = json.loads(path.read_text())
+          version = state['nextReleaseVersion']
+          major, minor, patch = map(int, version.split('.'))
+          deployments = state['deploymentsSincePause'] + 1
+          state['deploymentsSincePause'] = deployments
+          state['totalDeployments'] += 1
+          state['paused'] = deployments >= state['deploymentLimit']
+          state['lastDeploymentSha'] = '${{ github.event.workflow_run.head_sha }}'
+          state['lastDeploymentId'] = ''
+          state['lastDeploymentVersion'] = version
+          state['nextReleaseVersion'] = f'{major}.{minor + 1}.0'
+          state['lastDeploymentTag'] = 'v' + version
+          path.write_text(json.dumps(state, indent=2) + '\n')
+          PY
+          git add ops/release-state.json
+          git commit -m "chore: record $tag production release [skip-version-automation]"
+          git push origin HEAD:main
