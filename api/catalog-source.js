@@ -24,7 +24,8 @@ export default async function handler(req, res) {
     if (!catalogDefinitions(seasonInfo).some((catalog) => catalog.id === id)) return send(res, { metas: [] }, 404);
     try {
       const skip = Math.max(0, Number(query.skip || 0) || 0);
-      return send(res, { metas: await buildCatalog(id, seasonInfo, now, skip) });
+      const search = String(query.search || "").trim();
+      return send(res, { metas: await buildCatalog(id, seasonInfo, now, skip, search) });
     } catch (error) {
       console.error("[catalog]", error);
       return send(res, { metas: [] }, 500);
@@ -40,12 +41,16 @@ export function catalogDefinitions(info) {
   const current = `${prettySeason(info.ongoing.season)} ${info.ongoing.year}`;
   const previous = `${prettySeason(info.previous.season)} ${info.previous.year}`;
   const upcoming = `${prettySeason(info.upcoming.season)} ${info.upcoming.year}`;
+  const extra = [
+    { name: "search", isRequired: false },
+    { name: "skip", isRequired: false },
+  ];
   return [
-    { type: "series", id: "upcoming_season", name: `Upcoming Season — ${upcoming}` },
-    { type: "series", id: "current_season", name: `Current Season — ${current}` },
-    { type: "series", id: "previous_season", name: `Previous Season — ${previous}` },
-    { type: "series", id: "new_episodes", name: "Latest Anime — Last 7 Days" },
-    { type: "series", id: "upcoming_episodes", name: "Upcoming Anime — Next 7 Days" },
+    { type: "series", id: "upcoming_season", name: `Upcoming Season — ${upcoming}`, extra },
+    { type: "series", id: "current_season", name: `Current Season — ${current}`, extra },
+    { type: "series", id: "previous_season", name: `Previous Season — ${previous}`, extra },
+    { type: "series", id: "new_episodes", name: "Latest Anime — Last 7 Days", extra },
+    { type: "series", id: "upcoming_episodes", name: "Upcoming Anime — Next 7 Days", extra },
   ];
 }
 
@@ -53,14 +58,14 @@ export function getCatalogPageCount(itemCount) {
   return Math.ceil(Math.min(Math.max(0, Number(itemCount) || 0), MAX_CATALOG_ITEMS) / ANILIST_PAGE_SIZE);
 }
 
-async function buildCatalog(id, info, now, skip) {
+async function buildCatalog(id, info, now, skip, search) {
   if (id === "new_episodes") {
     const range = getLast7DaysRangeManila(now);
-    return scheduleCatalog(range.start, range.end, false, skip);
+    return scheduleCatalog(range.start, range.end, false, skip, search);
   }
   if (id === "upcoming_episodes") {
     const range = getNext7DaysRangeManila(now);
-    return scheduleCatalog(range.start, range.end, true, skip);
+    return scheduleCatalog(range.start, range.end, true, skip, search);
   }
 
   const filter = id === "current_season"
@@ -73,7 +78,21 @@ async function buildCatalog(id, info, now, skip) {
 
   if (!filter) return [];
   const metas = await queryAnimeAll(filter);
-  return canonicalizeCatalogMetas(metas).then((items) => items.slice(skip, skip + MAX_CATALOG_ITEMS));
+  return canonicalizeCatalogMetas(metas).then((items) => filterCatalogMetasBySearch(items, search).slice(skip, skip + MAX_CATALOG_ITEMS));
+}
+
+export function filterCatalogMetasBySearch(metas, search) {
+  const needle = String(search || "").trim().toLocaleLowerCase();
+  if (!needle) return metas;
+  return metas.filter((meta) => {
+    const values = [
+      meta.name,
+      meta.extra?.titleEnglish,
+      meta.extra?.titleRomaji,
+      meta.extra?.titleNative,
+    ];
+    return values.some((value) => String(value || "").toLocaleLowerCase().includes(needle));
+  });
 }
 
 async function queryAnimeAll(filter) {
@@ -92,7 +111,7 @@ async function queryAnime(filter) {
   return (data?.Page?.media || []).map((media) => toMeta(media, media.nextAiringEpisode)).filter(Boolean);
 }
 
-async function scheduleCatalog(start, end, futureOnly, skip) {
+async function scheduleCatalog(start, end, futureOnly, skip, search) {
   const schedules = await queryAiringSchedule(start, end, futureOnly);
   const latestByAnime = new Map();
   for (const schedule of schedules) {
@@ -103,10 +122,10 @@ async function scheduleCatalog(start, end, futureOnly, skip) {
   }
   const metas = [...latestByAnime.values()]
     .sort((a, b) => futureOnly ? a.airingAt - b.airingAt : b.airingAt - a.airingAt)
-    .slice(skip, skip + MAX_CATALOG_ITEMS)
     .map((s) => toMeta(s.media, { episode: s.episode, airingAt: s.airingAt }))
     .filter(Boolean);
-  return canonicalizeCatalogMetas(metas);
+  const filtered = canonicalizeCatalogMetas(filterCatalogMetasBySearch(metas, search));
+  return filtered.then((items) => items.slice(skip, skip + MAX_CATALOG_ITEMS));
 }
 
 async function queryAiringSchedule(start, end, futureOnly) {
