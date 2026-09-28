@@ -5,7 +5,6 @@ const RESOLVERS = new Set(["v4", "v5"]);
 export default function handler(req, res) {
   const resolver = normalizeResolver(req.query?.resolver);
   const current = getSeasonInfo(new Date());
-  const selected = RESOLVERS.has(resolver) ? resolver : "v4";
 
   res.status(200);
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -15,8 +14,16 @@ export default function handler(req, res) {
   res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=1800");
 
   if (req.method === "OPTIONS") return res.json({});
+  return res.json(buildManifest(current, resolver));
+}
 
-  return res.json({
+export function normalizeResolver(value) {
+  return RESOLVERS.has(String(value || "").toLowerCase()) ? String(value).toLowerCase() : "v4";
+}
+
+export function buildManifest(info, resolver = "v4") {
+  const selected = normalizeResolver(resolver);
+  return {
     id: `com.marki.nuvio.anime-releases.${selected}`,
     version: ADDON_VERSION,
     name: `Anime Releases for Nuvio (${selected})`,
@@ -26,12 +33,8 @@ export default function handler(req, res) {
       { name: "meta", types: ["series"], idPrefixes: ["mal:", "anilist:"] },
     ],
     types: ["series"],
-    catalogs: catalogDefinitions(current),
-  });
-}
-
-function normalizeResolver(value) {
-  return RESOLVERS.has(String(value || "").toLowerCase()) ? String(value).toLowerCase() : "v4";
+    catalogs: catalogDefinitions(info),
+  };
 }
 
 function catalogDefinitions(info) {
