@@ -137,7 +137,7 @@ AniList is the primary source for metadata, season/status information, artwork, 
 
 The repository's version file is currently the source of truth for the patch-level development version. `package.json`, `api/stremio.js`, and the README version are synchronized by the workflow.
 
-The current autonomous deployment checkpoint is **2/5** for the active cycle. The latest successful deployment recorded in `ops/release-state.json` is source commit `4a66e89f100d5d2cfad3316c923c4c78041e43d9`, deployed as version **2.7.15**, with the next deployment baseline **2.8.0**. The current development version is **2.8.5**.
+The current autonomous deployment checkpoint is **3/5** for the active cycle. The latest successful deployment recorded in `ops/release-state.json` is source commit `3b92f8a81e8acc5bcd55880ab9b321f3307f9685`, deployed as version **2.8.5**, with the next deployment baseline **2.9.0**. The current development version is **2.9.2**.
 
 ## Vercel rewrites
 
@@ -149,4 +149,4 @@ This is a **catalog and metadata addon only**. It does not provide video streams
 
 ## Version
 
-**2.8.5**
+**2.9.2**
