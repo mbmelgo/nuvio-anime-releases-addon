@@ -2,6 +2,10 @@ name: Production release tag recovery
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ops/historical-release-tags.json
 
 permissions:
   contents: write
@@ -14,32 +18,38 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Create missing annotated production tag
+
+      - name: Create missing annotated historical release tags
         run: |
           set -euo pipefail
-          target="$(python -c 'import json;print(json.load(open("ops/release-state.json"))["lastDeploymentSha"])')"
-          tag="$(python -c 'import json;print(json.load(open("ops/release-state.json"))["lastDeploymentTag"])')"
-          test -n "$target"
-          test -n "$tag"
           git fetch --tags --force
-          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
-            echo "Tag $tag already exists."
-            exit 0
-          fi
-          previous="$(git tag --merged "$target^" --sort=-version:refname --list 'v*' | head -n1 || true)"
-          if [ -n "$previous" ]; then
-            summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$previous..$target" | head -n 50 || true)"
-            since="Changes since $previous:"
-          else
-            summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$target" | head -n 50 || true)"
-            since="Changes included in this release:"
-          fi
-          [ -n "$summary" ] || summary='- No source commits to summarize.'
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git tag -a "$tag" "$target" -m "Release $tag
+          python - <<'PY'
+          import json
+          import subprocess
 
-Historical production deployment source commit: $target
-$since
-$summary"
-          git push origin "refs/tags/$tag"
+          with open("ops/historical-release-tags.json", encoding="utf-8") as f:
+              releases = json.load(f)["releases"]
+
+          for release in releases:
+              tag = release["tag"]
+              target = release["target"]
+              summary = release["summary"]
+
+              subprocess.run(["git", "rev-parse", "--verify", f"{target}^{{commit}}"], check=True, stdout=subprocess.DEVNULL)
+              existing = subprocess.run(
+                  ["git", "ls-remote", "--exit-code", "--tags", "origin", f"refs/tags/{tag}"],
+                  stdout=subprocess.DEVNULL,
+                  stderr=subprocess.DEVNULL,
+              )
+              if existing.returncode == 0:
+                  print(f"Tag {tag} already exists; skipping.")
+                  continue
+
+              print(f"Creating annotated tag {tag} -> {target}")
+              subprocess.run(
+                  ["git", "tag", "-a", tag, target, "-m", summary],
+                  check=True,
+              )
+
+          subprocess.run(["git", "push", "origin", "--tags"], check=True)
+          PY
