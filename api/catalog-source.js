@@ -1,7 +1,8 @@
 const ANILIST_URL = "https://graphql.anilist.co";
 const TIME_ZONE = "Asia/Manila";
-const PAGE_SIZE = 50;
-const MAX_SCHEDULE_PAGES = 8;
+export const ANILIST_PAGE_SIZE = 50;
+export const MAX_CATALOG_ITEMS = 1000;
+export const MAX_ANILIST_PAGES = Math.ceil(MAX_CATALOG_ITEMS / ANILIST_PAGE_SIZE);
 const FETCH_TIMEOUT_MS = 8000;
 
 export default async function handler(req, res) {
@@ -46,36 +47,50 @@ export function catalogDefinitions(info) {
   ];
 }
 
+export function getCatalogPageCount(itemCount) {
+  return Math.ceil(Math.min(Math.max(0, Number(itemCount) || 0), MAX_CATALOG_ITEMS) / ANILIST_PAGE_SIZE);
+}
+
 async function buildCatalog(id, info, now, skip) {
-  const page = Math.floor(skip / PAGE_SIZE) + 1;
-  const offset = skip % PAGE_SIZE;
   if (id === "new_episodes") {
     const range = getLast7DaysRangeManila(now);
-    return scheduleCatalog(range.start, range.end, false, offset);
+    return scheduleCatalog(range.start, range.end, false, skip);
   }
   if (id === "upcoming_episodes") {
     const range = getNext7DaysRangeManila(now);
-    return scheduleCatalog(range.start, range.end, true, offset);
+    return scheduleCatalog(range.start, range.end, true, skip);
   }
-  if (id === "current_season") {
-    return (await queryAnime({ season: info.ongoing, sort: ["START_DATE", "TITLE_ROMAJI"], page })).slice(offset, offset + PAGE_SIZE);
+
+  const filter = id === "current_season"
+    ? { season: info.ongoing, sort: ["START_DATE", "TITLE_ROMAJI"] }
+    : id === "previous_season"
+      ? { season: info.previous, sort: ["START_DATE", "SCORE_DESC", "TITLE_ROMAJI"] }
+      : id === "upcoming_season"
+        ? { season: info.upcoming, status: "NOT_YET_RELEASED", sort: ["START_DATE", "TITLE_ROMAJI"] }
+        : null;
+
+  if (!filter) return [];
+  const metas = await queryAnimeAll(filter);
+  return metas.slice(skip, skip + MAX_CATALOG_ITEMS);
+}
+
+async function queryAnimeAll(filter) {
+  const all = [];
+  for (let page = 1; page <= MAX_ANILIST_PAGES; page++) {
+    const rows = await queryAnime({ ...filter, page });
+    all.push(...rows);
+    if (rows.length < ANILIST_PAGE_SIZE || all.length >= MAX_CATALOG_ITEMS) break;
   }
-  if (id === "previous_season") {
-    return (await queryAnime({ season: info.previous, sort: ["START_DATE", "SCORE_DESC", "TITLE_ROMAJI"], page })).slice(offset, offset + PAGE_SIZE);
-  }
-  if (id === "upcoming_season") {
-    return (await queryAnime({ season: info.upcoming, status: "NOT_YET_RELEASED", sort: ["START_DATE", "TITLE_ROMAJI"], page })).slice(offset, offset + PAGE_SIZE);
-  }
-  return [];
+  return all.slice(0, MAX_CATALOG_ITEMS);
 }
 
 async function queryAnime(filter) {
-  const query = `query ($page:Int,$season:MediaSeason,$seasonYear:Int,$status:MediaStatus,$sort:[MediaSort]) { Page(page:$page,perPage:${PAGE_SIZE}) { media(type:ANIME,format:TV,season:$season,seasonYear:$seasonYear,status:$status,sort:$sort,isAdult:false) { ${MEDIA_FIELDS} } } }`;
+  const query = `query ($page:Int,$season:MediaSeason,$seasonYear:Int,$status:MediaStatus,$sort:[MediaSort]) { Page(page:$page,perPage:${ANILIST_PAGE_SIZE}) { media(type:ANIME,format:TV,season:$season,seasonYear:$seasonYear,status:$status,sort:$sort,isAdult:false) { ${MEDIA_FIELDS} } } }`;
   const data = await anilist(query, { page: filter.page || 1, season: filter.season?.season, seasonYear: filter.season?.year, status: filter.status, sort: filter.sort });
   return (data?.Page?.media || []).map((media) => toMeta(media, media.nextAiringEpisode)).filter(Boolean);
 }
 
-async function scheduleCatalog(start, end, futureOnly, offset) {
+async function scheduleCatalog(start, end, futureOnly, skip) {
   const schedules = await queryAiringSchedule(start, end, futureOnly);
   const latestByAnime = new Map();
   for (const schedule of schedules) {
@@ -86,21 +101,21 @@ async function scheduleCatalog(start, end, futureOnly, offset) {
   }
   return [...latestByAnime.values()]
     .sort((a, b) => futureOnly ? a.airingAt - b.airingAt : b.airingAt - a.airingAt)
-    .slice(offset, offset + PAGE_SIZE)
+    .slice(skip, skip + MAX_CATALOG_ITEMS)
     .map((s) => toMeta(s.media, { episode: s.episode, airingAt: s.airingAt }))
     .filter(Boolean);
 }
 
 async function queryAiringSchedule(start, end, futureOnly) {
   const all = [];
-  for (let page = 1; page <= MAX_SCHEDULE_PAGES; page++) {
-    const query = `query ($page:Int,$start:Int,$end:Int,$notYetAired:Boolean) { Page(page:$page,perPage:${PAGE_SIZE}) { airingSchedules(airingAt_greater:$start,airingAt_lesser:$end,notYetAired:$notYetAired,sort:TIME_DESC) { id airingAt episode media { ${MEDIA_FIELDS} } } } }`;
+  for (let page = 1; page <= MAX_ANILIST_PAGES; page++) {
+    const query = `query ($page:Int,$start:Int,$end:Int,$notYetAired:Boolean) { Page(page:$page,perPage:${ANILIST_PAGE_SIZE}) { airingSchedules(airingAt_greater:$start,airingAt_lesser:$end,notYetAired:$notYetAired,sort:TIME_DESC) { id airingAt episode media { ${MEDIA_FIELDS} } } } }`;
     const data = await anilist(query, { page, start: Math.floor(start / 1000), end: Math.floor(end / 1000), notYetAired: futureOnly });
     const rows = data?.Page?.airingSchedules || [];
     all.push(...rows);
-    if (rows.length < PAGE_SIZE) break;
+    if (rows.length < ANILIST_PAGE_SIZE || all.length >= MAX_CATALOG_ITEMS) break;
   }
-  return all;
+  return all.slice(0, MAX_CATALOG_ITEMS);
 }
 
 function toMeta(media, episode) {
@@ -140,4 +155,4 @@ const ROLLING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 export function getLast7DaysRangeManila(date) { const now = new Date(date).getTime(); return { start: now - ROLLING_WINDOW_MS, end: now }; }
 export function getNext7DaysRangeManila(date) { const now = new Date(date).getTime(); return { start: now, end: now + ROLLING_WINDOW_MS }; }
 function prettySeason(season) { return season.charAt(0) + season.slice(1).toLowerCase(); }
-function send(res, body, status = 200) { res.status(status); res.setHeader("Content-Type", "application/json; charset=utf-8"); res.setHeader("Access-Control-Allow-Origin", "*"); res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS"); res.setHeader("Access-Control-Allow-Headers", "Content-Type"); res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=86400, stale-if-error=86400"); return res.json(body); }
+function send(res, body, status = 200) { res.status(status); res.setHeader("Content-Type", "application/json; charset=utf-8"); res.setHeader("Access-Control-Allow-Origin", "*"); res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS"); res.setHeader("Access-Control-Allow-Headers", "Content-Type"); res.setHeader("Cache-Control", "public, s-maxage=3600, stale-while-revalidate=86400, stale-if-error=86400"); return res.json(body); }
