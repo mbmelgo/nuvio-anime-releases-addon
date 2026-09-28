@@ -48,6 +48,7 @@ jobs:
           text = readme.read_text()
           text = re.sub(r'(?m)^(# Anime Releases for Nuvio — v)\d+\.\d+\.\d+', rf'\g<1>{next_version}', text)
           text = re.sub(r'(?m)^(\- \*\*Development version:\*\* `)\d+\.\d+\.\d+(`)', rf'\g<1>{next_version}\g<2>', text)
+          text = re.sub(r'(?m)(current development line is `)\d+\.\d+\.\d+(`)', rf'\g<1>{next_version}\g<2>', text)
           readme.write_text(text)
 
           print(f"Automatic patch version: {current} -> {next_version}")
