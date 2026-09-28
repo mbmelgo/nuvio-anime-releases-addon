@@ -19,10 +19,9 @@ export function buildManifest(info) {
     id: "com.marki.nuvio.anime-releases.v5",
     version: ADDON_VERSION,
     name: "Anime Releases for Nuvio",
-    description: "Season-aware anime catalogs and detailed series metadata using the v5 metadata resolver.",
+    description: "Season-aware anime release catalogs for Nuvio. Detailed metadata is delegated to the user's preferred metadata addon.",
     resources: [
       { name: "catalog", types: ["series"] },
-      { name: "meta", types: ["series"], idPrefixes: ["mal:", "anilist:"] },
     ],
     types: ["series"],
     catalogs: catalogDefinitions(info),
