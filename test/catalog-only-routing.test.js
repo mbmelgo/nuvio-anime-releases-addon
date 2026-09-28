@@ -31,6 +31,14 @@ test("catalog source implements catalog resources without local metadata resolut
   assert.equal(catalogSource.includes("JIKAN_URL"), false);
 });
 
+test("manifest implementation reuses the canonical catalog definitions", () => {
+  assert.equal(catalogSource.includes("export function catalogDefinitions"), true);
+  assert.equal(catalogSource.includes("export function getSeasonInfo"), true);
+  assert.equal(manifestSource.includes('import { catalogDefinitions, getSeasonInfo } from "./catalog-source.js";'), true);
+  assert.equal(manifestSource.includes("function catalogDefinitions("), false);
+  assert.equal(manifestSource.includes("function getSeasonInfo("), false);
+});
+
 test("manifest uses the canonical addon identity without a legacy version suffix", () => {
   assert.equal(manifestSource.includes('id: "com.marki.nuvio.anime-releases"'), true);
   assert.equal(manifestSource.includes('id: "com.marki.nuvio.anime-releases.v5"'), false);
