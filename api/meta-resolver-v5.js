@@ -161,15 +161,10 @@ async function buildVideos(groups) {
       const aniZipRows = mapping?.anilist_id ? mergeEpisodeRows(await getAniZipEpisodes(mapping.anilist_id)) : [];
       const jikanRows = (await getJikanEpisodes(malId, MAX_EPISODE_PAGES)).map(normalizeJikanEpisode).filter(Boolean);
       let rows = chooseRows(jikanRows, aniZipRows, expected, ongoing);
-      if (/^tt\d+$/i.test(String(mapping?.imdb_id || "").trim()) && (
-        (ongoing && rows.length > 0 && maxEpisodeNumber(rows) >= 100) ||
-        (!ongoing && canSupplementWithFallback(rows, expected))
-      )) {
+      if (ongoing && /^tt\d+$/i.test(String(mapping?.imdb_id || "").trim()) && rows.length > 0 && maxEpisodeNumber(rows) >= 100) {
         const tvMazeRows = await getTvMazeEpisodes(mapping.imdb_id);
         if (tvMazeRows.length) {
-          rows = ongoing
-            ? mergeFreshAbsoluteEpisodes(rows, tvMazeRows, latestSourceSeason(rows))
-            : fillMissingRowsFromFallback(rows, tvMazeRows, expected);
+          rows = mergeFreshAbsoluteEpisodes(rows, tvMazeRows, latestSourceSeason(rows));
         }
       }
       if (!rows.length) continue;
@@ -194,28 +189,6 @@ async function buildVideos(groups) {
 }
 
 export function isOngoing(anime) { return Boolean(anime?.airing) || /currently\s+airing/i.test(String(anime?.status || "")); }
-
-export function canSupplementWithFallback(primaryRows, expected) {
-  const expectedCount = Number(expected) || 0;
-  const actualCount = Array.isArray(primaryRows) ? primaryRows.length : 0;
-  return expectedCount > 0 && actualCount > 0 && actualCount >= Math.ceil(expectedCount * 0.8);
-}
-
-export function fillMissingRowsFromFallback(primaryRows, fallbackRows, expected) {
-  const primary = Array.isArray(primaryRows) ? primaryRows.map(row => ({ ...row })) : [];
-  const fallback = Array.isArray(fallbackRows) ? fallbackRows : [];
-  const limit = Number(expected) || 0;
-  const byNumber = new Map(primary.map(row => [Number(row?.number), row]));
-
-  for (const row of fallback) {
-    const number = Number(row?.number);
-    if (!Number.isInteger(number) || number <= 0) continue;
-    if (limit > 0 && number > limit) continue;
-    if (!byNumber.has(number)) byNumber.set(number, { ...row });
-  }
-
-  return [...byNumber.values()].sort((a, b) => Number(a?.number || 0) - Number(b?.number || 0));
-}
 
 export function mergeFreshAbsoluteEpisodes(primaryRows, fallbackRows, sourceSeason = 1) {
   const primary = Array.isArray(primaryRows) ? primaryRows.map(row => ({ ...row })) : [];
