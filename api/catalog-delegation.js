@@ -1,126 +1,26 @@
-import stremioHandler from "./catalog-source.js";
-
-const ANILIST_URL = "https://graphql.anilist.co";
-const ANIZIP_URL = "https://api.ani.zip/v1/mappings";
-const WIKIDATA_URL = "https://query.wikidata.org/sparql";
-const FETCH_TIMEOUT_MS = 8000;
-const ANIZIP_CONCURRENCY = 6;
-const MEDIA_LOOKUP_BATCH_SIZE = 50;
-const MEDIA_LOOKUP_CONCURRENCY = 4;
-
-export default async function handler(req, res) {
-  const captured = { statusCode: 200, headers: {}, body: null };
-  const proxyRes = { status(code) { captured.statusCode = code; return proxyRes; }, setHeader(name, value) { captured.headers[name] = value; }, json(body) { captured.body = body; return body; } };
-  await stremioHandler(req, proxyRes);
-  if (!captured.body?.metas) return sendCaptured(res, captured);
-  try { captured.body.metas = await delegateCompatibleIds(captured.body.metas); } catch (error) { console.warn("[catalog-delegation] ID mapping failed:", error.message); }
-  return sendCaptured(res, captured);
-}
-
-function sendCaptured(res, captured) { for (const [name, value] of Object.entries(captured.headers)) res.setHeader(name, value); return res.status(captured.statusCode).json(captured.body); }
-
+/**
+ * Catalog identity policy:
+ *
+ * The catalog owns the identity of an anime entry. Provider-specific IDs
+ * (IMDb/TMDB/TVDB) must never replace that identity after catalog generation.
+ * Nuvio/BingeCat can resolve the stable MAL/AniList identity directly, while
+ * external mappings belong to metadata resolution rather than catalog identity.
+ *
+ * This function is intentionally a no-op. Keeping the delegation boundary in
+ * place makes the architecture explicit and prevents accidental reintroduction
+ * of destructive ID rewriting.
+ */
 export async function delegateCompatibleIds(metas) {
-  const rows = Array.isArray(metas) ? metas : [];
-  const malIds = rows.map((meta) => parseId(meta?.id, "mal")).filter(Boolean);
-  const anilistIds = rows.map((meta) => parseId(meta?.id, "anilist")).filter(Boolean);
-  if (!malIds.length && !anilistIds.length) return rows;
-  const [malMedia, anilistMedia] = await Promise.all([malIds.length ? queryMedia({ idMal_in: malIds }) : Promise.resolve([]), anilistIds.length ? queryMedia({ id_in: anilistIds }) : Promise.resolve([])]);
-  const byKey = new Map();
-  for (const item of [...malMedia, ...anilistMedia]) { if (item.idMal) byKey.set(`mal:${item.idMal}`, item); if (item.id) byKey.set(`anilist:${item.id}`, item); }
-  const unresolved = rows.filter((meta) => !extractCompatibleId(byKey.get(String(meta?.id || ""))?.externalLinks));
-  const relationMappings = await queryRelatedMappings(unresolved, byKey);
-  const afterRelations = unresolved.filter((meta) => !relationMappings.has(String(meta?.id || "")));
-  const anizip = await queryAniZipMappings(afterRelations);
-  const afterAniZip = afterRelations.filter((meta) => !anizip.has(String(meta?.id || "")));
-  const wikidata = await queryWikidataMappings(afterAniZip);
-  return rows.map((meta) => { const sourceId = String(meta?.id || ""); const direct = extractCompatibleId(byKey.get(sourceId)?.externalLinks); const related = relationMappings.get(sourceId); const mapped = direct || related || anizip.get(sourceId) || wikidata.get(sourceId); return mapped ? { ...meta, id: mapped } : meta; });
+  return Array.isArray(metas) ? metas : [];
 }
 
-async function queryMedia(filter) {
-  const variableName = Object.keys(filter)[0]; const ids = Array.isArray(Object.values(filter)[0]) ? Object.values(filter)[0] : []; if (!ids.length) return [];
-  const chunks = []; for (let index = 0; index < ids.length; index += MEDIA_LOOKUP_BATCH_SIZE) chunks.push(ids.slice(index, index + MEDIA_LOOKUP_BATCH_SIZE));
-  const results = []; for (let index = 0; index < chunks.length; index += MEDIA_LOOKUP_CONCURRENCY) { const batch = await Promise.all(chunks.slice(index, index + MEDIA_LOOKUP_CONCURRENCY).map((chunk) => queryMediaBatch(variableName, chunk))); results.push(...batch.flat()); }
-  return results;
+/**
+ * Deprecated compatibility helper.
+ *
+ * Wikidata mappings are no longer allowed to mutate catalog IDs. Returning an
+ * empty map preserves the old helper's API without allowing ambiguous external
+ * mappings to collapse a catalog entry into a different work.
+ */
+export function selectUniqueWikidataMappings() {
+  return new Map();
 }
-
-async function queryMediaBatch(variableName, ids) {
-  const query = `query ($ids:[Int]) { Page(perPage:${MEDIA_LOOKUP_BATCH_SIZE}) { media(type:ANIME,${variableName}:$ids) { id idMal title { romaji english native } synonyms externalLinks { site url } relations { edges { relationType node { id idMal title { romaji english native } externalLinks { site url } } } } } } }`;
-  const payload = await fetchJson(ANILIST_URL, { method: "POST", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ query, variables: { ids } }) });
-  return payload?.data?.Page?.media || [];
-}
-
-async function queryRelatedMappings(metas, byKey) {
-  const result = new Map(); const relationCandidates = []; const candidateSources = new Map();
-  for (const meta of metas) {
-    const sourceId = String(meta?.id || ""); const media = byKey.get(sourceId); const edges = Array.isArray(media?.relations?.edges) ? media.relations.edges : []; const ordered = [...edges].sort((a, b) => relationPriority(a?.relationType) - relationPriority(b?.relationType));
-    for (const edge of ordered) {
-      const compatible = extractCompatibleId(edge?.node?.externalLinks); if (compatible) { result.set(sourceId, compatible); break; }
-      const node = edge?.node; if (!node?.id && !node?.idMal) continue; const candidateId = node.idMal ? `mal:${node.idMal}` : `anilist:${node.id}`; if (!candidateSources.has(candidateId)) candidateSources.set(candidateId, []); candidateSources.get(candidateId).push(sourceId); relationCandidates.push({ id: candidateId, type: "series", name: node.title?.english || node.title?.romaji || node.title?.native || "" });
-    }
-  }
-  if (!relationCandidates.length) return result;
-  const relatedMappings = await queryAniZipMappings(relationCandidates);
-  for (const [candidateId, compatible] of relatedMappings) for (const sourceId of candidateSources.get(candidateId) || []) if (!result.has(sourceId)) result.set(sourceId, compatible);
-  return result;
-}
-
-function relationPriority(type) { const priorities = { PREQUEL: 0, SEQUEL: 1, SIDE_STORY: 2, ALTERNATIVE: 3, PARENT: 4 }; return priorities[String(type || "").toUpperCase()] ?? 10; }
-
-async function queryAniZipMappings(metas) {
-  const result = new Map();
-  const jobs = metas.map((meta) => async () => {
-    const sourceId = String(meta?.id || ""); const malId = parseId(sourceId, "mal"); const anilistId = parseId(sourceId, "anilist"); if (!malId && !anilistId) return;
-    const queryKey = malId ? `mal_id=${malId}` : `anilist_id=${anilistId}`;
-    try { const payload = await fetchJson(`${ANIZIP_URL}?${queryKey}`, { headers: { accept: "application/json" } }); const compatible = extractAniZipCompatibleId(payload?.mappings || payload); if (compatible) result.set(sourceId, compatible); }
-    catch (error) { console.warn(`[catalog-delegation] AniZip lookup failed for ${sourceId}:`, error.message); }
-  });
-  await runWithConcurrency(jobs, ANIZIP_CONCURRENCY); return result;
-}
-
-function extractAniZipCompatibleId(mapping) { const imdb = String(mapping?.imdb_id || "").trim(); if (/^tt\d+$/i.test(imdb)) return imdb.toLowerCase(); const tmdb = String(mapping?.themoviedb_id || "").trim(); if (tmdb) return `tmdb:${tmdb.replace(/^tv:/i, "")}`; const tvdb = String(mapping?.thetvdb_id || "").trim(); if (/^\d+$/.test(tvdb)) return `tvdb:${tvdb}`; return null; }
-
-async function runWithConcurrency(jobs, limit) { let index = 0; const workers = Array.from({ length: Math.min(limit, jobs.length) }, async () => { while (index < jobs.length) { const current = index++; await jobs[current](); } }); await Promise.all(workers); }
-
-async function queryWikidataMappings(metas) {
-  const malIds = metas.map((meta) => parseId(meta?.id, "mal")).filter(Boolean).map(String);
-  const anilistIds = metas.map((meta) => parseId(meta?.id, "anilist")).filter(Boolean).map(String);
-  if (!malIds.length && !anilistIds.length) return new Map();
-
-  // Do not use title-only matching. Query the exact MAL/AniList identifier,
-  // then allow a season item to inherit an external ID from its Wikidata
-  // parent series (P361). This is safe for season-specific records while
-  // preventing collisions with movies or older franchise entries.
-  const clauses = [];
-  if (malIds.length) clauses.push(`{ VALUES ?sourceMal { ${malIds.map((id) => `"${id}"`).join(" ")} } ?item wdt:P4086 ?sourceMal . { BIND(?item AS ?candidate) } UNION { ?item wdt:P361 ?candidate } }`);
-  if (anilistIds.length) clauses.push(`{ VALUES ?sourceAnilist { ${anilistIds.map((id) => `"${id}"`).join(" ")} } ?item wdt:P8729 ?sourceAnilist . { BIND(?item AS ?candidate) } UNION { ?item wdt:P361 ?candidate } }`);
-  const query = `SELECT ?sourceMal ?sourceAnilist ?candidate ?imdb ?tmdb ?tvdb WHERE { ${clauses.join(" UNION ")} OPTIONAL { ?candidate wdt:P345 ?imdb } OPTIONAL { ?candidate wdt:P4983 ?tmdb } OPTIONAL { ?candidate wdt:P4835 ?tvdb } } LIMIT 500`;
-  try {
-    const payload = await fetchJson(WIKIDATA_URL, { method: "POST", headers: { accept: "application/sparql-results+json", "content-type": "application/x-www-form-urlencoded;charset=UTF-8", "user-agent": "Nuvio-Anime-Releases-Addon/2.24.0 (+https://nuvio-anime-releases-addon-rho.vercel.app/)" }, body: new URLSearchParams({ query, format: "json" }).toString() });
-    return selectUniqueWikidataMappings(payload?.results?.bindings || []);
-  } catch (error) { console.warn("[catalog-delegation] Wikidata lookup failed:", error.message); return new Map(); }
-}
-
-export function selectUniqueWikidataMappings(bindings) {
-  const result = new Map();
-  for (const binding of Array.isArray(bindings) ? bindings : []) {
-    const compatible = binding.imdb?.value ? String(binding.imdb.value).toLowerCase() : binding.tmdb?.value ? `tmdb:${binding.tmdb.value}` : binding.tvdb?.value ? `tvdb:${binding.tvdb.value}` : null;
-    if (!compatible) continue;
-    if (binding.sourceMal?.value) result.set(`mal:${binding.sourceMal.value}`, compatible);
-    if (binding.sourceAnilist?.value) result.set(`anilist:${binding.sourceAnilist.value}`, compatible);
-  }
-  return result;
-}
-
-function parseId(id, prefix) { const match = String(id || "").match(new RegExp(`^${prefix}:(\\d+)$`, "i")); return match ? Number(match[1]) : null; }
-
-function extractCompatibleId(links) {
-  for (const link of Array.isArray(links) ? links : []) {
-    const site = String(link?.site || ""); const url = String(link?.url || "");
-    if (/imdb/i.test(site)) { const match = url.match(/tt\d+/i); if (match) return match[0].toLowerCase(); }
-    if (/tmdb/i.test(site)) { const match = url.match(/(?:tv|movie)\/(\d+)/i); if (match) return `tmdb:${match[1]}`; }
-    if (/tvdb/i.test(site)) { const match = url.match(/(?:series|dereferrer\/series)\/(\d+)/i); if (match) return `tvdb:${match[1]}`; }
-  }
-  return null;
-}
-
-async function fetchJson(url, options = {}) { const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS); try { const response = await fetch(url, { ...options, signal: controller.signal }); if (!response.ok) throw new Error(`HTTP ${response.status}`); return await response.json(); } finally { clearTimeout(timer); } }
