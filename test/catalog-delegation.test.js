@@ -31,6 +31,35 @@ test("catalog delegation converts mapped MAL IDs to IMDb IDs", async () => {
   }
 });
 
+test("catalog delegation uses AniZip when AniList has no compatible link", async () => {
+  const originalFetch = globalThis.fetch;
+  let call = 0;
+  globalThis.fetch = async (_url, options = {}) => {
+    call += 1;
+    if (call === 1) {
+      return new Response(JSON.stringify({ data: { Page: { media: [{
+        id: 12345,
+        idMal: 54321,
+        title: { romaji: "Example Anime", english: "Example Anime", native: "例示アニメ" },
+        synonyms: [],
+        externalLinks: [],
+        relations: { edges: [] },
+      }] } } }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+
+    assert.match(String(options.method || "GET"), /^GET$/i);
+    assert.match(_url, /mal_id=54321/);
+    return new Response(JSON.stringify({ mappings: { imdb_id: "tt12345678" } }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+
+  try {
+    const result = await delegateCompatibleIds([{ id: "mal:54321", type: "series", name: "Example Anime" }]);
+    assert.equal(result[0].id, "tt12345678");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("catalog delegation prefers the original anime's related metadata for a season", async () => {
   const originalFetch = globalThis.fetch;
   let call = 0;
@@ -55,7 +84,7 @@ test("catalog delegation prefers the original anime's related metadata for a sea
   }
 });
 
-test("catalog delegation uses the original anime name when ID metadata has no compatible link", async () => {
+test("catalog delegation uses the original anime name when ID and AniZip metadata have no compatible link", async () => {
   const originalFetch = globalThis.fetch;
   let call = 0;
   globalThis.fetch = async (_url, options = {}) => {
@@ -69,6 +98,9 @@ test("catalog delegation uses the original anime name when ID metadata has no co
         externalLinks: [],
         relations: { edges: [] },
       }] } } }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    if (call === 2) {
+      return new Response(JSON.stringify({ mappings: {} }), { status: 200, headers: { "content-type": "application/json" } });
     }
 
     assert.equal(options.method, "POST");
@@ -85,7 +117,7 @@ test("catalog delegation uses the original anime name when ID metadata has no co
   }
 });
 
-test("catalog delegation preserves existing metadata when no IMDb mapping exists", async () => {
+test("catalog delegation preserves existing metadata when no compatible mapping exists", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response(JSON.stringify({ data: { Page: { media: [] } } }), { status: 200, headers: { "content-type": "application/json" } });
   try {
