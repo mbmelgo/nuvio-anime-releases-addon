@@ -45,11 +45,7 @@ function partsDate(x) { return x?.year && x?.month && x?.day ? `${x.year}-${Stri
 export function numberSeasons(entries, requestedMalId) {
   const requested = entries.find(x => Number(x.jikan?.mal_id) === Number(requestedMalId));
   const root = requested || entries.find(x => Number(x.jikan?.mal_id));
-  const filtered = entries.filter(entry => {
-    if (!root) return false;
-    const malId = Number(entry.jikan?.mal_id);
-    return malId === Number(requestedMalId) || isSeasonContinuation(root.node, entry.node, root.jikan, entry.jikan);
-  });
+  const filtered = collectFranchiseEntries(entries, requestedMalId, root);
 
   const sorted = [...filtered].sort((a,b) => startTime(a) - startTime(b));
   const groups = [];
@@ -66,12 +62,53 @@ export function numberSeasons(entries, requestedMalId) {
   return groups.sort((a,b) => a.season - b.season);
 }
 
+function collectFranchiseEntries(entries, requestedMalId, root) {
+  const byMalId = new Map(entries.map(entry => [Number(entry.jikan?.mal_id), entry]).filter(([id]) => Number.isFinite(id) && id > 0));
+  const included = new Map([[Number(requestedMalId), root]]);
+  const queue = [root];
+
+  while (queue.length) {
+    const parent = queue.shift();
+    for (const entry of entries) {
+      const malId = Number(entry.jikan?.mal_id);
+      if (!malId || included.has(malId)) continue;
+
+      const qualifiesFromRoot = parent === root && isSeasonContinuation(root.node, entry.node, root.jikan, entry.jikan);
+      const qualifiesFromContinuation = parent !== root && relatedByTvRelation(entry, Number(parent.jikan?.mal_id));
+      if (!qualifiesFromRoot && !qualifiesFromContinuation) continue;
+
+      included.set(malId, entry);
+      queue.push(entry);
+    }
+  }
+
+  return [...included.values()];
+}
+
+function relatedByTvRelation(entry, parentMalId) {
+  if (!parentMalId) return false;
+  for (const edge of entry.node?.relations?.edges || []) {
+    const relationType = String(edge?.relationType || "").toUpperCase();
+    const malId = Number(edge?.node?.idMal || 0);
+    if (malId === parentMalId && ["PREQUEL", "SEQUEL"].includes(relationType)) return true;
+  }
+  for (const rel of entry.jikan?.relations || []) {
+    if (!/^(Sequel|Prequel)$/i.test(String(rel?.relation || ""))) continue;
+    if ((rel.entry || []).some(child => Number(child?.mal_id) === parentMalId)) return true;
+  }
+  return false;
+}
+
+function hasContinuationMarker(node, jikan) {
+  return titleValues(node, jikan).some(value => /\b(?:arc|saga|war|story)\b/i.test(value));
+}
+
 export function isSeasonContinuation(rootNode, candidateNode, rootJikan = null, candidateJikan = null) {
   if (!candidateNode && !candidateJikan) return false;
   const candidate = candidateNode || candidateJikan;
   const root = rootNode || rootJikan;
   if (!candidate || !root) return false;
-  const hasSeasonMarker = Boolean(explicitSeason(candidateNode) || isPart(candidateNode));
+  const hasSeasonMarker = Boolean(explicitSeason(candidateNode) || isPart(candidateNode) || hasContinuationMarker(candidateNode, candidateJikan));
   if (!hasSeasonMarker) return false;
 
   const rootKeys = titleKeys(rootNode, rootJikan);
