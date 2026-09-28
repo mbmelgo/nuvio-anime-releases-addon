@@ -64,3 +64,12 @@ test("root addon routes are promoted to the v5 resolver while explicit v4 remain
   assert.equal(route("/v4/manifest.json"), "/api/resolver-manifest?resolver=v4");
   assert.equal(route("/v4/meta/:type/:id.json"), "/api/meta-resolver-v4?type=:type&id=:id");
 });
+
+test("production smoke test covers the promoted v5 root manifest and metadata route", () => {
+  const workflow = fs.readFileSync(new URL("../.github/workflows/test.yml", import.meta.url), "utf8");
+
+  assert.match(workflow, /root_manifest=.*\/manifest\.json/);
+  assert.match(workflow, /root_meta=.*\/meta\/series\/mal%3A39535\.json/);
+  assert.match(workflow, /root\.get\("id"\) != "com\.marki\.nuvio\.anime-releases\.v5"/);
+  assert.match(workflow, /root_meta/);
+});
