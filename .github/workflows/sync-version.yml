@@ -95,3 +95,63 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$tag" "$GITHUB_SHA" -m "Release $tag"
           git push origin "$tag"
+
+  tag-deployment-release:
+    name: Tag deployment release
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure deployment release tag exists
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          state = json.loads(Path("ops/release-state.json").read_text())
+          print(json.dumps({
+              "lastDeploymentSha": state.get("lastDeploymentSha"),
+              "nextReleaseVersion": state.get("nextReleaseVersion")
+          }, indent=2))
+          PY
+
+          target_sha="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          print(json.loads(Path("ops/release-state.json").read_text()).get("lastDeploymentSha") or "")
+          PY
+          )"
+          release_version="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          print(json.loads(Path("ops/release-state.json").read_text()).get("nextReleaseVersion") or "")
+          PY
+          )"
+
+          if ! [[ "$target_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "No valid last deployment SHA recorded; nothing to tag."
+            exit 0
+          fi
+
+          if ! [[ "$release_version" =~ ^[0-9]+\.[0-9]+\.0$ ]]; then
+            echo "No minor/major release version pending; nothing to tag."
+            exit 0
+          fi
+
+          tag="v$release_version"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" "$target_sha" -m "Release $tag"
+          git push origin "$tag"
