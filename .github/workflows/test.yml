@@ -51,6 +51,53 @@ jobs:
               raise SystemExit(0)
           PY
           curl --fail --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
+
+          source_version="$(sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p' api/version.js)"
+          if [ -z "$source_version" ]; then
+            echo "Unable to determine source version before production smoke test."
+            exit 1
+          fi
+
+          echo "Waiting for production to serve source version $source_version..."
+          smoke_ok=0
+          for attempt in $(seq 1 30); do
+            v4_manifest="$(curl --fail --silent --show-error "https://nuvio-anime-releases-addon-rho.vercel.app/v4/manifest.json" || true)"
+            v5_manifest="$(curl --fail --silent --show-error "https://nuvio-anime-releases-addon-rho.vercel.app/v5/manifest.json" || true)"
+            v5_meta="$(curl --fail --silent --show-error "https://nuvio-anime-releases-addon-rho.vercel.app/v5/meta/series/mal%3A39535.json" || true)"
+
+            if python - "$source_version" "$v4_manifest" "$v5_manifest" "$v5_meta" <<'PY'
+          import json, sys
+          expected, v4_raw, v5_raw, meta_raw = sys.argv[1:]
+          try:
+              v4 = json.loads(v4_raw)
+              v5 = json.loads(v5_raw)
+              meta = json.loads(meta_raw)
+          except json.JSONDecodeError:
+              raise SystemExit(1)
+          if v4.get("version") != expected or v4.get("id") != "com.marki.nuvio.anime-releases.v4":
+              raise SystemExit(1)
+          if v5.get("version") != expected or v5.get("id") != "com.marki.nuvio.anime-releases.v5":
+              raise SystemExit(1)
+          if meta.get("meta", {}).get("id") != "mal:39535":
+              raise SystemExit(1)
+          if not isinstance(meta.get("meta", {}).get("videos"), list):
+              raise SystemExit(1)
+          PY
+            then
+              smoke_ok=1
+              echo "Production smoke test passed on attempt $attempt."
+              break
+            fi
+
+            echo "Production is not serving the expected candidate yet; retrying in 5 seconds."
+            sleep 5
+          done
+
+          if [ "$smoke_ok" -ne 1 ]; then
+            echo "Production smoke test failed: deployment was accepted but the expected resolver routes/version were not observed."
+            exit 1
+          fi
+
           python - <<'PY'
           import json, os, re
           from pathlib import Path
