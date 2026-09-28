@@ -61,23 +61,6 @@ Recent regression coverage includes franchise continuation detection for titles 
 
 The resolver accepts MAL IDs such as `mal:39535` and returns Nuvio-compatible series metadata.
 
-Lean episode format:
-
-```json
-{
-  "id": "tt13293588:1:1",
-  "title": "Jobless Reincarnation",
-  "season": 1,
-  "episode": 1,
-  "released": "2021-01-10T15:00:00.000Z",
-  "thumbnail": "https://..."
-}
-```
-
-Preferred ID format: `<imdbId>:<season>:<episode>`
-
-Fallback: `mal:<malId>:<season>:<episode>`
-
 ## Regression tests
 
 The TDD regression suite covers:
@@ -102,28 +85,9 @@ The TDD regression suite covers:
 /api/meta/series/:id.json Series metadata compatibility route
 ```
 
-Current examples:
-- https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json
-- https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/ongoing.json
-- https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/new_episodes.json
-- https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/next_episodes.json
-- https://nuvio-anime-releases-addon-rho.vercel.app/meta/series/mal%3A39535.json
-
 ## Data sources
 
-### AniList
-
-Primary source for anime metadata, season/status information, artwork, genres, scores, popularity, trending, favourites, airing schedules, and franchise relationships.
-
-### Jikan
-
-Used for MAL metadata, relationships, episode data, and fallback information. Jikan may rate-limit or return incomplete episode data.
-
-### AniZip
-
-Used for MAL → AniList mapping and episode metadata including titles, dates, thumbnails, and season/episode information. It is particularly useful for long-running anime.
-
-Other providers such as Kitsu, AniMap, or TVMaze may be used selectively for specific data gaps. TVMaze is limited to freshness supplementation for ongoing long-running series; it does not replace missing primary data for finished series.
+AniList is the primary source for metadata, season/status information, artwork, scores, popularity, airing schedules, and franchise relationships. Jikan and AniZip provide MAL mappings, episode data, and fallbacks. TVMaze is limited to freshness supplementation for ongoing long-running series and does not replace missing primary data for finished series.
 
 ## Version and deployment state
 
@@ -131,63 +95,11 @@ The repository's version file is currently the source of truth for the patch-lev
 
 The current autonomous deployment checkpoint is **1/5** for the active cycle. The latest successful deployment recorded in `ops/release-state.json` is source commit `54cb48bba679a3d27336f169846a830f374c4082`, deployed as version **2.6.5**, with the next minor release baseline **2.7.0**.
 
-The release-tag backfill mechanism is currently repairing the missing historical `v2.7.5` tag for that exact deployed source commit.
-
-## Project structure
-
-```text
-api/
-├── home.js
-├── meta-resolver-v4.js
-├── meta-resolver-v5.js
-├── stremio.js
-└── lib/
-    ├── episodes.js
-    ├── http.js
-    └── providers.js
-
-.github/
-└── workflows/
-    └── test.yml
-
-ops/
-└── release-state.json
-
-vercel.json
-package.json
-README.md
-```
+The release-tag backfill mechanism is repairing the missing historical `v2.7.0` tag for that exact deployed source commit.
 
 ## Vercel rewrites
 
-Production metadata routing currently remains on v4:
-
-```text
-/manifest.json
-    → /api/stremio?resource=manifest
-
-/catalog/:type/:id.json
-    → /api/stremio?resource=catalog&type=:type&id=:id
-
-/meta/:type/:id.json
-    → /api/meta-resolver-v4?type=:type&id=:id
-
-/api/meta/series/:id.json
-    → /api/meta-resolver-v4?type=series&id=:id
-
-/
-    → /api/home
-```
-
-Automatic Git deployment remains disabled with:
-
-```json
-{
-  "git": {
-    "deploymentEnabled": false
-  }
-}
-```
+Production metadata routing currently remains on v4. Automatic Git deployment remains disabled.
 
 ## Streams
 
@@ -195,4 +107,6 @@ This is a **catalog and metadata addon only**. It does not provide video streams
 
 ## Version
 
-**2.7.3**
+**2.7.5**
+
+<!-- Release-tag backfill retry [tag-backfill] -->
