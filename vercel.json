@@ -9,6 +9,38 @@
       "destination": "/api/stremio?resource=manifest"
     },
     {
+      "source": "/v4/manifest.json",
+      "destination": "/api/resolver-manifest?resolver=v4"
+    },
+    {
+      "source": "/v5/manifest.json",
+      "destination": "/api/resolver-manifest?resolver=v5"
+    },
+    {
+      "source": "/v4/catalog/:type/:id.json",
+      "destination": "/api/stremio?resource=catalog&type=:type&id=:id"
+    },
+    {
+      "source": "/v5/catalog/:type/:id.json",
+      "destination": "/api/stremio?resource=catalog&type=:type&id=:id"
+    },
+    {
+      "source": "/v4/meta/:type/:id.json",
+      "destination": "/api/meta-resolver-v4?type=:type&id=:id"
+    },
+    {
+      "source": "/v5/meta/:type/:id.json",
+      "destination": "/api/meta-resolver-v5?type=:type&id=:id"
+    },
+    {
+      "source": "/v4/api/meta/series/:id.json",
+      "destination": "/api/meta-resolver-v4?type=series&id=:id"
+    },
+    {
+      "source": "/v5/api/meta/series/:id.json",
+      "destination": "/api/meta-resolver-v5?type=series&id=:id"
+    },
+    {
       "source": "/catalog/:type/:id.json",
       "destination": "/api/stremio?resource=catalog&type=:type&id=:id"
     },
@@ -22,7 +54,7 @@
     },
     {
       "source": "/",
-      "destination": "/api/home"
+      "destination": "/api/home-selector"
     }
   ]
 }
