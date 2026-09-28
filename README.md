@@ -122,6 +122,7 @@ The deployment checkpoint is stored in `ops/release-state.json`.
 - Major releases are manually decided.
 - Minor and major releases receive annotated Git tags with human-readable change summaries.
 - No historical tag backfill is performed unless explicitly requested.
+- Production release tags are created by the marker-gated GitHub Actions workflow.
 
 ## Key endpoints
 
