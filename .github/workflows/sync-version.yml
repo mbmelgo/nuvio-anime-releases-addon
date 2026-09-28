@@ -76,7 +76,7 @@ jobs:
             if EXPECTED="$expected" ROOT="$root_manifest" CATALOG="$catalog" META_STATUS="$meta_status" python - <<'PY'
           import json,os,re
           root=json.loads(os.environ['ROOT']); catalog=json.loads(os.environ['CATALOG']); expected=os.environ['EXPECTED']
-          assert root.get('version')==expected and root.get('id')=='com.marki.nuvio.anime-releases'; assert root.get('resources') == [{"name":"catalog","types":["series"]}]; assert os.environ['META_STATUS']=='404'; metas=catalog.get('metas',[]); assert metas; assert all(re.match(r'^(mal:\d+|anilist:\d+|kitsu:\d+)$',str(m.get('id',''))) for m in metas)
+          assert root.get('version')==expected and root.get('id')=='com.marki.nuvio.anime-releases'; assert root.get('resources') == [{"name":"catalog","types":["series"]}]; assert os.environ['META_STATUS']=='404'; metas=catalog.get('metas',[]); assert metas; assert all(re.match(r'^(mal:\d+|anilist:\d+|kitsu:\d+|tvdb:\d+)$',str(m.get('id',''))) for m in metas)
           PY
             then echo "Production smoke test passed."; exit 0; fi; sleep 5
           done
