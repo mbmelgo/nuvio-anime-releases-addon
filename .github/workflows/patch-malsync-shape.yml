@@ -1,0 +1,23 @@
+name: Fix MALSync Kitsu mapping shape
+
+on:
+  push:
+    branches: [fix/malsync-tvdb-priority]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[patch-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preserve MALSync Kitsu mapping compatibility
+        run: |
+          python -c 'from pathlib import Path; p=Path("lib/kitsu-canonical.js"); s=p.read_text(); old="""  const kitsuSites = data?.Sites?.Kitsu || {};\n  const tvdbSites = data?.Sites?.TheTVDB || data?.Sites?.TVDB || {};\n  const kitsuId = Object.keys(kitsuSites)[0] || null;\n  const tvdbId = Object.keys(tvdbSites).find((value) => /^\\d+$/.test(String(value))) || null;"""; new="""  const kitsuSites = data?.Sites?.Kitsu || {};\n  const tvdbSites = data?.Sites?.TheTVDB || data?.Sites?.TVDB || {};\n  const kitsuId = Object.values(kitsuSites).map((value) => value?.id).find(Boolean) || Object.keys(kitsuSites).find((value) => /^\\d+$/.test(String(value))) || null;\n  const tvdbId = Object.keys(tvdbSites).find((value) => /^\\d+$/.test(String(value))) || Object.values(tvdbSites).map((value) => value?.id).find((value) => /^\\d+$/.test(String(value || ""))) || null;"""; assert old in s; p.write_text(s.replace(old,new,1))'
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lib/kitsu-canonical.js
+          git commit -m "fix: preserve MALSync mapping response shapes [patch-applied]"
+          git push
