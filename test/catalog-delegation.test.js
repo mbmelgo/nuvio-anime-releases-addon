@@ -59,8 +59,8 @@ test("catalog delegation batches large MAL ID sets for AniList lookup", async ()
 
     assert.equal(calls, 2);
     assert.equal(result.length, 51);
-    assert.equal(result[0].id, "tt00010000");
-    assert.equal(result[50].id, "tt00010050");
+    assert.equal(result[0].id, "tt0010000");
+    assert.equal(result[50].id, "tt0010050");
   } finally {
     globalThis.fetch = originalFetch;
   }
