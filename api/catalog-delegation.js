@@ -1,4 +1,13 @@
 /**
+ * Vercel scans every JavaScript module under api/ as a serverless function.
+ * Keep a valid default handler even though catalog identity delegation is no
+ * longer a runtime transformation.
+ */
+export default function handler(req, res) {
+  res.status(404).json({ error: "Not found" });
+}
+
+/**
  * Catalog identity policy:
  *
  * The catalog owns the identity of an anime entry. Provider-specific IDs
