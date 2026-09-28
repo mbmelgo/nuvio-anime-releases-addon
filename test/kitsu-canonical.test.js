@@ -33,9 +33,9 @@ test("uses Kitsu as the canonical identity when ARM mapping and Kitsu title both
 test("rejects a bad ARM mapping when the Kitsu candidate title does not match", async () => {
   const fetchImpl = mockFetch([
     { match: (url) => url.includes("arm.haglund.dev") && url.includes("source=myanimelist"), body: { kitsu: 99999 } },
+    { match: (url) => url.includes("api.ani.zip") && url.includes("mal_id=60636"), body: { mappings: { kitsu_id: 12345 } } },
     { match: (url) => url.includes("kitsu.io/api/edge/anime/99999"), body: { data: { id: "99999", attributes: { canonicalTitle: "Dragon", titles: { en: "Dragon" } } } } },
-    { match: (url) => url.includes("api.ani.zip"), body: { mappings: { kitsu_id: 12345 } } },
-    { match: (url) => url.includes("kitsu.io/api/edge/anime/12345"), body: { data: { id: "12345", attributes: { canonicalTitle: "One Piece", titles: { en: "One Piece" } } } },
+    { match: (url) => url.includes("kitsu.io/api/edge/anime/12345"), body: { data: { id: "12345", attributes: { canonicalTitle: "One Piece", titles: { en: "One Piece" } } } } },
   ]);
   const [meta] = await canonicalizeCatalogMetas([{ id: "mal:60636", name: "One Piece", type: "series" }], { fetchImpl, now: 1000 });
   assert.equal(meta.id, "kitsu:12345");
@@ -45,7 +45,7 @@ test("falls back from ARM to AniZip for an AniList identity", async () => {
   const fetchImpl = mockFetch([
     { match: (url) => url.includes("arm.haglund.dev"), status: 404, body: {} },
     { match: (url) => url.includes("api.ani.zip") && url.includes("anilist_id=456"), body: { mappings: { kitsu_id: 67890 } } },
-    { match: (url) => url.includes("kitsu.io/api/edge/anime/67890"), body: { data: { id: "67890", attributes: { canonicalTitle: "Example Anime", titles: { en: "Example Anime" } } } },
+    { match: (url) => url.includes("kitsu.io/api/edge/anime/67890"), body: { data: { id: "67890", attributes: { canonicalTitle: "Example Anime", titles: { en: "Example Anime" } } } } },
   ]);
   const [meta] = await canonicalizeCatalogMetas([{ id: "anilist:456", name: "Example Anime", type: "series" }], { fetchImpl, now: 1000 });
   assert.equal(meta.id, "kitsu:67890");
@@ -56,7 +56,7 @@ test("uses MAL-Sync before title search for MAL identities", async () => {
     { match: (url) => url.includes("arm.haglund.dev"), status: 404, body: {} },
     { match: (url) => url.includes("api.ani.zip"), status: 404, body: {} },
     { match: (url) => url.includes("api.malsync.moe") && url.endsWith("/999"), body: { Sites: { Kitsu: { main: { id: "777" } } } } },
-    { match: (url) => url.includes("kitsu.io/api/edge/anime/777"), body: { data: { id: "777", attributes: { canonicalTitle: "Example Anime", titles: { en: "Example Anime" } } } },
+    { match: (url) => url.includes("kitsu.io/api/edge/anime/777"), body: { data: { id: "777", attributes: { canonicalTitle: "Example Anime", titles: { en: "Example Anime" } } } } },
   ]);
   const [meta] = await canonicalizeCatalogMetas([{ id: "mal:999", name: "Example Anime", type: "series" }], { fetchImpl, now: 1000 });
   assert.equal(meta.id, "kitsu:777");
