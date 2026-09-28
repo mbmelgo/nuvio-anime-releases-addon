@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   test:
@@ -73,3 +73,43 @@ jobs:
             sleep 5
           done
           echo "Production smoke test failed."; exit 1
+
+  tag-production-release:
+    name: Tag production release
+    needs: deploy-production
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[deploy-prod]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history and tags
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Create annotated release tag
+        run: |
+          set -euo pipefail
+          target="$(python -c 'import json;print(json.load(open("ops/release-state.json"))["lastDeploymentSha"])')"
+          tag="$(python -c 'import json;print(json.load(open("ops/release-state.json"))["lastDeploymentTag"])')"
+          test -n "$target"
+          test -n "$tag"
+          git fetch --tags --force
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists."
+            exit 0
+          fi
+          previous="$(git tag --merged "$target^" --sort=-version:refname --list 'v*' | head -n1 || true)"
+          if [ -n "$previous" ]; then
+            summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$previous..$target" | head -n 50 || true)"
+            since="Changes since $previous:"
+          else
+            summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$target" | head -n 50 || true)"
+            since="Changes included in this release:"
+          fi
+          [ -n "$summary" ] || summary='- No source commits to summarize.'
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git tag -a "$tag" "$target" -m "Release $tag
+
+Historical production deployment source commit: $target
+$since
+$summary"
+          git push origin "refs/tags/$tag"
