@@ -128,11 +128,14 @@ async function queryWikidataMappings(metas, byKey) {
   const branches = [values, nameBranch].filter(Boolean).join(" UNION ");
 
   const query = `SELECT ?item ?mal ?anilist ?label ?imdb ?tmdb ?tvdb WHERE { { ${branches} } OPTIONAL { ?item wdt:P4086 ?mal } OPTIONAL { ?item wdt:P8729 ?anilist } OPTIONAL { ?item rdfs:label ?label } OPTIONAL { ?item wdt:P345 ?imdb } OPTIONAL { ?item wdt:P4983 ?tmdb } OPTIONAL { ?item wdt:P4835 ?tvdb } } LIMIT 500`;
-  const payload = await fetchJson(`${WIKIDATA_URL}?query=${encodeURIComponent(query)}&format=json`, {
+  const payload = await fetchJson(WIKIDATA_URL, {
+    method: "POST",
     headers: {
       accept: "application/sparql-results+json",
-      "user-agent": "Nuvio-Anime-Releases-Addon/2.17.2 (+https://nuvio-anime-releases-addon-rho.vercel.app/)",
+      "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
+      "user-agent": "Nuvio-Anime-Releases-Addon/2.17.8 (+https://nuvio-anime-releases-addon-rho.vercel.app/)",
     },
+    body: new URLSearchParams({ query, format: "json" }).toString(),
   });
 
   const result = new Map();
