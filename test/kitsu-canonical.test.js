@@ -69,12 +69,25 @@ test("title fallback only accepts an exact normalized Kitsu title", async () => 
     { match: (url) => url.includes("api.malsync.moe"), status: 404, body: {} },
     {
       match: (url) => url.includes("kitsu.io/api/edge/anime?") || url.includes("kitsu.io/api/edge/anime&"),
-      body: { data: [
-        { id: "111", attributes: { canonicalTitle: "The Elusive Samurai", titles: { en: "The Elusive Samurai" } } },
-        { id: "222", attributes: { canonicalTitle: "The Elusive Samurai Season 2", titles: { en: "The Elusive Samurai Season 2" } } },
-      ] },
+      body: {
+        data: [
+          { id: "111", attributes: { canonicalTitle: "The Elusive Samurai", titles: { en: "The Elusive Samurai" } } },
+          { id: "222", attributes: { canonicalTitle: "The Elusive Samurai Season 2", titles: { en: "The Elusive Samurai Season 2" } } },
+        ],
+      },
     },
-    { match: (url) => url.includes("kitsu.io/api/edge/anime/222"), body: { data: { id: "222", attributes: { canonicalTitle: "The Elusive Samurai Season 2", titles: { en: "The Elusive Samurai Season 2" } } } },
+    {
+      match: (url) => url.includes("kitsu.io/api/edge/anime/222"),
+      body: {
+        data: {
+          id: "222",
+          attributes: {
+            canonicalTitle: "The Elusive Samurai Season 2",
+            titles: { en: "The Elusive Samurai Season 2" },
+          },
+        },
+      },
+    },
   ]);
   const [meta] = await canonicalizeCatalogMetas([{ id: "mal:1234", name: "The Elusive Samurai Season 2", type: "series" }], { fetchImpl, now: 1000 });
   assert.equal(meta.id, "kitsu:222");
@@ -101,7 +114,13 @@ test("canonicalization never drops catalog items", async () => {
 test("deduplicates repeated source identities within one catalog request", async () => {
   let armCalls = 0;
   const fetchImpl = mockFetch([
-    { match: (url) => { if (url.includes("arm.haglund.dev")) armCalls += 1; return url.includes("arm.haglund.dev"); }, body: { kitsu: 12345 } },
+    {
+      match: (url) => {
+        if (url.includes("arm.haglund.dev")) armCalls += 1;
+        return url.includes("arm.haglund.dev");
+      },
+      body: { kitsu: 12345 },
+    },
     { match: (url) => url.includes("kitsu.io/api/edge/anime/12345"), body: { data: { id: "12345", attributes: { canonicalTitle: "One Piece", titles: { en: "One Piece" } } } } },
   ]);
   const result = await canonicalizeCatalogMetas([
