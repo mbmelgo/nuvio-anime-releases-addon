@@ -17,24 +17,8 @@
       "destination": "/api/catalog-delegation?resource=catalog&type=:type&id=:id"
     },
     {
-      "source": "/v5/meta/:type/:id.json",
-      "destination": "/api/meta-resolver-v5-rich?type=:type&id=:id"
-    },
-    {
-      "source": "/v5/api/meta/series/:id.json",
-      "destination": "/api/meta-resolver-v5-rich?type=series&id=:id"
-    },
-    {
       "source": "/catalog/:type/:id.json",
       "destination": "/api/catalog-delegation?resource=catalog&type=:type&id=:id"
-    },
-    {
-      "source": "/meta/:type/:id.json",
-      "destination": "/api/meta-resolver-v5-rich?type=:type&id=:id"
-    },
-    {
-      "source": "/api/meta/series/:id.json",
-      "destination": "/api/meta-resolver-v5-rich?type=series&id=:id"
     },
     {
       "source": "/",

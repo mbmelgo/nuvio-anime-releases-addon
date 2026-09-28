@@ -21,14 +21,6 @@ jobs:
           node-version: 20
       - name: Run unit tests
         run: npm test
-      - name: Verify production smoke-test contract
-        env:
-          ROOT_BASE: https://nuvio-anime-releases-addon-rho.vercel.app
-        run: |
-          root_manifest="$ROOT_BASE/manifest.json"
-          root_meta="$ROOT_BASE/meta/series/mal%3A39535.json"
-          root_check='root.get("id") != "com.marki.nuvio.anime-releases.v5"'
-          test -n "$root_manifest" -a -n "$root_meta" -a -n "$root_check"
 
   deploy-production:
     name: Deploy to Vercel production
@@ -61,15 +53,21 @@ jobs:
           for attempt in $(seq 1 30); do
             root_manifest="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json || true)"
             v5_manifest="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/v5/manifest.json || true)"
-            root_meta="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/meta/series/mal%3A39535.json || true)"
-            if EXPECTED="$expected" ROOT="$root_manifest" V5="$v5_manifest" META="$root_meta" python - <<'PY'
-          import json,os
-          expected=os.environ['EXPECTED']
-          root=json.loads(os.environ['ROOT']); v5=json.loads(os.environ['V5']); meta=json.loads(os.environ['META'])
-          assert root.get('version')==expected and root.get('id')=='com.marki.nuvio.anime-releases.v5'
-          assert v5.get('version')==expected and v5.get('id')=='com.marki.nuvio.anime-releases.v5'
-          assert meta.get('meta',{}).get('id')=='mal:39535'
-          assert isinstance(meta.get('meta',{}).get('videos'),list)
+            catalog="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/ongoing.json || true)"
+            meta_status="$(curl --silent --output /dev/null --write-out '%{http_code}' https://nuvio-anime-releases-addon-rho.vercel.app/meta/series/mal%3A39535.json || true)"
+            if EXPECTED="$expected" ROOT="$root_manifest" V5="$v5_manifest" CATALOG="$catalog" META_STATUS="$meta_status" python - <<'PY'
+          import json, os, re
+          expected = os.environ['EXPECTED']
+          root = json.loads(os.environ['ROOT'])
+          v5 = json.loads(os.environ['V5'])
+          catalog = json.loads(os.environ['CATALOG'])
+          assert root.get('version') == expected and root.get('id') == 'com.marki.nuvio.anime-releases.v5'
+          assert v5.get('version') == expected and v5.get('id') == 'com.marki.nuvio.anime-releases.v5'
+          assert v5.get('resources') == [{"name": "catalog", "types": ["series"]}]
+          assert os.environ['META_STATUS'] == '404'
+          metas = catalog.get('metas', [])
+          assert metas
+          assert any(re.match(r'^(tt\d+|tmdb:\d+|tvdb:\d+)$', str(meta.get('id', ''))) for meta in metas)
           PY
             then echo "Production smoke test passed."; exit 0; fi
             sleep 5
