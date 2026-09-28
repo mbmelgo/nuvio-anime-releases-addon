@@ -6,14 +6,14 @@ A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio
 
 - **Branch:** `main`
 - **Development version:** `2.15.4`
-- **Next minor release baseline:** `2.14.0`
+- **Next minor release baseline:** `2.15.0`
 - **Latest production tag:** `v2.13.6`
 - **Latest production source commit:** `1e733067921e9d514d8e870d880a51652d3bee79`
 - **Latest production source version:** `2.13.6`
 - **Production resolver:** **v5**
 - **Legacy resolver:** **v4**, retained for side-by-side validation
-- **Active deployment checkpoint:** **2/5**
-- **Total production deployments:** **17**
+- **Active deployment checkpoint:** **3/5**
+- **Total production deployments:** **18**
 - **CI status for rich metadata changes:** **green**
 
 The current production tag is retained as-is; historical/current tag rewriting is intentionally not performed. The release workflow is being corrected so future deployments create the proper minor baseline tag automatically.
@@ -22,7 +22,7 @@ Automatic Vercel Git deployments are intentionally disabled. Production deployme
 
 ## Production validation target
 
-The next controlled production deployment is intended to validate the complete rich-metadata path in the live v5 resolver, including series details, cast, trailers, networks, studios, recommendations, external links, season posters, and episode presentation data.
+The next controlled production deployment validates the rich-metadata semantic fixes: streaming episodes must not be exposed as trailers, producer companies must not be mislabeled as the broadcast network, and release/last-air dates must aggregate across resolved seasons and episode dates.
 
 ## URLs
 
@@ -97,7 +97,7 @@ The deployment checkpoint is stored in `ops/release-state.json`.
 ### Versioning
 
 - Every source commit increments the patch version during normal development.
-- Each successful production deployment creates a minor release baseline (`2.12.0 → 2.13.0 → 2.14.0`); the deployed source may carry the current patch version within that baseline.
+- Each successful production deployment creates a minor release baseline (`2.13.0 → 2.14.0 → 2.15.0`); the deployed source may carry the current patch version within that baseline.
 - After deployment, development advances to the next minor baseline for subsequent patch commits.
 - Major releases are manually decided.
 - Minor and major releases receive annotated Git tags with human-readable change summaries.
@@ -123,4 +123,4 @@ This is a **catalog and metadata addon only**. It does not provide video streams
 
 ## Release state
 
-The latest production deployment is source version `2.13.6` from commit `1e733067921e9d514d8e870d880a51652d3bee79`, tagged `v2.13.6`. The current development line is `2.15.4`; the next intended minor release baseline is `2.14.0`.
+The latest production deployment is source version `2.14.13` from commit `869333d0575139b57936eb0f3056ef431a9b359e`, currently tagged `v2.14.13` by the existing deployment workflow. The next intended minor release baseline is `2.15.0`; the active deployment checkpoint is 3/5.
