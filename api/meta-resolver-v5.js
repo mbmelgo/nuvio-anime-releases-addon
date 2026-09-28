@@ -144,7 +144,7 @@ async function buildVideos(groups) {
   return [...out.values()].sort((a,b) => a.season - b.season || a.episode - b.episode);
 }
 
-function isOngoing(anime) { return Boolean(anime?.airing) || /currently\s+airing/i.test(String(anime?.status || "")) || !anime?.aired?.to; }
+export function isOngoing(anime) { return Boolean(anime?.airing) || /currently\s+airing/i.test(String(anime?.status || "")); }
 
 export function chooseRows(jikanRows, aniZipRows, expected = 0, ongoing = false) {
   const jikan = Array.isArray(jikanRows) ? jikanRows : [];
