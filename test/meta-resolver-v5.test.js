@@ -74,3 +74,27 @@ test("recognizes explicit season and part titles as continuations", () => {
   assert.equal(isSeasonContinuation(root, { title: { english: "Mushoku Tensei II: Isekai Ittara Honki Dasu" } }), true);
   assert.equal(isSeasonContinuation(root, { title: { english: "Mushoku Tensei: Jobless Reincarnation Cour 2" } }), true);
 });
+
+test("recognizes a sequel when only the parent relation points to the continuation", () => {
+  const root = { title: { english: "Parent Show" } };
+  const continuation = { title: { english: "Parent Show: Continuation" } };
+  const entries = [
+    {
+      jikan: { mal_id: 100, title: "Parent Show", episodes: 12 },
+      node: { ...root, startDate: { year: 2020, month: 1, day: 1 } }
+    },
+    {
+      jikan: { mal_id: 101, title: "Parent Show: Continuation", episodes: 12 },
+      node: {
+        ...continuation,
+        startDate: { year: 2021, month: 1, day: 1 }
+      }
+    }
+  ];
+  entries[0].node.relations = {
+    edges: [{ relationType: "SEQUEL", node: { idMal: 101 } }]
+  };
+
+  const groups = numberSeasons(entries, 100);
+  assert.deepEqual(groups.map(group => group.entries.map(entry => entry.jikan.mal_id)), [[100], [101]]);
+});
