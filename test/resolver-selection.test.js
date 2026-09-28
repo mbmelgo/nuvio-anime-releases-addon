@@ -43,12 +43,12 @@ test("Vercel routes resolver-specific manifests and metadata to the matching res
   assert.equal(route("/v5/catalog/:type/:id.json"), "/api/stremio?resource=catalog&type=:type&id=:id");
 });
 
-test("resolver selector home page exposes both resolver choices and installs the selected manifest", () => {
+test("resolver selector home page exposes both resolver choices and a dynamic selected manifest URL", () => {
   const home = fs.readFileSync(new URL("../api/home-selector.js", import.meta.url), "utf8");
 
   assert.match(home, /data-resolver="v4"/);
   assert.match(home, /data-resolver="v5"/);
   assert.match(home, /\/v4\/manifest\.json/);
-  assert.match(home, /\/v5\/manifest\.json/);
+  assert.match(home, /base \+ '\/' \+ resolver \+ '\/manifest\.json'/);
   assert.match(home, /selectResolver\(resolver\)/);
 });
