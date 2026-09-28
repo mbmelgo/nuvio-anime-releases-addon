@@ -1,6 +1,5 @@
 export function reconcileEpisodeSequences(sequences) {
   const accepted = [];
-  let nextEpisode = 1;
 
   for (const sequence of Array.isArray(sequences) ? sequences : []) {
     const rows = dedupeRows(sequence?.rows);
@@ -13,16 +12,13 @@ export function reconcileEpisodeSequences(sequences) {
       continue;
     }
 
-    const planned = rows.map((row, index) => ({
-      ...row,
-      identity,
-      canonicalNumber: nextEpisode + index,
-    }));
-    nextEpisode += planned.length;
-    accepted.push({ identity, rows: planned });
+    accepted.push({ identity, rows: rows.map((row) => ({ ...row, identity })) });
   }
 
-  return accepted.flatMap((sequence) => sequence.rows);
+  // Every accepted sequence owns a contiguous canonical numbering space. Provider
+  // episode numbers are source metadata only; they must never leak into Nuvio's
+  // season/episode numbering.
+  return accepted.flatMap((sequence) => canonicalizeRows(sequence.rows, sequence.identity));
 }
 
 export function looksLikeSameSequence(aRows, bRows) {
@@ -30,9 +26,6 @@ export function looksLikeSameSequence(aRows, bRows) {
   const b = dedupeRows(bRows);
   if (!a.length || !b.length) return false;
 
-  // Compare episode identity by relative position, not only provider episode number.
-  // This handles providers that use absolute numbering while another provider
-  // resets numbering for a season/cour.
   const comparable = Math.min(a.length, b.length);
   if (comparable >= 3) {
     let matches = 0;
@@ -42,7 +35,6 @@ export function looksLikeSameSequence(aRows, bRows) {
     if (matches / comparable >= 0.6) return true;
   }
 
-  // Also support equal-number sequences when one provider has extra rows.
   const byNumber = new Map(a.map((row) => [Number(row.number), row]));
   let matches = 0;
   let comparableByNumber = 0;
@@ -53,6 +45,43 @@ export function looksLikeSameSequence(aRows, bRows) {
     if (sameEpisodeIdentity(other, row)) matches++;
   }
   return comparableByNumber >= 3 && matches / comparableByNumber >= 0.6;
+}
+
+function mergeRows(aRows, bRows) {
+  const merged = dedupeRows([...aRows, ...bRows]);
+  const byIdentity = new Map();
+
+  for (const row of merged) {
+    const key = episodeKey(row);
+    const existing = byIdentity.get(key);
+    if (!existing || betterRow(row, existing)) byIdentity.set(key, { ...existing, ...row });
+  }
+
+  return [...byIdentity.values()].sort(compareRows);
+}
+
+function canonicalizeRows(rows, identity) {
+  return dedupeRows(rows).map((row, index) => ({
+    ...row,
+    identity: row.identity || identity,
+    canonicalNumber: index + 1,
+  }));
+}
+
+function episodeKey(row) {
+  const title = normalizeTitle(row?.title);
+  const date = String(row?.released || "").slice(0, 10);
+  if (title && date) return `title:${title}|date:${date}`;
+  if (title) return `title:${title}`;
+  if (date) return `date:${date}`;
+  return `number:${Number(row?.number)}`;
+}
+
+function compareRows(a, b) {
+  const dateA = Date.parse(a?.released || "");
+  const dateB = Date.parse(b?.released || "");
+  if (Number.isFinite(dateA) && Number.isFinite(dateB) && dateA !== dateB) return dateA - dateB;
+  return Number(a?.number || 0) - Number(b?.number || 0);
 }
 
 function sameEpisodeIdentity(a, b) {
@@ -74,16 +103,6 @@ function dedupeRows(rows) {
     if (!old || betterRow(row, old)) map.set(number, { ...row, number });
   }
   return [...map.values()].sort((a, b) => a.number - b.number);
-}
-
-function mergeRows(aRows, bRows) {
-  const map = new Map(aRows.map((row) => [Number(row.canonicalNumber ?? row.number), { ...row }]));
-  for (const row of bRows) {
-    const existing = [...map.values()].find((candidate) => sameEpisodeIdentity(candidate, row));
-    if (!existing) continue;
-    if (betterRow(row, existing)) Object.assign(existing, row);
-  }
-  return [...map.values()].sort((a, b) => Number(a.canonicalNumber ?? a.number) - Number(b.canonicalNumber ?? b.number));
 }
 
 function betterRow(a, b) {
