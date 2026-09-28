@@ -218,11 +218,14 @@ async function queryWikidataMappings(metas, byKey) {
     body: new URLSearchParams({ query, format: "json" }).toString(),
   });
 
+  return selectUniqueWikidataMappings(payload?.results?.bindings || [], sourceIdsByName);
+}
+
+export function selectUniqueWikidataMappings(bindings, sourceIdsByName) {
   const result = new Map();
-  for (const binding of payload?.results?.bindings || []) {
-    const mal = binding.mal?.value;
-    const anilist = binding.anilist?.value;
-    const label = binding.label?.value;
+  const compatibleByLabel = new Map();
+
+  for (const binding of Array.isArray(bindings) ? bindings : []) {
     const compatible = binding.imdb?.value
       ? binding.imdb.value
       : binding.tmdb?.value
@@ -231,12 +234,26 @@ async function queryWikidataMappings(metas, byKey) {
           ? `tvdb:${binding.tvdb.value}`
           : null;
     if (!compatible) continue;
+
+    const mal = binding.mal?.value;
+    const anilist = binding.anilist?.value;
     if (mal) result.set(`mal:${mal}`, compatible);
     if (anilist) result.set(`anilist:${anilist}`, compatible);
-    if (label) {
-      for (const sourceId of sourceIdsByName.get(label.toLowerCase()) || []) result.set(sourceId, compatible);
-    }
+
+    const label = binding.label?.value;
+    if (!label) continue;
+    const key = label.toLowerCase();
+    if (!compatibleByLabel.has(key)) compatibleByLabel.set(key, new Set());
+    compatibleByLabel.get(key).add(compatible);
   }
+
+  for (const [label, sourceIds] of sourceIdsByName.entries()) {
+    const compatible = compatibleByLabel.get(label);
+    if (!compatible || compatible.size !== 1) continue;
+    const [mapped] = compatible;
+    for (const sourceId of sourceIds || []) if (!result.has(sourceId)) result.set(sourceId, mapped);
+  }
+
   return result;
 }
 
