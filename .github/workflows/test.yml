@@ -38,6 +38,7 @@ jobs:
       - name: Check deployment checkpoint and deploy
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+          RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
         shell: bash
         run: |
           set -euo pipefail
@@ -117,29 +118,46 @@ jobs:
 
           release_tag="$(cat /tmp/release-tag)"
           git push
+
+          if [ -z "$RELEASE_PAT" ]; then
+            echo "RELEASE_PAT is required to create annotated deployment tags."
+            exit 1
+          fi
+
+          git remote set-url origin "https://x-access-token:$RELEASE_PAT@github.com/$GITHUB_REPOSITORY.git"
           if git ls-remote --exit-code --tags origin "refs/tags/$release_tag" >/dev/null 2>&1; then
             echo "Tag $release_tag already exists."
             exit 0
           fi
-          previous_tag="$(git tag --list 'v*' --sort=-version:refname | head -n1 || true)"
+
+          previous_tag="$(git tag --merged "$GITHUB_SHA^" --sort=-version:refname --list 'v*' | head -n1 || true)"
           if [ -n "$previous_tag" ]; then
-            change_summary="$(git log --pretty=format:'- %s (%h)' "$previous_tag..$GITHUB_SHA")"
+            change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$previous_tag..$GITHUB_SHA" |
+              grep -Ev '^- chore: bump patch version \[skip-version-automation\]|^- chore: record Vercel deployment and bump release' |
+              head -n 50 || true)"
+            since_line="Changes since $previous_tag:"
           else
-            change_summary="$(git log --pretty=format:'- %s (%h)' "$GITHUB_SHA")"
+            change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$GITHUB_SHA" |
+              grep -Ev '^- chore: bump patch version \[skip-version-automation\]|^- chore: record Vercel deployment and bump release' |
+              head -n 50 || true)"
+            since_line="Changes included in this release:"
           fi
 
           if [ -z "$change_summary" ]; then
-            change_summary="- No commit summary available."
+            change_summary="- No source commits to summarize."
           fi
 
           tag_message="$(cat <<EOF
 Release $release_tag
 
-Summary of changes included in this release:
+Deployed source commit: $GITHUB_SHA
+$since_line
 $change_summary
 EOF
           )"
 
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$release_tag" "$GITHUB_SHA" -m "$tag_message"
           git push origin "refs/tags/$release_tag"
 
@@ -149,6 +167,8 @@ EOF
     needs: test
     if: github.event_name == 'push' && contains(github.event.head_commit.message, '[major-release]') && !contains(github.event.head_commit.message, '[deploy-prod]')
     runs-on: ubuntu-latest
+    env:
+      RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -164,28 +184,39 @@ EOF
             echo "Major release marker requires an x.0.0 version; found $version."
             exit 1
           fi
+          if [ -z "$RELEASE_PAT" ]; then
+            echo "RELEASE_PAT is required to create major release tags."
+            exit 1
+          fi
+
+          git remote set-url origin "https://x-access-token:$RELEASE_PAT@github.com/$GITHUB_REPOSITORY.git"
           tag="v$version"
           if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
             echo "Tag $tag already exists."
             exit 0
           fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          previous_tag="$(git tag --list 'v*' --sort=-version:refname | head -n1 || true)"
+
+          previous_tag="$(git tag --merged "$GITHUB_SHA^" --sort=-version:refname --list 'v*' | head -n1 || true)"
           if [ -n "$previous_tag" ]; then
-            change_summary="$(git log --pretty=format:'- %s (%h)' "$previous_tag..$GITHUB_SHA")"
+            change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$previous_tag..$GITHUB_SHA" | head -n 50 || true)"
+            since_line="Changes since $previous_tag:"
           else
-            change_summary="$(git log --pretty=format:'- %s (%h)' "$GITHUB_SHA")"
+            change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$GITHUB_SHA" | head -n 50 || true)"
+            since_line="Changes included in this release:"
           fi
 
           if [ -z "$change_summary" ]; then
-            change_summary="- No commit summary available."
+            change_summary="- No source commits to summarize."
           fi
 
           tag_message="$(cat <<EOF
 Release $tag
 
-Summary of changes included in this release:
+Source commit: $GITHUB_SHA
+$since_line
 $change_summary
 EOF
           )"
@@ -197,6 +228,8 @@ EOF
     name: Backfill an existing deployment tag
     if: github.event_name == 'push' && contains(github.event.head_commit.message, '[tag-backfill]')
     runs-on: ubuntu-latest
+    env:
+      RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -207,13 +240,44 @@ EOF
         shell: bash
         run: |
           set -euo pipefail
+          if [ -z "$RELEASE_PAT" ]; then
+            echo "RELEASE_PAT is required to backfill release tags."
+            exit 1
+          fi
+
           target_sha="0cb81fc8b23c751029e470f8d7386603ee6b9ae8"
           tag="v2.2.0"
+          git remote set-url origin "https://x-access-token:$RELEASE_PAT@github.com/$GITHUB_REPOSITORY.git"
+
           if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
             echo "Tag $tag already exists."
             exit 0
           fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$tag" "$target_sha" -m "Release $tag"
+
+          previous_tag="$(git tag --merged "$target_sha^" --sort=-version:refname --list 'v*' | head -n1 || true)"
+          if [ -n "$previous_tag" ]; then
+            change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$previous_tag..$target_sha" | head -n 50 || true)"
+            since_line="Changes since $previous_tag:"
+          else
+            change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$target_sha" | head -n 50 || true)"
+            since_line="Changes included in this release:"
+          fi
+
+          if [ -z "$change_summary" ]; then
+            change_summary="- Historical source changes not available."
+          fi
+
+          tag_message="$(cat <<EOF
+Release $tag
+
+Historical deployment source commit: $target_sha
+$since_line
+$change_summary
+EOF
+          )"
+
+          git tag -a "$tag" "$target_sha" -m "$tag_message"
           git push origin "refs/tags/$tag"
