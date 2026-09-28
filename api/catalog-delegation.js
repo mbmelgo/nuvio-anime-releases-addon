@@ -119,14 +119,15 @@ async function queryRelatedMappings(metas, byKey) {
       if (!candidateSources.has(candidateId)) candidateSources.set(candidateId, []);
       candidateSources.get(candidateId).push(sourceId);
       relationCandidates.push({ id: candidateId, type: "series", name: node.title?.english || node.title?.romaji || node.title?.native || "" });
-      break;
     }
   }
 
   if (!relationCandidates.length) return result;
   const relatedMappings = await queryAniZipMappings(relationCandidates);
   for (const [candidateId, compatible] of relatedMappings) {
-    for (const sourceId of candidateSources.get(candidateId) || []) result.set(sourceId, compatible);
+    for (const sourceId of candidateSources.get(candidateId) || []) {
+      if (!result.has(sourceId)) result.set(sourceId, compatible);
+    }
   }
   return result;
 }
