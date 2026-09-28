@@ -20,9 +20,18 @@ test("rich metadata maps show details, certification, cast, trailer, and season 
     trailer: { youtube_id: "abc123" },
     characters: [
       {
-        character: { name: "Rudeus Greyrat", images: { jpg: { image_url: "https://example.com/character.jpg" } } },
+        character: {
+          name: "Rudeus Greyrat",
+          images: { jpg: { image_url: "https://example.com/character.jpg" } },
+        },
         voice_actors: [
-          { language: "Japanese", person: { name: "Tomokazu Sugita", images: { jpg: { image_url: "https://example.com/actor.jpg" } } },
+          {
+            language: "Japanese",
+            person: {
+              name: "Tomokazu Sugita",
+              images: { jpg: { image_url: "https://example.com/actor.jpg" } },
+            },
+          },
         ],
       },
     ],
@@ -58,6 +67,7 @@ test("rich metadata maps show details, certification, cast, trailer, and season 
   });
   assert.equal(result.videos[0].seasonPoster, "https://example.com/root-cover.jpg");
   assert.equal(result.videos[1].seasonPoster, "https://example.com/season2.jpg");
+  assert.equal(result.videos[0].runtime, "24m");
 });
 
 test("release info preserves an airing series as an open-ended range", () => {
