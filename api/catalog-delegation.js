@@ -85,7 +85,10 @@ async function queryWikidataMappings(metas) {
   const values = ids.map(({ property, value }) => `(wdt:${property} "${value}")`).join(" ");
   const query = `SELECT ?item ?mal ?anilist ?imdb ?tmdb ?tvdb WHERE { VALUES (?property ?value) { ${values} } ?item ?property ?value . OPTIONAL { ?item wdt:P4086 ?mal } OPTIONAL { ?item wdt:P8729 ?anilist } OPTIONAL { ?item wdt:P345 ?imdb } OPTIONAL { ?item wdt:P4983 ?tmdb } OPTIONAL { ?item wdt:P4835 ?tvdb } } LIMIT 200`;
   const payload = await fetchJson(`${WIKIDATA_URL}?query=${encodeURIComponent(query)}&format=json`, {
-    headers: { accept: "application/sparql-results+json" },
+    headers: {
+      accept: "application/sparql-results+json",
+      "user-agent": "Nuvio-Anime-Releases-Addon/2.17.0 (+https://nuvio-anime-releases-addon-rho.vercel.app/)",
+    },
   });
 
   const result = new Map();
