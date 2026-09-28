@@ -111,7 +111,7 @@ Multi-season/cour test. Exact output must be revalidated against current upstrea
 
 Long-running stress test. The old implementation stopped at 100 episodes. The current architecture has no arbitrary 100-episode ceiling; exact output must be revalidated against current upstream data.
 
-Additional candidates: Naruto, Bleach, Gintama, Fairy Tail, Dragon Ball, Hunter × Hunter, Re:ZERO, Attack on Titan, and JoJo's Bizarre Adventure.
+Additional candidates: Naruto, Bleach, Gintama, Fairy Tail, Dragon Ball, Hunter × Hunter, Re:ZERO, Attack on Titan, and JoJo's Bizarre Adventure. Bleach validation includes the marked Thousand-Year Blood War sequel chain.
 
 ## Regression checklist
 
