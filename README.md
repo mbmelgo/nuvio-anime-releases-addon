@@ -17,6 +17,9 @@ GitHub is the source of truth. Automatic Vercel Git deployments are intentionall
 
 The current production metadata routing uses **v4**. **v5** is the refactored candidate and remains available for validation.
 
+
+
+> Deployment candidate: TVMaze fallback is now supplemental-only for finished series and cannot replace missing primary episode datasets. [deploy-prod]
 ## v2.4.3 highlights
 
 - Refactored metadata resolver architecture.
