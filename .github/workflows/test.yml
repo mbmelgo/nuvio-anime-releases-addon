@@ -1,4 +1,4 @@
-name: Unit tests and controlled Vercel deployment
+name: Unit tests
 
 on:
   push:
@@ -7,134 +7,17 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm test
-
-  deploy-production:
-    name: Deploy to Vercel production
-    needs: test
-    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[deploy-prod]')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Check checkpoint
-        env:
-          STATE: ops/release-state.json
-        run: |
-          python - <<'PY'
-          import json
-          s=json.load(open('ops/release-state.json'))
-          print(f"Deployment checkpoint: {s['deploymentsSincePause']}/{s['deploymentLimit']}")
-          if s['paused'] or s['deploymentsSincePause'] >= s['deploymentLimit']:
-              raise SystemExit('AUTONOMOUS LOOP PAUSED: deployment checkpoint reached.')
-          PY
-      - name: Deploy and smoke test
-        env:
-          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
-        run: |
-          set -euo pipefail
-          test -n "$VERCEL_DEPLOY_HOOK_URL"
-          curl --fail --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
-          expected="$(sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p' api/version.js)"
-          for attempt in $(seq 1 30); do
-            root="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json || true)"
-            v4="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/v4/manifest.json || true)"
-            v5="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/v5/manifest.json || true)"
-            meta="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/meta/series/mal%3A39535.json || true)"
-            if EXPECTED="$expected" ROOT="$root" V4="$v4" V5="$v5" META="$meta" python - <<'PY'
-          import json,os
-          expected=os.environ['EXPECTED']
-          root=json.loads(os.environ['ROOT']); v4=json.loads(os.environ['V4']); v5=json.loads(os.environ['V5']); meta=json.loads(os.environ['META'])
-          assert root.get('version')==expected and root.get('id')=='com.marki.nuvio.anime-releases.v5'
-          assert v4.get('version')==expected and v4.get('id')=='com.marki.nuvio.nuvio-anime-releases.v4'
-          assert v5.get('version')==expected and v5.get('id')=='com.marki.nuvio.anime-releases.v5'
-          assert meta.get('meta',{}).get('id')=='mal:39535'
-          assert isinstance(meta.get('meta',{}).get('videos'),list)
-          PY
-            then echo "Production smoke test passed."; break; fi
-            test "$attempt" -lt 30 && sleep 5 || { echo "Production smoke test failed."; exit 1; }
-          done
-      - name: Record minor release
-        env:
-          RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import json,re
-          from pathlib import Path
-          state_path=Path('ops/release-state.json'); state=json.loads(state_path.read_text())
-          version_path=Path('api/version.js'); current=re.search(r'ADDON_VERSION = "([^"]+)"',version_path.read_text()).group(1)
-          major,minor,_=map(int,current.split('.')); release=f'{major}.{minor}.0'; next_version=f'{major}.{minor+1}.0'
-          state['deploymentsSincePause']+=1; state['totalDeployments']+=1; state['paused']=state['deploymentsSincePause']>=state['deploymentLimit']
-          state['lastDeploymentSha']=__import__('os').environ['GITHUB_SHA']; state['lastDeploymentVersion']=current; state['nextReleaseVersion']=next_version; state['lastDeploymentTag']=f'v{release}'
-          version_path.write_text(f'export const ADDON_VERSION = "{next_version}";\n')
-          p=Path('package.json'); data=json.loads(p.read_text()); data['version']=next_version; p.write_text(json.dumps(data,indent=2)+'\n')
-          s=Path('api/stremio.js'); s.write_text(re.sub(r'version: "[^"]+"',f'version: "{next_version}"',s.read_text(),count=1))
-          r=Path('README.md'); text=r.read_text(); text=re.sub(r'(?m)^(# Anime Releases for Nuvio — v)\d+\.\d+\.\d+',rf'\g<1>{next_version}',text); text=re.sub(r'(?m)^(- \*\*Development version:\*\* `)\d+\.\d+\.\d+(`)',rf'\g<1>{next_version}\g<2>',text); r.write_text(text)
-          state_path.write_text(json.dumps(state,indent=2)+'\n')
-          Path('/tmp/release.json').write_text(json.dumps({'tag':f'v{release}','next':next_version,'sha':state['lastDeploymentSha']}))
-          PY
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add api/version.js package.json api/stremio.js README.md ops/release-state.json
-          git commit -m "chore: record Vercel deployment and advance to next minor baseline [skip-version-automation]"
-          git push
-          release_tag="$(python -c 'import json;print(json.load(open("/tmp/release.json"))["tag"])')"
-          sha="$(python -c 'import json;print(json.load(open("/tmp/release.json"))["sha"])')"
-          if git ls-remote --exit-code --tags origin "refs/tags/$release_tag" >/dev/null 2>&1; then exit 0; fi
-          previous="$(git tag --merged "$sha^" --sort=-version:refname --list 'v*' | head -n1 || true)"
-          if [ -n "$previous" ]; then summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$previous..$sha" | grep -Ev 'skip-version-automation|record Vercel deployment' | head -n 50 || true)"; else summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$sha" | head -n 50 || true)"; fi
-          [ -n "$summary" ] || summary='- No source commits to summarize.'
-          git tag -a "$release_tag" "$sha" -m "Release $release_tag
-
-Deployed source commit: $sha
-Changes included:
-$summary"
-          git push origin "refs/tags/$release_tag"
-
-  tag-major-release:
-    name: Tag major release
-    needs: test
-    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[major-release]') && !contains(github.event.head_commit.message, '[deploy-prod]')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with: {fetch-depth: 0}
-      - name: Tag major release
-        run: |
-          set -euo pipefail
-          version="$(sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p' api/version.js)"
-          [[ "$version" =~ ^[0-9]+\.0\.0$ ]]
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git tag -a "v$version" "$GITHUB_SHA" -m "Release v$version"
-          git push origin "refs/tags/v$version"
-
-  backfill-release-tag:
-    name: Backfill an existing deployment tag
-    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[tag-backfill]')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with: {fetch-depth: 0}
-      - name: Create requested tag
-        run: |
-          set -euo pipefail
-          target="$(python -c 'import json;print(json.load(open("ops/release-state.json"))["lastDeploymentSha"])')"
-          tag="$(python -c 'import json;print(json.load(open("ops/release-state.json"))["lastDeploymentTag"])')"
-          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then exit 0; fi
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git tag -a "$tag" "$target" -m "Release $tag\n\nHistorical deployment source commit: $target"
-          git push origin "refs/tags/$tag"
+      - name: Run unit tests
+        run: npm test
