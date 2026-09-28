@@ -45,7 +45,7 @@ test("manifest uses the canonical addon identity without a legacy version suffix
 });
 
 test("manifest cache is short enough to pick up seasonal catalog changes promptly", () => {
-  const match = manifestSource.match(/max-age=(\d+)/);
+  const match = manifestSource.match(/(?:^|[^a-z])max-age=(\d+)/);
   assert.ok(match);
   assert.ok(Number(match[1]) <= 60);
 });
