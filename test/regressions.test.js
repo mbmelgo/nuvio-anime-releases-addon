@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { reconcileEpisodeSequences, looksLikeSameSequence } from "../api/lib/episode-sequences.js";
 import { isSpecial, normalizeAniZipEpisode } from "../api/lib/episodes.js";
-import { numberSeasons, chooseRows, getReleaseInfo, isOngoing } from "../api/meta-resolver-v5.js";
+import { numberSeasons, chooseRows, getReleaseInfo, isOngoing, mergeFreshAbsoluteEpisodes } from "../api/meta-resolver-v5.js";
 
 const titles = (prefix, count, start = 1) =>
   Array.from({ length: count }, (_, index) => ({
@@ -128,6 +128,22 @@ test("One Piece regression: an incomplete Jikan tranche does not beat a complete
   assert.equal(result.length, 1200);
   assert.equal(result[0].title, "AniZip Episode 1");
   assert.equal(result.at(-1).number, 1200);
+});
+
+test("One Piece freshness regression: newer absolute episodes from a fallback source fill a stale ongoing sequence", () => {
+  const primary = [
+    { number: 1155, sourceSeason: 23, absoluteEpisodeNumber: 1155, title: "Episode 1155" },
+    { number: 1156, sourceSeason: 23, absoluteEpisodeNumber: 1156, title: "Episode 1156" }
+  ];
+  const fallback = [
+    { number: 25, sourceSeason: 2026, absoluteEpisodeNumber: 1157, title: "Episode 1157" },
+    { number: 26, sourceSeason: 2026, absoluteEpisodeNumber: 1158, title: "Episode 1158" }
+  ];
+
+  const result = mergeFreshAbsoluteEpisodes(primary, fallback, 23);
+
+  assert.deepEqual(result.map((row) => row.absoluteEpisodeNumber), [1155, 1156, 1157, 1158]);
+  assert.deepEqual(result.slice(-2).map((row) => row.sourceSeason), [23, 23]);
 });
 
 test("One Piece regression: ongoing anime prefers a longer AniZip sequence even when Jikan reports its tranche as complete", () => {
