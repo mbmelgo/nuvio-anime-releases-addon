@@ -117,7 +117,7 @@ jobs:
           current=re.search(r'ADDON_VERSION = "([^"]+)"',version_path.read_text()).group(1)
           major,minor,patch=map(int,current.split("."))
           next_version=f"{major}.{minor+1}.0"
-          tag=f"v{next_version}"
+          tag=f"v{current}"
           git_sha=os.environ["GITHUB_SHA"]
           version_path.write_text(f'export const ADDON_VERSION = "{next_version}";\n')
           package_path=Path("package.json")
@@ -128,7 +128,10 @@ jobs:
           stremio.write_text(re.sub(r'version: "[^"]+"',f'version: "{next_version}"',stremio.read_text(),count=1))
           readme=Path("README.md")
           text=readme.read_text()
-          readme.write_text(re.sub(r'\b(?:v|Version )\d+\.\d+\.\d+',lambda m:re.sub(r'\d+\.\d+\.\d+',next_version,m.group(0)),text))
+          text=re.sub(r'(?m)^(# Anime Releases for Nuvio — v)\d+\.\d+\.\d+',rf'\g<1>{next_version}',text)
+          text=re.sub(r'(?m)^(\- \*\*Development version:\*\* `)\d+\.\d+\.\d+(`)',rf'\g<1>{next_version}\g<2>',text)
+          text=re.sub(r'(?m)(current development(?:/release-candidate)? line is `)\d+\.\d+\.\d+(`)',rf'\g<1>{next_version}\g<2>',text)
+          readme.write_text(text)
           state["lastDeploymentSha"]=git_sha
           state["lastDeploymentVersion"]=current
           state["nextReleaseVersion"]=next_version
