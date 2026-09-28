@@ -181,6 +181,36 @@ test("Naruto regression fixture: separately titled sequels do not become seasons
   assert.deepEqual(groups.map((group) => group.entries[0].jikan.episodes), [220]);
 });
 
+
+test("Bleach regression fixture: a marked sequel chain is grouped after the requested series", () => {
+  const entries = [
+    {
+      jikan: { mal_id: 269, title: "Bleach", episodes: 366 },
+      node: { title: { english: "Bleach" }, startDate: { year: 2004, month: 10, day: 5 } }
+    },
+    {
+      jikan: { mal_id: 41467, title: "Bleach: Thousand-Year Blood War", episodes: 13 },
+      node: {
+        title: { english: "Bleach: Thousand-Year Blood War" },
+        startDate: { year: 2022, month: 10, day: 11 },
+        relations: { edges: [{ relationType: "PREQUEL", node: { idMal: 269 } }] }
+      }
+    },
+    {
+      jikan: { mal_id: 53998, title: "BLEACH: Sennen Kessen-hen - Ketsubetsu-tan", episodes: 13 },
+      node: {
+        title: { english: "BLEACH: Sennen Kessen-hen - Ketsubetsu-tan" },
+        startDate: { year: 2023, month: 7, day: 8 },
+        relations: { edges: [{ relationType: "PREQUEL", node: { idMal: 41467 } }] }
+      }
+    }
+  ];
+
+  const groups = numberSeasons(entries, 269);
+  assert.deepEqual(groups.map(group => group.season), [1, 2, 3]);
+  assert.deepEqual(groups.flatMap(group => group.entries.map(entry => entry.jikan.mal_id)), [269, 41467, 53998]);
+});
+
 test("Mushoku Tensei regression fixture: explicit season names remain authoritative", () => {
   const entries = [
     {
