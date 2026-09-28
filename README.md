@@ -5,18 +5,18 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `2.19.4` (current production baseline)
+- **Development version:** `2.19.4`
 - **Production release:** `v2.19.0`
 - **Next minor release baseline:** `2.20.0`
 - **Latest production tag:** `v2.19.0`
 - **Architecture:** **catalog-only**
 - **Detailed metadata:** delegated to **BingeCat / the configured metadata addon**
-- **CI status:** **green** for the `v2.19.0` release
+- **CI status:** **green** for the current main tree
 - **Deployment checkpoint:** **1/5 — deployment #1 of the current checkpoint cycle**
 
-The addon is now intentionally responsible only for anime release, airing, seasonal, and ranking catalogs. Detailed metadata is delegated to BingeCat rather than being duplicated inside this addon. Legacy metadata routes and the old local metadata resolver have been retired.
+The addon is intentionally responsible only for anime release and airing catalogs. Detailed metadata is delegated to BingeCat rather than duplicated inside this addon. Legacy metadata routes and the old local metadata resolver have been retired.
 
-Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated through GitHub Actions and the Vercel deployment hook. The `v2.19.0` production release was deployed after CI passed and the production smoke test succeeded.
+Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated through GitHub Actions and the Vercel deployment hook.
 
 ## URLs
 
@@ -27,33 +27,28 @@ Automatic Vercel Git deployments are intentionally disabled. Production deployme
 
 ## Supported catalogs
 
-All catalogs are generated dynamically from the current date and AniList data. Seasonal names therefore move automatically from one year/season to the next; no annual catalog rewrite is required.
+The addon exposes exactly five catalogs. Seasonal catalogs are generated dynamically from the current date, so they automatically move from one season/year to the next. The latest/upcoming episode catalogs use rolling seven-day windows and are cached for up to one hour.
 
 | Catalog | Production URL | Purpose |
 |---|---|---|
-| **Ongoing** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/ongoing.json | Currently releasing anime from the current and previous season |
-| **Airing Today** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/airing_today.json | Anime with an episode airing today in Asia/Manila time |
-| **New Episodes — Last 7 Days** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/new_episodes.json | Anime with recently aired episodes |
-| **Next Episodes — Next 7 Days** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/next_episodes.json | Anime with scheduled episodes in the next 7 days |
-| **Upcoming** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/upcoming.json | Not-yet-released anime in the next season |
-| **Finished — Current Season** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/finished_current.json | Anime that finished during the current season |
+| **Upcoming Season** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/upcoming_season.json | Anime scheduled for the next season |
+| **Current Season** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/current_season.json | Anime in the current season |
 | **Previous Season** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/previous_season.json | Anime from the immediately preceding season |
-| **Popular — Current Season** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/popular_current.json | Current-season anime ordered by popularity |
-| **Top Rated — Current Season** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/top_rated_current.json | Current-season anime ordered by score |
-| **Trending — Current Season** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/trending_current.json | Current-season anime ordered by AniList trending score |
+| **Latest Anime — Last 7 Days** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/new_episodes.json | Anime with episodes released within the rolling last 7 days |
+| **Upcoming Anime — Next 7 Days** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/upcoming_episodes.json | Anime with episodes scheduled within the rolling next 7 days |
 
-The unversioned `/...` URLs are the **canonical production URLs**. There is no separate public v4/v5 route namespace; the current addon architecture is simply the current production API.
+The unversioned `/...` URLs are the **canonical production URLs**. There is no separate public v4/v5 route namespace.
 
 ## Resolver architecture
 
 ```text
 AniList
    ↓
-Season-aware catalog generation
+Season / airing catalog generation
    ↓
-MAL/AniList identity
+MAL / AniList identity
    ↓
-IMDb/TMDB/TVDB compatibility mapping
+IMDb / TMDB / TVDB compatibility mapping
    ↓
 Nuvio catalog
    ↓
@@ -66,38 +61,31 @@ The root manifest is the recommended installation URL. The addon does not provid
 
 ## Metadata delegation
 
-Seasonal catalog entries are dynamically resolved and their MAL/AniList identities are translated to compatible IMDb/TMDB/TVDB identities when available. For later-season entries, the mapper checks related original/prequel anime metadata, then AniZip maintained cross-database mappings, then original/base-name candidates with seasonal suffixes removed. This allows BingeCat to resolve the franchise identity without maintaining a duplicate metadata resolver in this project.
+Catalog entries are translated to compatible IMDb/TMDB/TVDB identities when available. For later-season entries, the mapper checks related original/prequel anime metadata, then AniZip mappings, then original/base-name candidates with seasonal suffixes removed. Ambiguous name-only mappings are rejected rather than guessed. This allows BingeCat to resolve the franchise identity without maintaining a duplicate metadata resolver in this project.
 
 Unmapped entries retain their original MAL/AniList identity rather than being assigned an unsupported or guessed ID.
 
-## Resolver behavior covered by regression tests
+## Regression coverage
 
-- Franchise continuation detection, including parent-side sequel relationships
-- Root-series identity when a later seasonal entry is requested
-- Recovery of an unmarked earlier season from later-season requests
-- `Final Season` continuation handling
-- Roman-numeral season markers `II` through `X`
-- Protection against treating ordinary standalone `I` as a season marker
-- Long-running anime without an arbitrary 100-episode ceiling
-- Episode ID uniqueness and normalization
-- Episode sequence reconciliation across sources
+- Franchise continuation and original/root-series identity
+- Later-season and seasonal-title mapping
+- Ambiguous external-name mapping protection
+- Roman-numeral and numbered season handling
+- Episode identity normalization and reconciliation
 - Special/recap/OVA/ONA/movie filtering
-- Finished-series primary-source selection
-- Ongoing-series freshness fallback
-- Upcoming episode preservation with scheduled release dates
-- Original/base-name matching for seasonal titles
+- Upcoming and recently aired episode windows
+- Exact rolling seven-day catalog boundaries
+- Dynamic previous/current/upcoming season calculation
 - IMDb/TMDB/TVDB identity delegation
 - Catalog-only routing with legacy metadata endpoints disabled
 
 ## Performance
 
-The catalog resolver uses bounded provider lookups and caching to keep seasonal catalog generation practical for Vercel. Mapping work is performed only for catalog identities that need compatibility translation.
-
-Performance optimization remains a secondary priority while functional correctness and robustness are being finalized.
+The catalog resolver uses bounded provider lookups and caching to keep seasonal catalog generation practical for Vercel. Rolling episode catalogs are cached for up to one hour so the list can refresh hourly while never searching outside its seven-day window.
 
 ## Data sources
 
-AniList is the primary source for anime release, season/status, artwork, scores, popularity, airing schedules, franchise relationships, and external links. Jikan and AniZip provide MAL mappings, episode data, broadcast/provider information, and fallbacks. Wikidata provides an additional cross-database fallback when a compatible identity cannot be obtained from the primary mapping sources. TVMaze is limited to freshness supplementation for ongoing long-running series.
+AniList is the primary source for anime release, season/status, artwork, scores, airing schedules, franchise relationships, and external links. AniZip and other compatibility sources provide cross-database mappings and fallbacks. Wikidata is used only as a constrained cross-database fallback when a compatible identity cannot be obtained from primary mappings.
 
 ## Release workflow
 
@@ -106,7 +94,7 @@ Requirement / bug
     ↓
 Regression test
     ↓
-Implementation
+Generalized implementation
     ↓
 npm test / GitHub Actions
     ↓
@@ -116,8 +104,6 @@ PASS
     ↓
 Batch related production-ready changes
     ↓
-Version verification / release documentation
-    ↓
 [deploy-prod]
     ↓
 Deployment checkpoint
@@ -126,19 +112,18 @@ Deployment checkpoint
     ↓
 Live validation
     ↓
-Minor release tag
+Minor release tag + release-state update
 ```
 
 The deployment checkpoint is stored in `ops/release-state.json`.
 
 ### Versioning
 
-- Every source commit increments the patch version during normal development.
+- Every project-changing commit increments the patch version.
 - Each successful production deployment creates a minor release baseline.
 - Major releases are manually decided.
-- Minor and major releases receive annotated Git tags with human-readable change summaries.
-- The historical `v2.16.0` tag was intentionally left uncreated per project decision; existing release tags were not otherwise rewritten.
-- Production release tags are created by the marker-gated GitHub Actions workflow.
+- Minor and major releases receive annotated Git tags with human-readable summaries.
+- The historical `v2.16.0` tag was intentionally left uncreated per project decision.
 
 ## Key endpoints
 
@@ -148,7 +133,7 @@ The deployment checkpoint is stored in `ops/release-state.json`.
 /catalog/series/:id.json  Canonical production series catalog
 ```
 
-There are intentionally no `/v5` aliases and no public `/meta` routes in the production Vercel configuration.
+There are intentionally no `/v5` aliases and no public `/meta` routes.
 
 ## Streams
 
