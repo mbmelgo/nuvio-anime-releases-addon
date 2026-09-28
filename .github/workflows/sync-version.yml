@@ -11,7 +11,8 @@ jobs:
   bump-patch:
     if: >-
       !contains(github.event.head_commit.message, '[skip-version-automation]') &&
-      !contains(github.event.head_commit.message, '[deploy-prod]')
+      !contains(github.event.head_commit.message, '[deploy-prod]') &&
+      !contains(github.event.head_commit.message, '[major-release]')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -59,3 +60,38 @@ jobs:
           git add api/version.js package.json api/stremio.js README.md
           git commit -m "chore: bump patch version [skip-version-automation]"
           git push
+
+  tag-major-release:
+    name: Tag major release
+    if: >-
+      github.event_name == 'push' &&
+      contains(github.event.head_commit.message, '[major-release]') &&
+      !contains(github.event.head_commit.message, '[skip-version-automation]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate and tag major release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="$(sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p' api/version.js)"
+          if ! [[ "$version" =~ ^[0-9]+\.0\.0$ ]]; then
+            echo "Major release marker requires an x.0.0 version; found $version."
+            exit 1
+          fi
+
+          tag="v$version"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" "$GITHUB_SHA" -m "Release $tag"
+          git push origin "$tag"
