@@ -58,7 +58,7 @@ test("catalog delegation prefers the original anime's related metadata for a sea
 test("catalog delegation uses the original anime name when ID metadata has no compatible link", async () => {
   const originalFetch = globalThis.fetch;
   let call = 0;
-  globalThis.fetch = async () => {
+  globalThis.fetch = async (_url, options = {}) => {
     call += 1;
     if (call === 1) {
       return new Response(JSON.stringify({ data: { Page: { media: [{
@@ -70,6 +70,10 @@ test("catalog delegation uses the original anime name when ID metadata has no co
         relations: { edges: [] },
       }] } } }), { status: 200, headers: { "content-type": "application/json" } });
     }
+
+    assert.equal(options.method, "POST");
+    assert.match(String(options.headers?.["content-type"] || ""), /application\/x-www-form-urlencoded/i);
+    assert.match(String(options.body || ""), /query=/);
     return new Response(JSON.stringify({ results: { bindings: [{ label: { value: "Example Anime" }, imdb: { value: "tt12345678" } }] } }), { status: 200, headers: { "content-type": "application/json" } });
   };
 
