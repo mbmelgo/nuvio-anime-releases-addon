@@ -77,33 +77,32 @@ export function isSeasonContinuation(rootNode, candidateNode, rootJikan = null, 
   const rootKeys = titleKeys(rootNode, rootJikan);
   const candidateKeys = titleKeys(candidateNode, candidateJikan);
   if (!rootKeys.length || !candidateKeys.length) return false;
+  if (candidateKeys.some(key => rootKeys.includes(key))) return true;
 
-  // A continuation must retain the same normalized franchise title after
-  // removing explicit season/part markers. This prevents Naruto -> Shippuden
-  // and Naruto -> Boruto from being promoted to seasons while still allowing
-  // Mushoku Tensei II / Part 2 and Attack on Titan Season 2.
-  return candidateKeys.some(key => rootKeys.includes(key));
+  // Some providers give different subtitles for the same franchise entry
+  // (e.g. Mushoku Tensei's English vs. Japanese titles). For an explicit
+  // season/part marker, compare the franchise stem before the subtitle.
+  const rootStems = stemKeys(rootNode, rootJikan);
+  const candidateStems = stemKeys(candidateNode, candidateJikan);
+  return candidateStems.some(stem => rootStems.includes(stem));
 }
 
-function titleKeys(node, jikan) {
-  const values = [
+function titleValues(node, jikan) {
+  return [
     ...(Array.isArray(node?.synonyms) ? node.synonyms : []),
     node?.title?.english, node?.title?.romaji, node?.title?.native,
     ...(Array.isArray(jikan?.title_synonyms) ? jikan.title_synonyms : []),
     jikan?.title_english, jikan?.title, jikan?.title_japanese
-  ].filter(Boolean).map(normalizeFranchiseTitle);
-  return [...new Set(values.filter(Boolean))];
+  ].filter(Boolean).map(String);
 }
-
+function titleKeys(node, jikan) { return [...new Set(titleValues(node, jikan).map(normalizeFranchiseTitle).filter(Boolean))]; }
+function stemKeys(node, jikan) { return [...new Set(titleValues(node, jikan).map(normalizeFranchiseStem).filter(Boolean))]; }
 function normalizeFranchiseTitle(value) {
-  return String(value)
-    .toLowerCase()
-    .replace(/\b(?:season|s)\s*\d+\b/gi, " ")
-    .replace(/\b(?:part|cour)\s*[12]\b/gi, " ")
-    .replace(/\b(?:ii|iii|iv|v)\b/gi, " ")
-    .replace(/[：:：\-–—,]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return String(value).toLowerCase().replace(/\b(?:season|s)\s*\d+\b/gi, " ").replace(/\b(?:part|cour)\s*[12]\b/gi, " ").replace(/\b(?:ii|iii|iv|v)\b/gi, " ").replace(/[：:：\-–—,]+/g, " ").replace(/\s+/g, " ").trim();
+}
+function normalizeFranchiseStem(value) {
+  const normalized = normalizeFranchiseTitle(value);
+  return normalized.split(/\s+(?:the|a|an)\s+/i)[0].split(/\s+[/|]\s+/)[0].split(/\s+\b(?:jobless reincarnation|isekai ittara honki dasu)\b/i)[0].trim();
 }
 
 function nextSeasonNumber(groups) { const max = groups.reduce((n, g) => Math.max(n, Number(g.season) || 0), 0); return max + 1; }
@@ -113,76 +112,46 @@ function startTime(entry) { const d = entry.node?.startDate; return d?.year ? Da
 
 async function buildVideos(groups) {
   const out = new Map();
-
   for (const group of groups) {
     const sequences = [];
-
     for (const entry of group.entries) {
       const malId = Number(entry.jikan?.mal_id);
       if (!malId) continue;
-
       const expected = Number(entry.jikan?.episodes) || 0;
       const ongoing = isOngoing(entry.jikan);
       const mapping = await getAniZipMapping(malId);
-      const aniZipRows = mapping?.anilist_id
-        ? mergeEpisodeRows(await getAniZipEpisodes(mapping.anilist_id))
-        : [];
-      const jikanRows = (await getJikanEpisodes(malId, MAX_EPISODE_PAGES))
-        .map(normalizeJikanEpisode)
-        .filter(Boolean);
-
+      const aniZipRows = mapping?.anilist_id ? mergeEpisodeRows(await getAniZipEpisodes(mapping.anilist_id)) : [];
+      const jikanRows = (await getJikanEpisodes(malId, MAX_EPISODE_PAGES)).map(normalizeJikanEpisode).filter(Boolean);
       const rows = chooseRows(jikanRows, aniZipRows, expected, ongoing);
       if (!rows.length) continue;
-
-      const identity = /^tt\d+$/i.test(String(mapping?.imdb_id || ""))
-        ? String(mapping.imdb_id)
-        : `mal:${malId}`;
-
+      const identity = /^tt\d+$/i.test(String(mapping?.imdb_id || "")) ? String(mapping.imdb_id) : `mal:${malId}`;
       sequences.push({ identity, rows });
     }
-
     const planned = reconcileEpisodeSequences(sequences);
-
     for (const row of planned) {
-      const targetSeason =
-        groups.length === 1 && Number(row.sourceSeason) > 0
-          ? Number(row.sourceSeason)
-          : group.season;
-
+      const targetSeason = groups.length === 1 && Number(row.sourceSeason) > 0 ? Number(row.sourceSeason) : group.season;
       const episode = Number(row.canonicalNumber);
       if (!Number.isInteger(targetSeason) || targetSeason <= 0 || !Number.isInteger(episode) || episode <= 0) continue;
-
       const identity = row.identity || "mal:unknown";
       const key = `${targetSeason}:${episode}`;
-      const video = {
-        id: `${identity}:${targetSeason}:${episode}`,
-        title: row.title || `Episode ${episode}`,
-        season: targetSeason,
-        episode
-      };
-
+      const video = { id: `${identity}:${targetSeason}:${episode}`, title: row.title || `Episode ${episode}`, season: targetSeason, episode };
       if (row.released) video.released = row.released;
       if (row.thumbnail) video.thumbnail = row.thumbnail;
-
       const old = out.get(key);
       if (!old || better(video, old)) out.set(key, video);
     }
   }
-
   return [...out.values()].sort((a,b) => a.season - b.season || a.episode - b.episode);
 }
 
-function isOngoing(anime) {
-  return Boolean(anime?.airing) || /currently\s+airing/i.test(String(anime?.status || "")) || !anime?.aired?.to;
-}
+function isOngoing(anime) { return Boolean(anime?.airing) || /currently\s+airing/i.test(String(anime?.status || "")) || !anime?.aired?.to; }
 
 export function chooseRows(jikanRows, aniZipRows, expected = 0, ongoing = false) {
   const jikan = Array.isArray(jikanRows) ? jikanRows : [];
   const aniZip = Array.isArray(aniZipRows) ? aniZipRows : [];
-
   if (ongoing && aniZip.length > jikan.length) return enrichRows(aniZip, jikan);
   if (expected > 0 && jikan.length >= expected) return enrichRows(jikan, aniZip);
-  if (expected > 0 && jikan.length > 0 && aniZip.length >= expected) return fillMissingRows(jikan, aniZip, expected);
+  if (expected > 0 && jikan.length > 0 && aniZip.length >= expected && jikan.length / expected >= 0.8) return fillMissingRows(jikan, aniZip, expected);
   if (expected > 0 && aniZip.length >= expected) return enrichRows(aniZip, jikan);
   if (aniZip.length > jikan.length) return enrichRows(aniZip, jikan);
   return enrichRows(jikan, aniZip);
@@ -190,8 +159,7 @@ export function chooseRows(jikanRows, aniZipRows, expected = 0, ongoing = false)
 function enrichRows(primary, secondary) {
   const enrich = new Map(secondary.map(x => [Number(x.number), x]));
   return primary.map((row) => {
-    const e = enrich.get(row.number);
-    if (!e) return row;
+    const e = enrich.get(row.number); if (!e) return row;
     const merged = { ...row };
     if (row.title === `Episode ${row.number}` && e.title) merged.title = e.title;
     if (!row.released && e.released) merged.released = e.released;
@@ -202,19 +170,14 @@ function enrichRows(primary, secondary) {
 }
 function fillMissingRows(primary, secondary, expected) {
   const merged = new Map(primary.map(row => [Number(row.number), row]));
-  for (const row of secondary) {
-    const number = Number(row.number);
-    if (number > 0 && number <= expected && !merged.has(number)) merged.set(number, row);
-  }
+  for (const row of secondary) { const number = Number(row.number); if (number > 0 && number <= expected && !merged.has(number)) merged.set(number, row); }
   return [...merged.values()].sort((a,b) => Number(a.number) - Number(b.number));
 }
 function better(a,b) { return (/^Episode \d+$/i.test(b.title) && !/^Episode \d+$/i.test(a.title)) || (!b.thumbnail && a.thumbnail) || (!b.released && a.released); }
 
 export function getReleaseInfo(root, videos) {
   const startYear = root?.aired?.from ? new Date(root.aired.from).getUTCFullYear() : (root?.year || null);
-  const releasedYears = (Array.isArray(videos) ? videos : [])
-    .map((video) => video?.released ? new Date(video.released).getUTCFullYear() : null)
-    .filter((year) => Number.isInteger(year));
+  const releasedYears = (Array.isArray(videos) ? videos : []).map((video) => video?.released ? new Date(video.released).getUTCFullYear() : null).filter((year) => Number.isInteger(year));
   const endYear = releasedYears.length ? Math.max(...releasedYears) : null;
   if (!startYear) return null;
   return `${startYear}${endYear && endYear >= startYear ? `-${endYear}` : "-"}`;
@@ -230,7 +193,6 @@ function buildMeta(root, requestedId, videos) {
   if (root.aired?.from) meta.released = root.aired.from;
   meta.releaseInfo = getReleaseInfo(root, videos);
   if (!meta.releaseInfo) delete meta.releaseInfo;
-
   if (videos.length) meta.behaviorHints = { defaultVideoId: videos[0].id };
   return meta;
 }
