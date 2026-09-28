@@ -96,6 +96,16 @@ test("One Piece regression: an incomplete Jikan tranche does not beat a complete
   assert.equal(result.at(-1).number, 1200);
 });
 
+test("One Piece regression: ongoing anime prefers a longer AniZip sequence even when Jikan reports its tranche as complete", () => {
+  const jikan = titles("Jikan", 100);
+  const aniZip = titles("AniZip", 1200);
+
+  const result = chooseRows(jikan, aniZip, 100, true);
+  assert.equal(result.length, 1200);
+  assert.equal(result[0].title, "AniZip Episode 1");
+  assert.equal(result.at(-1).number, 1200);
+});
+
 test("Episode source regression: a complete Jikan sequence remains authoritative when AniZip has extras", () => {
   const jikan = titles("Jikan", 24);
   const aniZip = titles("AniZip", 25);
