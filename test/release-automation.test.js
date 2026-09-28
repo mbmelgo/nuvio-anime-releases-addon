@@ -4,11 +4,10 @@ import fs from "node:fs";
 
 const deployWorkflow = fs.readFileSync(new URL("../.github/workflows/test.yml", import.meta.url), "utf8");
 
-test("production deployment workflow is gated on completed green CI", () => {
-  assert.match(deployWorkflow, /workflow_run:/);
-  assert.match(deployWorkflow, /workflows: \["Verify automatic version commits"\]/);
-  assert.match(deployWorkflow, /github\.event\.workflow_run\.conclusion == 'success'/);
-  assert.match(deployWorkflow, /contains\(github\.event\.workflow_run\.head_commit\.message, '\[deploy-prod\]'\)/);
+test("production deployment workflow runs full CI before deployment", () => {
+  assert.match(deployWorkflow, /Run full CI before production deployment/);
+  assert.match(deployWorkflow, /npm test/);
+  assert.match(deployWorkflow, /contains\(github\.event\.head_commit\.message, '\[deploy-prod\]'\)/);
 });
 
 test("production deployment workflow creates the annotated release tag after deployment smoke tests", () => {

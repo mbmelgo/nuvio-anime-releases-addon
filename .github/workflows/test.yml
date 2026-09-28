@@ -1,25 +1,29 @@
 name: Controlled Vercel production release
 
 on:
-  workflow_run:
-    workflows: ["Verify automatic version commits"]
-    types: [completed]
+  push:
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
-  deploy-production:
-    name: Deploy to Vercel production
-    if: ${{ github.event.workflow_run.conclusion == 'success' && contains(github.event.workflow_run.head_commit.message, '[deploy-prod]') }}
+  release:
+    if: ${{ contains(github.event.head_commit.message, '[deploy-prod]') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout release candidate
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Run full CI before production deployment
+        run: npm test
       - name: Validate release state
         run: |
           python - <<'PY'
@@ -29,13 +33,11 @@ jobs:
           state = json.loads(Path('ops/release-state.json').read_text())
           version = re.search(r'ADDON_VERSION = "([^"]+)"', Path('api/version.js').read_text()).group(1)
           expected = state['nextReleaseVersion']
-          print(f"Deployment checkpoint: {state['deploymentsSincePause']}/{state['deploymentLimit']}")
-          print(f"Production version: {version}")
-          print(f"Expected release baseline: {expected}")
           if state['paused'] or state['deploymentsSincePause'] >= state['deploymentLimit']:
               raise SystemExit('Deployment checkpoint reached.')
           if version != expected:
               raise SystemExit(f'Production version {version} does not match next release baseline {expected}.')
+          print(f'Release gate passed: {version}')
           PY
       - name: Trigger Vercel deployment
         env:
@@ -108,7 +110,7 @@ $summary"
           state['deploymentsSincePause'] = deployments
           state['totalDeployments'] += 1
           state['paused'] = deployments >= state['deploymentLimit']
-          state['lastDeploymentSha'] = '${{ github.event.workflow_run.head_sha }}'
+          state['lastDeploymentSha'] = '${{ github.sha }}'
           state['lastDeploymentId'] = ''
           state['lastDeploymentVersion'] = version
           state['nextReleaseVersion'] = f'{major}.{minor + 1}.0'
