@@ -1,0 +1,23 @@
+name: Apply AniList priority patch
+
+on:
+  push:
+    branches: [fix/anilist-priority-tvdb-mapping]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[patch-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prefer AniList identity for TVDB mapping
+        run: |
+          python -c 'from pathlib import Path; p=Path("lib/kitsu-canonical.js"); s=p.read_text(); old="""  let preferredTvdbId = null;\n  try {\n    preferredTvdbId = await resolveWithAniBridgeTvdb(source.source, source.id, fetchImpl, now);\n  } catch (error) {"""; new="""  let preferredTvdbId = null;\n  const anilistSourceId = meta?.extra?.anilistId ? String(meta.extra.anilistId) : null;\n  try {\n    if (anilistSourceId) preferredTvdbId = await resolveWithAniBridgeTvdb(\"anilist\", anilistSourceId, fetchImpl, now);\n    if (!preferredTvdbId) preferredTvdbId = await resolveWithAniBridgeTvdb(source.source, source.id, fetchImpl, now);\n  } catch (error) {"""; assert old in s; p.write_text(s.replace(old,new,1))'
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lib/kitsu-canonical.js
+          git commit -m "fix: prefer AniList identity for TVDB mapping [patch-applied]"
+          git push
