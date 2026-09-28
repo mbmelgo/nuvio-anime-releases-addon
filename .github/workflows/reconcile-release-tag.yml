@@ -1,0 +1,79 @@
+name: Reconcile production minor release tag
+
+on:
+  workflow_run:
+    workflows: ["Unit tests and controlled Vercel deployment"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      contains(github.event.workflow_run.head_commit.message, '[deploy-prod]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout production state
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Reconcile production tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_version="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          print(json.loads(Path("ops/release-state.json").read_text())["lastDeploymentVersion"])
+          PY
+          )"
+          target_sha="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          print(json.loads(Path("ops/release-state.json").read_text())["lastDeploymentSha"])
+          PY
+          )"
+          expected_tag="$(node --input-type=module -e 'import { minorReleaseVersion } from "./lib/release-version.js"; console.log(`v${minorReleaseVersion(process.argv[1])}`)' "$source_version")"
+          wrong_tag="v$source_version"
+
+          echo "Production source: $source_version"
+          echo "Expected minor tag: $expected_tag"
+          echo "Deployment SHA: $target_sha"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$expected_tag" >/dev/null 2>&1; then
+            echo "$expected_tag already exists."
+            exit 0
+          fi
+
+          previous_tag="$(git tag --merged "$target_sha^" --sort=-version:refname --list 'v*' | head -n1 || true)"
+          if [ -n "$previous_tag" ]; then
+            change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$previous_tag..$target_sha" | grep -Ev '^- chore: bump patch version \[skip-version-automation\]|^- chore: record Vercel deployment and bump release' | head -n 50 || true)"
+            since_line="Changes since $previous_tag:"
+          else
+            change_summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$target_sha" | grep -Ev '^- chore: bump patch version \[skip-version-automation\]|^- chore: record Vercel deployment and bump release' | head -n 50 || true)"
+            since_line="Changes included in this release:"
+          fi
+          [ -n "$change_summary" ] || change_summary="- Production changes are represented by the deployed source commit."
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          tag_message="Release $expected_tag
+
+Deployed source version: $source_version
+Deployed source commit: $target_sha
+$since_line
+$change_summary"
+          git tag -a "$expected_tag" "$target_sha" -m "$tag_message"
+          git push origin "refs/tags/$expected_tag"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$wrong_tag" >/dev/null 2>&1 && [ "$wrong_tag" != "$expected_tag" ]; then
+            echo "Removing erroneous patch-level deployment tag $wrong_tag."
+            git push origin --delete "$wrong_tag"
+          fi
+
+          echo "Production release tag reconciled to $expected_tag."
