@@ -8,16 +8,11 @@ A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio
 - **Development version:** `2.16.59`
 - **Next minor release baseline:** `2.17.0`
 - **Latest production tag:** `v2.16.0`
-- **Latest production source commit:** `e0a6411a57dd87ad91570b54ca5376c80fcb3532`
-- **Latest production source version:** `2.16.15`
-- **Latest production deployment:** `dpl_6HEm7mWPqx9aXA5W1aDspsRw4Wae`
 - **Production resolver:** **v5**
-- **Legacy resolver:** **v4**, retained for side-by-side validation
-- **Active deployment checkpoint:** **1/5**
-- **Total production deployments:** **21**
+- **Legacy resolver:** **retired**
 - **CI status:** **green**
 
-The current production build contains the root-series metadata and performance fixes. The IMDb fallback fix is CI-verified and is included in the next controlled production deployment.
+The production addon now uses a single v5 resolver. The former v4 implementation and side-by-side resolver selector have been removed to reduce maintenance and routing complexity.
 
 Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated through GitHub Actions and the Vercel deployment hook.
 
@@ -26,9 +21,7 @@ Automatic Vercel Git deployments are intentionally disabled. Production deployme
 - GitHub: https://github.com/mbmelgo/nuvio-anime-releases-addon
 - Vercel: https://nuvio-anime-releases-addon-rho.vercel.app
 - Production manifest: https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json
-- Resolver selector: https://nuvio-anime-releases-addon-rho.vercel.app/
-- v4 manifest: https://nuvio-anime-releases-addon-rho.vercel.app/v4/manifest.json
-- v5 manifest: https://nuvio-anime-releases-addon-rho.vercel.app/v5/manifest.json
+- Installer home: https://nuvio-anime-releases-addon-rho.vercel.app/
 
 ## Resolver architecture
 
@@ -45,17 +38,18 @@ Automatic Vercel Git deployments are intentionally disabled. Production deployme
     ↓
   v5 compatibility route
 
-/v4/...
+/catalog/series/:id.json
     ↓
-  v4 legacy resolver
+  shared catalog resolver
 ```
 
-The landing page provides a resolver selector so v4 and v5 can be installed and tested independently.
+The root manifest is the recommended installation URL. The explicit `/v5/...` routes remain available for compatibility/testing, but there is no longer a v4 resolver.
 
 ## Resolver behavior covered by regression tests
 
 - Franchise continuation detection, including parent-side sequel relationships
 - Root-series identity when a later seasonal entry is requested
+- Recovery of an unmarked earlier season from later-season requests
 - `Final Season` continuation handling
 - Roman-numeral season markers `II` through `X`
 - Protection against treating ordinary standalone `I` as a season marker
@@ -65,7 +59,6 @@ The landing page provides a resolver selector so v4 and v5 can be installed and 
 - Special/recap/OVA/ONA/movie filtering
 - Finished-series primary-source selection
 - Ongoing-series freshness fallback
-- v4/v5 manifest selection and production routing
 - Rich series metadata including release information, country, language, certification, background art, networks, studios, cast, trailers, recommendations, external links, and season/episode presentation data
 
 ## Rich metadata
@@ -96,6 +89,8 @@ Season-specific episode and airing data remains available while the primary seri
 
 The v5 rich metadata path is optimized to avoid repeating the expensive base resolver work. The rich layer reuses the resolved franchise graph and season groups instead of resolving the same MAL graph a second time. Franchise graph discovery is performed in bounded parallel batches, while provider caching remains enabled with Vercel-friendly `s-maxage`/stale-while-revalidate headers.
 
+Performance optimization remains a secondary priority while functional correctness and robustness are being finalized.
+
 ## Data sources
 
 AniList is the primary source for metadata, season/status information, artwork, scores, popularity, airing schedules, franchise relationships, cast, studios, trailers, recommendations, and external links. Jikan and AniZip provide MAL mappings, episode data, broadcast/provider information, and fallbacks. TVMaze is limited to freshness supplementation for ongoing long-running series.
@@ -123,8 +118,7 @@ The deployment checkpoint is stored in `ops/release-state.json`.
 ### Versioning
 
 - Every source commit increments the patch version during normal development.
-- Each successful production deployment creates a minor release baseline (`2.14.0 → 2.15.0 → 2.16.0`); the deployed source may carry the current patch version within that baseline.
-- After deployment, development advances to the next minor baseline for subsequent patch commits.
+- Each successful production deployment creates a minor release baseline.
 - Major releases are manually decided.
 - Minor and major releases receive annotated Git tags with human-readable change summaries.
 - No historical tag backfill is performed unless explicitly requested.
@@ -132,21 +126,15 @@ The deployment checkpoint is stored in `ops/release-state.json`.
 ## Key endpoints
 
 ```text
-/                         Resolver selection home page
+/                         Installer home page
 /manifest.json            Production v5 addon manifest
-/v4/manifest.json         Explicit v4 addon manifest
-/v5/manifest.json         Explicit v5 addon manifest
+/v5/manifest.json         Explicit v5 manifest
 /catalog/series/:id.json  Production series catalog
 /meta/series/:id.json     Production v5 rich series metadata
-/v4/meta/series/:id.json Explicit v4 metadata
-/v5/meta/series/:id.json Explicit v5 metadata
+/v5/meta/series/:id.json  Explicit v5 metadata
 /api/meta/series/:id.json v5 metadata compatibility route
 ```
 
 ## Streams
 
 This is a **catalog and metadata addon only**. It does not provide video streams, downloads, torrent hashes, or playback sources.
-
-## Release state
-
-The latest production deployment is source version `2.16.15` from commit `e0a6411a57dd87ad91570b54ca5376c80fcb3532`, with production deployment ID `dpl_6HEm7mWPqx9aXA5W1aDspsRw4Wae`. The release baseline is `v2.16.0`. The active deployment checkpoint is **1/5**; the next development minor baseline is `2.17.0`.
