@@ -11,6 +11,14 @@ function mockFetch(routes) {
   };
 }
 
+function graphqlId(options) {
+  try {
+    return JSON.parse(options.body || "{}").variables?.id;
+  } catch {
+    return null;
+  }
+}
+
 test.beforeEach(() => clearCanonicalizationCache());
 
 test("promotes a seasonal entry to the root series TVDB identity", async () => {
@@ -19,7 +27,7 @@ test("promotes a seasonal entry to the root series TVDB identity", async () => {
     { match: (url) => url.includes("kitsu.io/api/edge/anime/200/mappings"), body: { data: [] } },
     { match: (url) => url.includes("kitsu.io/api/edge/anime/200") && !url.includes("/mappings"), body: { data: { id: "200", attributes: { canonicalTitle: "Example Anime Season 2", titles: { en: "Example Anime Season 2" } } } } },
     {
-      match: (url) => url.includes("graphql.anilist.co"),
+      match: (url, options) => url.includes("graphql.anilist.co") && graphqlId(options) === 2000,
       body: {
         data: {
           Media: {
@@ -27,19 +35,17 @@ test("promotes a seasonal entry to the root series TVDB identity", async () => {
             idMal: 20001,
             title: { romaji: "Example Anime Season 2" },
             relations: {
-              edges: [
-                {
-                  relationType: "PREQUEL",
-                  node: {
-                    id: 1000,
-                    idMal: 10001,
-                    format: "TV",
-                    title: { romaji: "Example Anime" },
-                  },
-                },
-              ],
+              edges: [{ relationType: "PREQUEL", node: { id: 1000, idMal: 10001, format: "TV", title: { romaji: "Example Anime" } } }],
             },
           },
+        },
+      },
+    },
+    {
+      match: (url, options) => url.includes("graphql.anilist.co") && graphqlId(options) === 1000,
+      body: {
+        data: {
+          Media: { id: 1000, idMal: 10001, title: { romaji: "Example Anime" }, relations: { edges: [] } },
         },
       },
     },
@@ -65,29 +71,16 @@ test("preserves the seasonal identity when no root TVDB mapping exists", async (
     { match: (url) => url.includes("kitsu.io/api/edge/anime/200/mappings"), body: { data: [] } },
     { match: (url) => url.includes("kitsu.io/api/edge/anime/200") && !url.includes("/mappings"), body: { data: { id: "200", attributes: { canonicalTitle: "Example Anime Season 2", titles: { en: "Example Anime Season 2" } } } } },
     {
-      match: (url) => url.includes("graphql.anilist.co"),
+      match: (url, options) => url.includes("graphql.anilist.co") && graphqlId(options) === 2000,
       body: {
         data: {
-          Media: {
-            id: 2000,
-            idMal: 20001,
-            title: { romaji: "Example Anime Season 2" },
-            relations: {
-              edges: [
-                {
-                  relationType: "PREQUEL",
-                  node: {
-                    id: 1000,
-                    idMal: 10001,
-                    format: "TV",
-                    title: { romaji: "Example Anime" },
-                  },
-                },
-              ],
-            },
-          },
+          Media: { id: 2000, idMal: 20001, title: { romaji: "Example Anime Season 2" }, relations: { edges: [{ relationType: "PREQUEL", node: { id: 1000, idMal: 10001, format: "TV", title: { romaji: "Example Anime" } } }] } },
         },
       },
+    },
+    {
+      match: (url, options) => url.includes("graphql.anilist.co") && graphqlId(options) === 1000,
+      body: { data: { Media: { id: 1000, idMal: 10001, title: { romaji: "Example Anime" }, relations: { edges: [] } } } },
     },
     { match: (url) => url.includes("arm.haglund.dev") && url.includes("source=anilist") && url.includes("id=1000"), body: { kitsu: 100 } },
     { match: (url) => url.includes("kitsu.io/api/edge/anime/100/mappings"), body: { data: [] } },
