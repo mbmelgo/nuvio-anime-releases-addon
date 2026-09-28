@@ -1,18 +1,18 @@
-# Anime Releases for Nuvio — v2.21.1
+# Anime Releases for Nuvio — v2.22.0
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `2.21.1`
-- **Production release:** `v2.20.0` → **releasing `v2.21.0`**
-- **Next minor release baseline:** `2.21.0`
-- **Latest production tag:** `v2.20.0`
+- **Development version:** `2.22.0`
+- **Production release:** `v2.21.0` → **releasing `v2.22.0`**
+- **Next minor release baseline:** `2.22.0`
+- **Latest production tag:** `v2.21.0`
 - **Architecture:** **catalog-only**
 - **Detailed metadata:** delegated to **BingeCat / the configured metadata addon**
 - **CI status:** **green** for the release candidate
-- **Deployment checkpoint:** **3/5** before this release; this release will consume deployment **#4/5** if the production gate completes successfully.
+- **Deployment checkpoint:** **4/5** before this release; this release is the final authorized deployment **#5/5** in the current autonomous cycle.
 
 The addon is intentionally responsible only for anime release and airing catalogs. Detailed metadata is delegated to BingeCat rather than duplicated inside this addon. Legacy metadata routes and the old local metadata resolver have been retired.
 
@@ -37,7 +37,7 @@ The addon exposes exactly five catalogs. Seasonal catalogs are generated dynamic
 | **Latest Anime — Last 7 Days** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/new_episodes.json | Anime with episodes released within the rolling last 7 days |
 | **Upcoming Anime — Next 7 Days** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/upcoming_episodes.json | Anime with episodes scheduled within the rolling next 7 days |
 
-Each catalog is returned as a single response containing up to **1,000 anime**, so Nuvio does not need client-side pagination for the addon. AniList's smaller provider pages are aggregated internally before the response is returned.
+Each catalog is returned as a single response containing up to **1,000 anime**, so Nuvio does not need client-side pagination for the addon. AniList's smaller provider pages are aggregated internally before the response is returned, and large external-ID mappings are batched before metadata delegation.
 
 The unversioned `/...` URLs are the **canonical production URLs**. There is no separate public v4/v5 route namespace.
 
@@ -79,13 +79,14 @@ Unmapped entries retain their original MAL/AniList identity rather than being as
 - Exact rolling seven-day catalog boundaries
 - Dynamic previous/current/upcoming season calculation
 - Single-page catalog responses up to 1,000 anime
+- Batched external-ID mapping for large catalog responses
 - IMDb/TMDB/TVDB identity delegation
 - Catalog-only routing with legacy metadata endpoints disabled
 - Short manifest caching for prompt seasonal catalog discovery
 
 ## Performance
 
-The catalog resolver uses bounded provider lookups and caching to keep seasonal catalog generation practical for Vercel. Seasonal and rolling catalogs aggregate AniList's 50-item provider pages internally, up to a maximum of 1,000 catalog entries. Rolling episode catalogs are cached for up to one hour so the list can refresh hourly while never searching outside its seven-day window. The manifest uses a short client/CDN cache so newly available seasonal catalogs can be discovered promptly.
+The catalog resolver uses bounded provider lookups and caching to keep seasonal catalog generation practical for Vercel. Seasonal and rolling catalogs aggregate AniList's 50-item provider pages internally, up to a maximum of 1,000 catalog entries. External metadata identity lookups are batched in bounded groups before delegation. Rolling episode catalogs are cached for up to one hour so the list can refresh hourly while never searching outside its seven-day window. The manifest uses a short client/CDN cache so newly available seasonal catalogs can be discovered promptly.
 
 ## Data sources
 
@@ -117,7 +118,7 @@ Production deployment requires the `[deploy-prod]` commit marker and a matching 
 
 ## Versioning
 
-- Patch (`2.20.x`): development commits/changes.
+- Patch (`2.21.x`): development commits/changes.
 - Minor (`2.x.0`): every production deployment.
 - Major (`x.0.0`): manual architectural/breaking-release decision.
 
