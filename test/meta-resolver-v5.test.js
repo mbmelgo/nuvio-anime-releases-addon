@@ -134,7 +134,7 @@ test("recovers an unmarked Season 1 for differently formatted later-season title
   for (const [s1Id, s1Title, s2Id, s2Title] of cases) {
     const entries = [
       { jikan: { mal_id: s1Id, title: s1Title }, node: { title: { english: s1Title }, startDate: { year: 2024, month: 1, day: 1 } } },
-      { jikan: { mal_id: s2Id, title: s2Title }, node: { title: { english: s2Title }, startDate: { year: 2026, month: 1, day: 1 }, relations: { edges: [{ relationType: "PREQUEL", node: { idMal: s1Id } }] } }
+      { jikan: { mal_id: s2Id, title: s2Title }, node: { title: { english: s2Title }, startDate: { year: 2026, month: 1, day: 1 }, relations: { edges: [{ relationType: "PREQUEL", node: { idMal: s1Id } }] } } }
     ];
     assert.equal(isSeasonContinuation(entries[1].node, entries[0].node, entries[1].jikan, entries[0].jikan), true);
     const groups = numberSeasons(entries, s2Id);
