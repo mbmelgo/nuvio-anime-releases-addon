@@ -6,15 +6,17 @@ A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio
 
 - **Branch:** `main`
 - **Development version:** `2.14.9`
-- **Release candidate:** `2.13.0`
-- **Latest production release:** `v2.13.0`
+- **Next minor release baseline:** `2.14.0`
+- **Latest production tag:** `v2.13.6`
 - **Latest production source commit:** `1e733067921e9d514d8e870d880a51652d3bee79`
 - **Latest production source version:** `2.13.6`
 - **Production resolver:** **v5**
 - **Legacy resolver:** **v4**, retained for side-by-side validation
 - **Active deployment checkpoint:** **2/5**
 - **Total production deployments:** **17**
-- **CI status for the rich metadata release:** **38/38 tests passing**
+- **CI status for rich metadata changes:** **green**
+
+The current production tag is retained as-is; historical/current tag rewriting is intentionally not performed. The release workflow is being corrected so future deployments create the proper minor baseline tag automatically.
 
 Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated: normal commits run CI without deploying; `[deploy-prod]` is used only after CI passes and the deployment is worth consuming one checkpoint slot.
 
@@ -62,11 +64,11 @@ The landing page provides a resolver selector so v4 and v5 can be installed and 
 - Finished-series primary-source selection
 - Ongoing-series freshness fallback
 - v4/v5 manifest selection and production routing
-- Rich series metadata including release information, country, language, certification, background art, cast/trailers when provider data is available, and season/episode presentation data
+- Rich series metadata including release information, country, language, certification, background art, networks, studios, cast, trailers, recommendations, external links, and season/episode presentation data
 
 ## Data sources
 
-AniList is the primary source for metadata, season/status information, artwork, scores, popularity, airing schedules, and franchise relationships. Jikan and AniZip provide MAL mappings, episode data, and fallbacks. TVMaze is limited to freshness supplementation for ongoing long-running series.
+AniList is the primary source for metadata, season/status information, artwork, scores, popularity, airing schedules, franchise relationships, cast, studios, trailers, recommendations, and external links. Jikan and AniZip provide MAL mappings, episode data, broadcast/provider information, and fallbacks. TVMaze is limited to freshness supplementation for ongoing long-running series.
 
 ## Release workflow
 
@@ -95,6 +97,7 @@ The deployment checkpoint is stored in `ops/release-state.json`.
 - After deployment, development advances to the next minor baseline for subsequent patch commits.
 - Major releases are manually decided.
 - Minor and major releases receive annotated Git tags with human-readable change summaries.
+- No historical tag backfill is performed unless explicitly requested.
 
 ## Key endpoints
 
@@ -116,4 +119,4 @@ This is a **catalog and metadata addon only**. It does not provide video streams
 
 ## Release state
 
-The latest production release is `v2.13.0`, sourced from commit `1e733067921e9d514d8e870d880a51652d3bee79` and source version `2.13.6`. The current development line is `2.14.9`; the deployment checkpoint is `2/5`.
+The latest production deployment is source version `2.13.6` from commit `1e733067921e9d514d8e870d880a51652d3bee79`, tagged `v2.13.6`. The current development line is `2.14.9`; the next intended minor release baseline is `2.14.0`.
