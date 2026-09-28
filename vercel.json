@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/manifest.json",
-      "destination": "/api/stremio?resource=manifest"
+      "destination": "/api/resolver-manifest?resolver=v5"
     },
     {
       "source": "/v4/manifest.json",
@@ -46,11 +46,11 @@
     },
     {
       "source": "/meta/:type/:id.json",
-      "destination": "/api/meta-resolver-v4?type=:type&id=:id"
+      "destination": "/api/meta-resolver-v5?type=:type&id=:id"
     },
     {
       "source": "/api/meta/series/:id.json",
-      "destination": "/api/meta-resolver-v4?type=series&id=:id"
+      "destination": "/api/meta-resolver-v5?type=series&id=:id"
     },
     {
       "source": "/",
