@@ -14,7 +14,7 @@
     },
     {
       "source": "/v5/catalog/:type/:id.json",
-      "destination": "/api/stremio?resource=catalog&type=:type&id=:id"
+      "destination": "/api/catalog-delegation?resource=catalog&type=:type&id=:id"
     },
     {
       "source": "/v5/meta/:type/:id.json",
@@ -26,7 +26,7 @@
     },
     {
       "source": "/catalog/:type/:id.json",
-      "destination": "/api/stremio?resource=catalog&type=:type&id=:id"
+      "destination": "/api/catalog-delegation?resource=catalog&type=:type&id=:id"
     },
     {
       "source": "/meta/:type/:id.json",
