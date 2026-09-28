@@ -17,7 +17,7 @@ A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio
 - **Total production deployments:** **21**
 - **CI status:** **green**
 
-The current production build contains the root-series metadata and IMDb identity fixes. The active deployment checkpoint has one production deployment consumed; the next deployment is reserved for the current TDD/performance batch.
+The current production build contains the root-series metadata and performance fixes. The IMDb fallback fix is CI-verified and is included in the next controlled production deployment.
 
 Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated through GitHub Actions and the Vercel deployment hook.
 
@@ -86,7 +86,7 @@ The production v5 metadata resolver currently exposes, when provider data is ava
 - Actual trailers, separate from streaming episodes
 - Streaming-episode metadata under `app_extras.streamingEpisodes`
 - Recommendations / related anime
-- IMDb ID for client-side IMDb metadata enrichment
+- IMDb ID for client-side IMDb metadata enrichment, including a fallback from resolved episode-source identities when Jikan lacks an IMDb external link
 - External links
 - Season and episode presentation metadata
 
