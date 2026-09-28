@@ -35,7 +35,7 @@ export default async function handler(req, res) {
 function buildManifest(info) {
   return {
     id: "com.marki.nuvio.anime-releases",
-    version: "2.18.10",
+    version: "2.18.11",
     name: "Anime Releases for Nuvio",
     description: "Season-aware anime release catalogs for Nuvio and Stremio-compatible clients. Detailed metadata is delegated to Bingecat.",
     resources: [{ name: "catalog", types: ["series"] }],
