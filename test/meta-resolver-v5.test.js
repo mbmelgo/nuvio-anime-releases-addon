@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { chooseRows, numberSeasons, parseMalId } from "../api/meta-resolver-v5.js";
+import { chooseRows, isSeasonContinuation, numberSeasons, parseMalId } from "../api/meta-resolver-v5.js";
 
 test("parses canonical and numeric MAL IDs", () => {
   assert.equal(parseMalId("mal:39535"), 39535);
@@ -39,4 +39,24 @@ test("keeps split cour/part entries in the same season", () => {
   const groups = numberSeasons(entries, 200);
   assert.equal(groups.length, 1);
   assert.equal(groups[0].entries.length, 2);
+});
+
+test("does not treat a separately titled sequel as a season of the requested MAL entry", () => {
+  const root = { title: { english: "Naruto" } };
+  const shippuden = { title: { english: "Naruto: Shippuden" } };
+  assert.equal(isSeasonContinuation(root, shippuden), false);
+  const entries = [
+    { jikan: { mal_id: 20, title: "Naruto" }, node: root },
+    { jikan: { mal_id: 1735, title: "Naruto: Shippuden" }, node: shippuden },
+    { jikan: { mal_id: 34572, title: "Boruto: Naruto Next Generations" }, node: { title: { english: "Boruto: Naruto Next Generations" } } }
+  ];
+  const groups = numberSeasons(entries, 20);
+  assert.deepEqual(groups.flatMap(g => g.entries.map(x => x.jikan.mal_id)), [20]);
+});
+
+test("recognizes explicit season and part titles as continuations", () => {
+  const root = { title: { english: "Mushoku Tensei: Jobless Reincarnation" } };
+  assert.equal(isSeasonContinuation(root, { title: { english: "Mushoku Tensei: Jobless Reincarnation Season 2" } }), true);
+  assert.equal(isSeasonContinuation(root, { title: { english: "Mushoku Tensei II: Isekai Ittara Honki Dasu" } }), true);
+  assert.equal(isSeasonContinuation(root, { title: { english: "Mushoku Tensei: Jobless Reincarnation Cour 2" } }), true);
 });
