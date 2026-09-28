@@ -94,7 +94,7 @@ test("Episode identity regression: reconciled rows retain the source identity ne
   assert.equal(result[0].identity, "mal:1535");
 });
 
-test("Naruto regression fixture: the root and sequel entries each remain represented in their own season", () => {
+test("Naruto regression fixture: separately titled sequels do not become seasons of the requested MAL entry", () => {
   const entries = [
     {
       jikan: { mal_id: 20, title: "Naruto", episodes: 220 },
@@ -112,9 +112,9 @@ test("Naruto regression fixture: the root and sequel entries each remain represe
 
   const groups = numberSeasons(entries, 20);
 
-  assert.deepEqual(groups.map((group) => group.season), [1, 2, 3]);
-  assert.deepEqual(groups.map((group) => group.entries[0].jikan.mal_id), [20, 1735, 39587]);
-  assert.deepEqual(groups.map((group) => group.entries[0].jikan.episodes), [220, 500, 293]);
+  assert.deepEqual(groups.map((group) => group.season), [1]);
+  assert.deepEqual(groups.flatMap((group) => group.entries.map((entry) => entry.jikan.mal_id)), [20]);
+  assert.deepEqual(groups.map((group) => group.entries[0].jikan.episodes), [220]);
 });
 
 test("Mushoku Tensei regression fixture: explicit season names remain authoritative", () => {
