@@ -9,14 +9,6 @@
       "destination": "/api/resolver-manifest"
     },
     {
-      "source": "/v5/manifest.json",
-      "destination": "/api/resolver-manifest"
-    },
-    {
-      "source": "/v5/catalog/:type/:id.json",
-      "destination": "/api/catalog-delegation?resource=catalog&type=:type&id=:id"
-    },
-    {
       "source": "/catalog/:type/:id.json",
       "destination": "/api/catalog-delegation?resource=catalog&type=:type&id=:id"
     },
