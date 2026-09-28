@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { delegateCompatibleIds } from "../api/catalog-delegation.js";
+import { delegateCompatibleIds, selectUniqueWikidataMappings } from "../api/catalog-delegation.js";
 
 test("catalog delegation converts mapped MAL IDs to IMDb IDs", async () => {
   const originalFetch = globalThis.fetch;
@@ -151,40 +151,26 @@ test("catalog delegation falls back to another related title when the first rela
   }
 });
 
-test("catalog delegation uses the original anime name when ID and AniZip metadata have no compatible link", async () => {
-  const originalFetch = globalThis.fetch;
-  let call = 0;
-  globalThis.fetch = async (_url, options = {}) => {
-    call += 1;
-    if (call === 1) {
-      return new Response(JSON.stringify({ data: { Page: { media: [{
-        id: 12345,
-        idMal: 54321,
-        title: { romaji: "Example Anime Season 2", english: "Example Anime Season 2", native: "例示アニメ 第2期" },
-        synonyms: ["Example Anime"],
-        externalLinks: [],
-        relations: { edges: [] },
-      }] } } }), { status: 200, headers: { "content-type": "application/json" } });
-    }
-    if (call === 2) {
-      return new Response(JSON.stringify({ mappings: {} }), { status: 200, headers: { "content-type": "application/json" } });
-    }
-
-    assert.equal(options.method, "POST");
-    assert.match(String(options.headers?.["content-type"] || ""), /application\/x-www-form-urlencoded/i);
-    assert.match(String(options.body || ""), /query=/);
-    return new Response(JSON.stringify({ results: { bindings: [{ label: { value: "Example Anime" }, imdb: { value: "tt12345678" } }] } }), { status: 200, headers: { "content-type": "application/json" } });
-  };
-
-  try {
-    const result = await delegateCompatibleIds([{ id: "mal:54321", type: "series", name: "Example Anime Season 2" }]);
-    assert.equal(result[0].id, "tt12345678");
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+test("catalog delegation does not accept a title-only Wikidata match", () => {
+  const bindings = [{
+    label: { value: "Example Anime" },
+    imdb: { value: "tt99999999" },
+  }];
+  const result = selectUniqueWikidataMappings(bindings, new Map([["example anime", ["mal:54321"]]]));
+  assert.equal(result.has("mal:54321"), false);
 });
 
-test("catalog delegation preserves existing metadata when no compatible mapping exists", async () => {
+test("catalog delegation accepts a Wikidata mapping linked by the source MAL ID", () => {
+  const bindings = [{
+    mal: { value: "54321" },
+    label: { value: "Example Anime" },
+    imdb: { value: "tt12345678" },
+  }];
+  const result = selectUniqueWikidataMappings(bindings, new Map());
+  assert.equal(result.get("mal:54321"), "tt12345678");
+});
+
+test("catalog delegation preserves the source identity when no trustworthy mapping exists", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response(JSON.stringify({ data: { Page: { media: [] } } }), { status: 200, headers: { "content-type": "application/json" } });
   try {
