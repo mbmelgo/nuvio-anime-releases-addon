@@ -79,7 +79,7 @@ The production v5 metadata resolver currently exposes, when provider data is ava
 - Cast, characters, voice actors, and cast images
 - Actual trailers, separate from streaming episodes
 - Streaming-episode metadata under `app_extras.streamingEpisodes`
-- Upcoming episodes with future `released` dates so compatible clients can display scheduled/unavailable episode cards
+- Upcoming episodes from the provider airing schedule, merged with existing episode data and exposed with future `released` dates so compatible clients can display scheduled/unavailable episode cards
 - Recommendations / related anime
 - IMDb ID for client-side IMDb metadata enrichment, including a fallback from resolved episode-source identities when Jikan lacks an IMDb external link
 - External links
