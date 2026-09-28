@@ -65,15 +65,15 @@ test("rejects invalid and non-positive episode numbers", () => {
 
 test("deduplicates AniZip rows by source season and episode", () => {
   const rows = mergeEpisodeRows([
-    { episodeNumber: 1, seasonNumber: 1, title: "Episode 1" },
+    { episodeNumber: 1, seasonNumber: 1, title: "Placeholder One" },
     { episodeNumber: 1, seasonNumber: 1, title: "Real Title", image: "https://example.com/1.jpg" },
-    { episodeNumber: 2, seasonNumber: 1, title: "Episode 2" }
+    { episodeNumber: 2, seasonNumber: 1, title: "Placeholder Two" }
   ]);
   assert.equal(rows.length, 2);
   assert.equal(rows[0].title, "Real Title");
 });
 
 test("omits invalid dates instead of emitting invalid timestamps", () => {
-  const row = normalizeAniZipEpisode({ episodeNumber: 1, title: "Episode 1", airDateUtc: "not-a-date" });
+  const row = normalizeAniZipEpisode({ episodeNumber: 1, title: "Undated Episode", airDateUtc: "not-a-date" });
   assert.equal(row.released, null);
 });
