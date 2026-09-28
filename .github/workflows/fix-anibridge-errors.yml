@@ -1,0 +1,23 @@
+name: Fix AniBridge error handling
+
+on:
+  push:
+    branches: [fix/anibridge-tvdb-canonicalization]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[patch-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make AniBridge failures non-fatal
+        run: |
+          python -c 'from pathlib import Path; p=Path("lib/kitsu-canonical.js"); s=p.read_text(); old="""  } catch (error) {\n    anibridgeTvdbCache.set(key, { tvdbId: null, expiresAt: now + NEGATIVE_CACHE_TTL_MS });\n    throw error;\n  }\n}\n\nfunction parseSourceId"""; new="""  } catch (error) {\n    anibridgeTvdbCache.set(key, { tvdbId: null, expiresAt: now + NEGATIVE_CACHE_TTL_MS });\n    return null;\n  }\n}\n\nfunction parseSourceId"""; assert old in s; p.write_text(s.replace(old,new,1))'
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lib/kitsu-canonical.js
+          git commit -m "fix: make AniBridge lookup failures non-fatal [patch-applied]"
+          git push
