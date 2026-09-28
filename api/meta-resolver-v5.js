@@ -49,7 +49,7 @@ export function numberSeasons(entries, requestedMalId) {
     const explicit = explicitSeason(entry.node);
     const part = isPart(entry.node);
     let season = explicit || (part && groups.length ? groups[groups.length - 1].season : null);
-    if (!season) season = nextSeasonNumber(groups, entry);
+    if (!season) season = nextSeasonNumber(groups);
     let group = groups.find(g => g.season === season);
     if (!group) { group = { season, entries: [] }; groups.push(group); }
     if (!group.entries.some(x => Number(x.jikan?.mal_id) === Number(entry.jikan?.mal_id))) group.entries.push(entry);
@@ -137,8 +137,27 @@ function enrichRows(primary, secondary) {
     return merged;
   });
 }
-function nextEpisode(counters, season) { const n = (counters.get(season) || 0) + 1; counters.set(season, n); return n; }
 function better(a,b) { return (/^Episode \d+$/i.test(b.title) && !/^Episode \d+$/i.test(a.title)) || (!b.thumbnail && a.thumbnail) || (!b.released && a.released); }
 
-function buildMeta(root, requestedId, videos) { const meta = { id: requestedId, type: "series", name: root.title_english || root.title || root.title_japanese || requestedId, posterShape: "poster", videos }; const poster = root.images?.jpg?.large_image_url || root.images?.jpg?.image_url; if (poster) { meta.poster = poster; meta.background = poster; } if (root.synopsis) meta.description = root.synopsis; if (Array.isArray(root.genres) && root.genres.length) meta.genres = root.genres.map(x => x.name).filter(Boolean); if (root.duration) meta.runtime = root.duration; if (root.aired?.from) meta.released = root.aired.from; const start = root.year || (root.aired?.from ? new Date(root.aired.from).getUTCFullYear() : null); const end = root.aired?.to ? new Date(root.aired.to).getUTCFullYear() : null; if (start) meta.releaseInfo = `${start}${end ? `-${end}` : "-"}`; if (videos.length) meta.behaviorHints = { defaultVideoId: videos[0].id }; return meta; }
+function buildMeta(root, requestedId, videos) {
+  const meta = { id: requestedId, type: "series", name: root.title_english || root.title || root.title_japanese || requestedId, posterShape: "poster", videos };
+  const poster = root.images?.jpg?.large_image_url || root.images?.jpg?.image_url;
+  if (poster) { meta.poster = poster; meta.background = poster; }
+  if (root.synopsis) meta.description = root.synopsis;
+  if (Array.isArray(root.genres) && root.genres.length) meta.genres = root.genres.map(x => x.name).filter(Boolean);
+  if (root.duration) meta.runtime = root.duration;
+  if (root.aired?.from) meta.released = root.aired.from;
+
+  // Derive releaseInfo from the actual resolved episode window instead of the
+  // root MAL entry, which often represents only the first season of a franchise.
+  const startYear = root.aired?.from ? new Date(root.aired.from).getUTCFullYear() : (root.year || null);
+  const releasedYears = videos
+    .map((video) => video.released ? new Date(video.released).getUTCFullYear() : null)
+    .filter((year) => Number.isInteger(year));
+  const endYear = releasedYears.length ? Math.max(...releasedYears) : null;
+  if (startYear) meta.releaseInfo = `${startYear}${endYear && endYear >= startYear ? `-${endYear}` : "-"}`;
+
+  if (videos.length) meta.behaviorHints = { defaultVideoId: videos[0].id };
+  return meta;
+}
 function debugPayload(graph, videos) { const seasons = {}; for (const v of videos) seasons[v.season] = (seasons[v.season] || 0) + 1; return { graph: graph.map(x => ({ malId: x.jikan?.mal_id, title: x.jikan?.title, episodes: x.jikan?.episodes || null })), totalEpisodes: videos.length, seasons, first: videos.slice(0,3), last: videos.slice(-3), uniqueIds: new Set(videos.map(v => v.id)).size }; }
