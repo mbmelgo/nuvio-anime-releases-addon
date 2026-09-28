@@ -1,19 +1,18 @@
-# Anime Releases for Nuvio — v2.20.4
+# Anime Releases for Nuvio — v2.21.0
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `2.20.4`
-- **Production release:** `v2.20.0`
+- **Development version:** `2.21.0`
+- **Production release:** `v2.20.0` → **releasing `v2.21.0`**
 - **Next minor release baseline:** `2.21.0`
 - **Latest production tag:** `v2.20.0`
 - **Architecture:** **catalog-only**
 - **Detailed metadata:** delegated to **BingeCat / the configured metadata addon**
-- **CI status:** **green** for the current release
-- **Deployment checkpoint:** **3/5 — three production deployments used in the current checkpoint cycle**
-- **Checkpoint note:** v2.20.0 required one smoke-test automation retry; both Vercel production deployments are counted.
+- **CI status:** **green** for the release candidate
+- **Deployment checkpoint:** **3/5** before this release; this release will consume deployment **#4/5** if the production gate completes successfully.
 
 The addon is intentionally responsible only for anime release and airing catalogs. Detailed metadata is delegated to BingeCat rather than duplicated inside this addon. Legacy metadata routes and the old local metadata resolver have been retired.
 
@@ -37,6 +36,8 @@ The addon exposes exactly five catalogs. Seasonal catalogs are generated dynamic
 | **Previous Season** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/previous_season.json | Anime from the immediately preceding season |
 | **Latest Anime — Last 7 Days** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/new_episodes.json | Anime with episodes released within the rolling last 7 days |
 | **Upcoming Anime — Next 7 Days** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/upcoming_episodes.json | Anime with episodes scheduled within the rolling next 7 days |
+
+Each catalog is returned as a single response containing up to **1,000 anime**, so Nuvio does not need client-side pagination for the addon. AniList's smaller provider pages are aggregated internally before the response is returned.
 
 The unversioned `/...` URLs are the **canonical production URLs**. There is no separate public v4/v5 route namespace.
 
@@ -77,12 +78,14 @@ Unmapped entries retain their original MAL/AniList identity rather than being as
 - Upcoming and recently aired episode windows
 - Exact rolling seven-day catalog boundaries
 - Dynamic previous/current/upcoming season calculation
+- Single-page catalog responses up to 1,000 anime
 - IMDb/TMDB/TVDB identity delegation
 - Catalog-only routing with legacy metadata endpoints disabled
+- Short manifest caching for prompt seasonal catalog discovery
 
 ## Performance
 
-The catalog resolver uses bounded provider lookups and caching to keep seasonal catalog generation practical for Vercel. Rolling episode catalogs are cached for up to one hour so the list can refresh hourly while never searching outside its seven-day window.
+The catalog resolver uses bounded provider lookups and caching to keep seasonal catalog generation practical for Vercel. Seasonal and rolling catalogs aggregate AniList's 50-item provider pages internally, up to a maximum of 1,000 catalog entries. Rolling episode catalogs are cached for up to one hour so the list can refresh hourly while never searching outside its seven-day window. The manifest uses a short client/CDN cache so newly available seasonal catalogs can be discovered promptly.
 
 ## Data sources
 
@@ -99,43 +102,23 @@ Generalized implementation
     ↓
 npm test / GitHub Actions
     ↓
-FAIL → fix; no deployment
+CI GREEN
     ↓
-PASS
+Controlled Vercel production deployment
     ↓
-Batch related production-ready changes
+Production smoke test
     ↓
-[deploy-prod]
+Annotated minor release tag
     ↓
-Deployment checkpoint
-    ├── < 5 → production deployment
-    └── 5 → PAUSE
-    ↓
-Live validation
-    ↓
-Minor release tag + release-state update
+Release-state update
 ```
 
-The deployment checkpoint is stored in `ops/release-state.json`.
+Production deployment requires the `[deploy-prod]` commit marker and a matching `nextReleaseVersion` in `ops/release-state.json`. Automatic Vercel Git deployments remain disabled.
 
-### Versioning
+## Versioning
 
-- Every project-changing commit increments the patch version.
-- Each successful production deployment creates a minor release baseline.
-- Major releases are manually decided.
-- Minor and major releases receive annotated Git tags with human-readable summaries.
-- The historical `v2.16.0` tag was intentionally left uncreated per project decision.
+- Patch (`2.20.x`): development commits/changes.
+- Minor (`2.x.0`): every production deployment.
+- Major (`x.0.0`): manual architectural/breaking-release decision.
 
-## Key endpoints
-
-```text
-/                         Installer home page
-/manifest.json            Canonical production catalog-only addon manifest
-/catalog/series/:id.json  Canonical production series catalog
-```
-
-There are intentionally no `/v5` aliases and no public `/meta` routes.
-
-## Streams
-
-This is a **catalog addon only**. It does not provide video streams, downloads, torrent hashes, or playback sources.
+Minor and major releases receive annotated Git tags with human-readable change summaries. Ordinary patch commits are not tagged.
