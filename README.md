@@ -148,3 +148,5 @@ This is a **catalog and metadata addon only**. It does not provide video streams
 ## Version
 
 **2.11.0**
+
+<!-- Temporary CI validation marker; removed after validation. -->
