@@ -60,15 +60,13 @@ jobs:
           expected="$(sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p' api/version.js)"
           for attempt in $(seq 1 30); do
             root_manifest="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json || true)"
-            v4_manifest="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/v4/manifest.json || true)"
             v5_manifest="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/v5/manifest.json || true)"
             root_meta="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/meta/series/mal%3A39535.json || true)"
-            if EXPECTED="$expected" ROOT="$root_manifest" V4="$v4_manifest" V5="$v5_manifest" META="$root_meta" python - <<'PY'
+            if EXPECTED="$expected" ROOT="$root_manifest" V5="$v5_manifest" META="$root_meta" python - <<'PY'
           import json,os
           expected=os.environ['EXPECTED']
-          root=json.loads(os.environ['ROOT']); v4=json.loads(os.environ['V4']); v5=json.loads(os.environ['V5']); meta=json.loads(os.environ['META'])
+          root=json.loads(os.environ['ROOT']); v5=json.loads(os.environ['V5']); meta=json.loads(os.environ['META'])
           assert root.get('version')==expected and root.get('id')=='com.marki.nuvio.anime-releases.v5'
-          assert v4.get('version')==expected and v4.get('id')=='com.marki.nuvio.anime-releases.v4'
           assert v5.get('version')==expected and v5.get('id')=='com.marki.nuvio.anime-releases.v5'
           assert meta.get('meta',{}).get('id')=='mal:39535'
           assert isinstance(meta.get('meta',{}).get('videos'),list)
