@@ -1,45 +1,36 @@
 export function enrichMeta(meta, root, rootAniList = null, seasonGroups = []) {
   const enriched = { ...meta };
   const extras = { ...(meta?.app_extras || {}) };
-
   const releaseInfo = formatReleaseInfo(root?.aired?.from, root?.aired?.to);
   if (releaseInfo) enriched.releaseInfo = releaseInfo;
   if (root?.aired?.from) enriched.released = toIsoDate(root.aired.from);
   if (root?.aired?.to) enriched.lastAirDate = toIsoDate(root.aired.to);
   if (root?.status) enriched.status = String(root.status);
   if (Number(root?.duration) > 0) enriched.runtime = `${Number(root.duration)}m`;
-
   const country = normalizeCountry(rootAniList?.countryOfOrigin);
   if (country) enriched.country = country;
   if (country === "JP") enriched.language = "Japanese";
-
   if (rootAniList?.bannerImage) enriched.background = rootAniList.bannerImage;
-
   const certification = normalizeCertification(root?.rating);
   if (certification) {
     enriched.ageRating = certification;
     extras.certificationLocal = certification;
     extras.certification = certification;
   }
-
   const cast = extractCast(root?.characters);
   if (cast.length) {
     enriched.cast = cast.map(person => person.name);
     extras.cast = cast;
   }
-
   const trailers = extractTrailers(root?.trailer);
   if (trailers.length) enriched.trailers = trailers;
-
   const seasonPosters = buildSeasonPosters(seasonGroups, root, rootAniList);
-  if (Object.keys(seasonPosters).length) {
-    extras.seasonPosters = seasonPosters;
-    enriched.videos = (meta?.videos || []).map(video => {
-      const poster = seasonPosters[String(video?.season)];
-      return poster ? { ...video, seasonPoster: poster } : video;
-    });
-  }
-
+  if (Object.keys(seasonPosters).length) extras.seasonPosters = seasonPosters;
+  enriched.videos = (meta?.videos || []).map(video => {
+    const poster = seasonPosters[String(video?.season)];
+    const runtime = video?.runtime || enriched.runtime;
+    return { ...video, ...(poster ? { seasonPoster: poster } : {}), ...(runtime ? { runtime } : {}) };
+  });
   if (Object.keys(extras).length) enriched.app_extras = extras;
   return enriched;
 }
@@ -73,13 +64,8 @@ function extractCast(characters) {
     const person = preferred?.person;
     const name = String(person?.name || characterName || "").trim();
     if (!name) continue;
-    people.push({
-      name,
-      character: characterName || undefined,
-      photo: person?.images?.jpg?.image_url || entry?.character?.images?.jpg?.image_url || undefined,
-    });
+    people.push({ name, character: characterName || undefined, photo: person?.images?.jpg?.image_url || entry?.character?.images?.jpg?.image_url || undefined });
   }
-
   const seen = new Set();
   return people.filter(person => {
     const key = person.name.toLowerCase();
@@ -92,15 +78,7 @@ function extractCast(characters) {
 function extractTrailers(trailer) {
   const youtubeId = String(trailer?.youtube_id || "").trim();
   if (!youtubeId) return [];
-  return [{
-    id: youtubeId,
-    key: youtubeId,
-    source: youtubeId,
-    name: "Trailer",
-    site: "YouTube",
-    type: "Trailer",
-    official: true,
-  }];
+  return [{ id: youtubeId, key: youtubeId, source: youtubeId, name: "Trailer", site: "YouTube", type: "Trailer", official: true }];
 }
 
 function buildSeasonPosters(groups, root, rootAniList) {
@@ -111,9 +89,7 @@ function buildSeasonPosters(groups, root, rootAniList) {
     const entry = Array.isArray(group?.entries) ? group.entries[0] : null;
     const nodePoster = entry?.node?.coverImage?.extraLarge || entry?.node?.coverImage?.large;
     const jikanPoster = entry?.jikan?.images?.jpg?.large_image_url || entry?.jikan?.images?.jpg?.image_url;
-    const rootPoster = season === 1
-      ? root?.images?.jpg?.large_image_url || root?.images?.jpg?.image_url || rootAniList?.coverImage?.extraLarge || rootAniList?.coverImage?.large
-      : null;
+    const rootPoster = season === 1 ? root?.images?.jpg?.large_image_url || root?.images?.jpg?.image_url || rootAniList?.coverImage?.extraLarge || rootAniList?.coverImage?.large : null;
     const poster = nodePoster || jikanPoster || rootPoster;
     if (poster) posters[String(season)] = poster;
   }
