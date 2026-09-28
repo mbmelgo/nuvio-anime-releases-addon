@@ -42,24 +42,12 @@ test("catalog delegation prefers the original anime's related metadata for a sea
       title: { romaji: "Seihantai na Kimi to Boku Season 2", english: "You and I Are Polar Opposites Season 2", native: "正反対な君と僕 Season 2" },
       synonyms: [],
       externalLinks: [],
-      relations: {
-        edges: [{
-          relationType: "PREQUEL",
-          node: {
-            id: 176923,
-            idMal: 56966,
-            title: { romaji: "Seihantai na Kimi to Boku", english: "You and I Are Polar Opposites", native: "正反対な君と僕" },
-            externalLinks: [{ site: "IMDb", url: "https://www.imdb.com/title/tt37532731/" }],
-          },
-        }],
-      },
+      relations: { edges: [{ relationType: "PREQUEL", node: { id: 176923, idMal: 56966, title: { romaji: "Seihantai na Kimi to Boku", english: "You and I Are Polar Opposites", native: "正反対な君と僕" }, externalLinks: [{ site: "IMDb", url: "https://www.imdb.com/title/tt37532731/" }] } }] },
     }] } } }), { status: 200, headers: { "content-type": "application/json" } });
   };
 
   try {
-    const result = await delegateCompatibleIds([
-      { id: "mal:63832", type: "series", name: "You and I Are Polar Opposites Season 2" },
-    ]);
+    const result = await delegateCompatibleIds([{ id: "mal:63832", type: "series", name: "You and I Are Polar Opposites Season 2" }]);
     assert.equal(result[0].id, "tt37532731");
     assert.equal(call, 1);
   } finally {
@@ -72,7 +60,7 @@ test("catalog delegation uses the original anime name when ID metadata has no co
   let call = 0;
   globalThis.fetch = async () => {
     call += 1;
-    if (call <= 2) {
+    if (call === 1) {
       return new Response(JSON.stringify({ data: { Page: { media: [{
         id: 12345,
         idMal: 54321,
@@ -82,16 +70,11 @@ test("catalog delegation uses the original anime name when ID metadata has no co
         relations: { edges: [] },
       }] } } }), { status: 200, headers: { "content-type": "application/json" } });
     }
-    return new Response(JSON.stringify({ results: { bindings: [{
-      label: { value: "Example Anime" },
-      imdb: { value: "tt12345678" },
-    }] } }), { status: 200, headers: { "content-type": "application/json" } });
+    return new Response(JSON.stringify({ results: { bindings: [{ label: { value: "Example Anime" }, imdb: { value: "tt12345678" } }] } }), { status: 200, headers: { "content-type": "application/json" } });
   };
 
   try {
-    const result = await delegateCompatibleIds([
-      { id: "mal:54321", type: "series", name: "Example Anime Season 2" },
-    ]);
+    const result = await delegateCompatibleIds([{ id: "mal:54321", type: "series", name: "Example Anime Season 2" }]);
     assert.equal(result[0].id, "tt12345678");
   } finally {
     globalThis.fetch = originalFetch;
@@ -100,11 +83,7 @@ test("catalog delegation uses the original anime name when ID metadata has no co
 
 test("catalog delegation preserves existing metadata when no IMDb mapping exists", async () => {
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => new Response(JSON.stringify({ data: { Page: { media: [] } } }), {
-    status: 200,
-    headers: { "content-type": "application/json" },
-  });
-
+  globalThis.fetch = async () => new Response(JSON.stringify({ data: { Page: { media: [] } } }), { status: 200, headers: { "content-type": "application/json" } });
   try {
     const input = { id: "anilist:12345", type: "series", name: "Example" };
     const result = await delegateCompatibleIds([input]);
