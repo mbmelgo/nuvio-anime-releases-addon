@@ -109,3 +109,9 @@ test("follows a parent-side sequel relation through a continuation chain", () =>
   const groups = numberSeasons(entries, 100);
   assert.deepEqual(groups.map(group => group.entries.map(entry => entry.jikan.mal_id)), [[100], [101], [102]]);
 });
+
+test("recognizes higher Roman-numeral season titles as continuations", () => {
+  const root = { title: { english: "Saga" } };
+  assert.equal(isSeasonContinuation(root, { title: { english: "Saga VI" } }), true);
+  assert.equal(isSeasonContinuation(root, { title: { english: "Saga X" } }), true);
+});
