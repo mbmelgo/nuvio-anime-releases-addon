@@ -1,5 +1,3 @@
-import { ADDON_VERSION } from "./version.js";
-
 const ANILIST_URL = "https://graphql.anilist.co";
 const TIME_ZONE = "Asia/Manila";
 const PAGE_SIZE = 50;
