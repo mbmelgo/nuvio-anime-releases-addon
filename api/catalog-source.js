@@ -1,3 +1,5 @@
+import { canonicalizeCatalogMetas } from "../lib/kitsu-canonical.js";
+
 const ANILIST_URL = "https://graphql.anilist.co";
 const TIME_ZONE = "Asia/Manila";
 export const ANILIST_PAGE_SIZE = 50;
@@ -71,7 +73,7 @@ async function buildCatalog(id, info, now, skip) {
 
   if (!filter) return [];
   const metas = await queryAnimeAll(filter);
-  return metas.slice(skip, skip + MAX_CATALOG_ITEMS);
+  return canonicalizeCatalogMetas(metas).then((items) => items.slice(skip, skip + MAX_CATALOG_ITEMS));
 }
 
 async function queryAnimeAll(filter) {
@@ -99,11 +101,12 @@ async function scheduleCatalog(start, end, futureOnly, skip) {
     const existing = latestByAnime.get(media.id);
     if (!existing || schedule.airingAt > existing.airingAt) latestByAnime.set(media.id, schedule);
   }
-  return [...latestByAnime.values()]
+  const metas = [...latestByAnime.values()]
     .sort((a, b) => futureOnly ? a.airingAt - b.airingAt : b.airingAt - a.airingAt)
     .slice(skip, skip + MAX_CATALOG_ITEMS)
     .map((s) => toMeta(s.media, { episode: s.episode, airingAt: s.airingAt }))
     .filter(Boolean);
+  return canonicalizeCatalogMetas(metas);
 }
 
 async function queryAiringSchedule(start, end, futureOnly) {
