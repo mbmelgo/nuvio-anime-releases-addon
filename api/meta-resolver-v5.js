@@ -11,16 +11,23 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).json({});
   const requestedId = getQuery(req, "id");
   const type = getQuery(req, "type") || "series";
+  const result = await resolveBase(requestedId, type);
+  if (result.statusCode >= 400) return res.status(result.statusCode).json({ meta: null });
+  if (getQuery(req, "debug") === "1") return res.status(200).json({ debug: debugPayload(result.graph, result.videos), meta: result.meta });
+  return res.status(200).json({ meta: result.meta });
+}
+
+export async function resolveBase(requestedId, type = "series") {
   const malId = parseMalId(requestedId);
-  if (type !== "series" || !malId) return res.status(404).json({ meta: null });
+  if (type !== "series" || !malId) return { statusCode: 404, meta: null, graph: [], videos: [], root: null };
   try {
     const rootJikan = await getJikanAnime(malId), rootAniList = await getAniListByMal(malId);
-    if (!rootJikan && !rootAniList) return res.status(404).json({ meta: null });
+    if (!rootJikan && !rootAniList) return { statusCode: 404, meta: null, graph: [], videos: [], root: null };
     const root = rootJikan || aniListToJikan(rootAniList), graph = await discoverTvGraph(malId, root, MAX_GRAPH_NODES), seasons = numberSeasons(graph, malId), videos = await buildVideos(seasons), meta = buildMeta(root, requestedId, videos);
-    if (getQuery(req, "debug") === "1") return res.status(200).json({ debug: debugPayload(graph, videos), meta });
-    return res.status(200).json({ meta });
-  } catch (error) { console.error("[meta-resolver-v5]", error); return res.status(502).json({ meta: null, error: "Upstream metadata resolution failed" }); }
+    return { statusCode: 200, meta, graph, videos, root };
+  } catch (error) { console.error("[meta-resolver-v5]", error); return { statusCode: 502, meta: null, graph: [], videos: [], root: null }; }
 }
+
 function setHeaders(res){res.setHeader("Access-Control-Allow-Origin","*");res.setHeader("Access-Control-Allow-Methods","GET,OPTIONS");res.setHeader("Access-Control-Allow-Headers","Content-Type");res.setHeader("Cache-Control",`public, s-maxage=${CACHE_SECONDS}, stale-while-revalidate=3600`);}
 function getQuery(req,key){try{const value=req.query?.[key];if(Array.isArray(value))return String(value[0]||"");if(value!=null)return String(value);}catch{}try{return new URL(req.url,"http://localhost").searchParams.get(key)||"";}catch{return"";}}
 export function parseMalId(id){const m=String(id||"").match(/^mal:(\d+)$/i)||String(id||"").match(/^(\d+)$/);return m?Number(m[1]):0;}
