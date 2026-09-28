@@ -247,11 +247,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ -z "$RELEASE_PAT" ]; then
-            echo "RELEASE_PAT is required to backfill release tags."
-            exit 1
-          fi
-
           target_sha="$(python - <<'PY'
           import json
           from pathlib import Path
