@@ -5,6 +5,8 @@ const ANIZIP_URL = "https://api.ani.zip/v1/mappings";
 const WIKIDATA_URL = "https://query.wikidata.org/sparql";
 const FETCH_TIMEOUT_MS = 8000;
 const ANIZIP_CONCURRENCY = 6;
+const MEDIA_LOOKUP_BATCH_SIZE = 50;
+const MEDIA_LOOKUP_CONCURRENCY = 4;
 
 export default async function handler(req, res) {
   const captured = { statusCode: 200, headers: {}, body: null };
@@ -67,11 +69,28 @@ export async function delegateCompatibleIds(metas) {
 
 async function queryMedia(filter) {
   const variableName = Object.keys(filter)[0];
-  const query = `query ($ids:[Int]) { Page(perPage:50) { media(type:ANIME,${variableName}:$ids) { id idMal title { romaji english native } synonyms externalLinks { site url } relations { edges { relationType node { id idMal title { romaji english native } externalLinks { site url } } } } } } }`;
+  const ids = Array.isArray(Object.values(filter)[0]) ? Object.values(filter)[0] : [];
+  if (!ids.length) return [];
+
+  const chunks = [];
+  for (let index = 0; index < ids.length; index += MEDIA_LOOKUP_BATCH_SIZE) {
+    chunks.push(ids.slice(index, index + MEDIA_LOOKUP_BATCH_SIZE));
+  }
+
+  const results = [];
+  for (let index = 0; index < chunks.length; index += MEDIA_LOOKUP_CONCURRENCY) {
+    const batch = await Promise.all(chunks.slice(index, index + MEDIA_LOOKUP_CONCURRENCY).map((chunk) => queryMediaBatch(variableName, chunk)));
+    results.push(...batch.flat());
+  }
+  return results;
+}
+
+async function queryMediaBatch(variableName, ids) {
+  const query = `query ($ids:[Int]) { Page(perPage:${MEDIA_LOOKUP_BATCH_SIZE}) { media(type:ANIME,${variableName}:$ids) { id idMal title { romaji english native } synonyms externalLinks { site url } relations { edges { relationType node { id idMal title { romaji english native } externalLinks { site url } } } } } } }`;
   const payload = await fetchJson(ANILIST_URL, {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify({ query, variables: { ids: Object.values(filter)[0] } }),
+    body: JSON.stringify({ query, variables: { ids } }),
   });
   return payload?.data?.Page?.media || [];
 }
