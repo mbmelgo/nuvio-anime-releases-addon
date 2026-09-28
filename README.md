@@ -6,23 +6,20 @@ A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio
 
 - **Branch:** `main`
 - **Development version:** `2.16.11`
-- **Next minor release baseline:** `2.16.0`
-- **Latest production tag:** `v2.15.0`
-- **Latest production source commit:** `cc9ea9cff4b5e7bf70985f3dedbbea751e88c5e6`
-- **Latest production source version:** `2.15.4`
+- **Next minor release baseline:** `2.17.0`
+- **Latest production tag:** `v2.16.0`
+- **Latest production source commit:** `55d371580ee8a20dc0f25e5bd5102c5a333da630`
+- **Latest production source version:** `2.16.10`
+- **Latest production deployment:** `dpl_DVzT6p2jrMheaNVsyrtCgDJkRBZF`
 - **Production resolver:** **v5**
 - **Legacy resolver:** **v4**, retained for side-by-side validation
-- **Active deployment checkpoint:** **4/5**
-- **Total production deployments:** **19**
-- **CI status for rich metadata changes:** **green**
+- **Active deployment checkpoint:** **5/5 — PAUSED**
+- **Total production deployments:** **20**
+- **CI status:** **green**
 
-The latest production deployment is tagged at the required minor baseline `v2.15.0`. An accidental patch-level tag `v2.15.4` remains as an existing historical tag; no historical tags are being rewritten or backfilled further.
+The fifth production deployment has been completed and the autonomous deployment checkpoint is intentionally paused. No additional production deployment should be made until the user explicitly resumes the loop.
 
-Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated: normal commits run CI without deploying; `[deploy-prod]` is used only after CI passes and the deployment is worth consuming one checkpoint slot.
-
-## Production validation target
-
-The latest controlled production deployment validated the rich-metadata semantic fixes: streaming episodes are no longer exposed as trailers, producer companies are separated from broadcast-network metadata, and release/last-air dates aggregate across resolved seasons and episode dates.
+Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated through GitHub Actions and the Vercel deployment hook.
 
 ## URLs
 
@@ -70,6 +67,25 @@ The landing page provides a resolver selector so v4 and v5 can be installed and 
 - v4/v5 manifest selection and production routing
 - Rich series metadata including release information, country, language, certification, background art, networks, studios, cast, trailers, recommendations, external links, and season/episode presentation data
 
+## Rich metadata
+
+The production v5 metadata resolver currently exposes, when provider data is available:
+
+- Release range and last-air date
+- Airing status and runtime
+- Country and language
+- Certification / age rating
+- Background/banner artwork
+- Season-specific posters
+- Broadcast/network information
+- Studios and producers
+- Cast, characters, voice actors, and cast images
+- Actual trailers, separate from streaming episodes
+- Streaming-episode metadata under `app_extras.streamingEpisodes`
+- Recommendations / related anime
+- External links
+- Season and episode presentation metadata
+
 ## Data sources
 
 AniList is the primary source for metadata, season/status information, artwork, scores, popularity, airing schedules, franchise relationships, cast, studios, trailers, recommendations, and external links. Jikan and AniZip provide MAL mappings, episode data, broadcast/provider information, and fallbacks. TVMaze is limited to freshness supplementation for ongoing long-running series.
@@ -97,7 +113,7 @@ The deployment checkpoint is stored in `ops/release-state.json`.
 ### Versioning
 
 - Every source commit increments the patch version during normal development.
-- Each successful production deployment creates a minor release baseline (`2.13.0 → 2.14.0 → 2.15.0`); the deployed source may carry the current patch version within that baseline.
+- Each successful production deployment creates a minor release baseline (`2.14.0 → 2.15.0 → 2.16.0`); the deployed source may carry the current patch version within that baseline.
 - After deployment, development advances to the next minor baseline for subsequent patch commits.
 - Major releases are manually decided.
 - Minor and major releases receive annotated Git tags with human-readable change summaries.
@@ -123,4 +139,4 @@ This is a **catalog and metadata addon only**. It does not provide video streams
 
 ## Release state
 
-The latest production deployment is source version `2.15.4` from commit `cc9ea9cff4b5e7bf70985f3dedbbea751e88c5e6`, tagged `v2.15.0`. The active deployment checkpoint is 4/5. Development is currently `2.16.6`.
+The fifth production deployment is source version `2.16.10` from commit `55d371580ee8a20dc0f25e5bd5102c5a333da630`, with production deployment ID `dpl_DVzT6p2jrMheaNVsyrtCgDJkRBZF`. The release baseline is `v2.16.0`. The autonomous deployment checkpoint is **5/5 and paused**; the next development minor baseline is `2.17.0`.
