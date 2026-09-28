@@ -78,7 +78,7 @@ The root manifest now resolves to v5. The explicit v4 manifest continues to use 
 
 ### v4 — legacy / side-by-side validation
 
-`api/meta-resolver-v4.js` is the current production resolver.
+`api/meta-resolver-v4.js` is the legacy resolver retained for side-by-side validation.
 
 Install/test directly:
 
@@ -135,7 +135,7 @@ AniList is the primary source for metadata, season/status information, artwork, 
 
 The repository's version file is currently the source of truth for the patch-level development version. `package.json`, `api/stremio.js`, and the README version are synchronized by the workflow.
 
-The current autonomous deployment checkpoint is **3/5** for the active cycle. The latest successful deployment recorded in `ops/release-state.json` is source commit `3b92f8a81e8acc5bcd55880ab9b321f3307f9685`, deployed as version **2.8.5**, with the next deployment baseline **2.9.0**. The current development version is **2.10.3**.
+The current autonomous deployment checkpoint is **0/5** for the active cycle. The latest successful deployment recorded in `ops/release-state.json` is source commit `55f716bc65dbae127c48215065f5de10aa82c9d1`, deployed as version **2.10.3**, with the next deployment baseline **2.11.0**. The current development version is **2.11.0**.
 
 ## Vercel rewrites
 
@@ -147,4 +147,4 @@ This is a **catalog and metadata addon only**. It does not provide video streams
 
 ## Version
 
-**2.9.2**
+**2.11.0**
