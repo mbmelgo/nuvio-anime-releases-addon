@@ -16,7 +16,7 @@ GitHub is the source of truth. Automatic Vercel Git deployments are intentionall
 
 Release tags are created for successful deployment minor releases (`vX.Y.0`) and major releases (`vX.0.0`). Annotated tags include a human-readable summary of the source changes included in that release. Historical deployment tags are currently non-blocking.
 
-The current production metadata routing uses **v4**. **v5** is the refactored candidate and remains available for validation.
+The current production metadata routing uses **v5**. **v4** remains available as an explicit legacy resolver for side-by-side validation.
 
 ## Resolver selection
 
@@ -31,7 +31,7 @@ Choose v4 or v5
 /v5/manifest.json       → v5 metadata routes
 ```
 
-The manifests use separate addon IDs, allowing side-by-side installation in compatible clients. The root `/manifest.json` remains the existing v4-compatible manifest until v5 is deliberately promoted.
+The manifests use separate addon IDs, allowing side-by-side installation in compatible clients. The root `/manifest.json` now uses the v5 resolver; explicit `/v4/manifest.json` remains available for the v4 resolver.
 
 Stremio supports parameterized addon repository paths, where the selected path segment can be carried through the addon resource routes. citeturn4search1turn4search2
 
@@ -65,20 +65,18 @@ Generated version commits use `[skip-version-automation]` to prevent recursion.
 
 ## Resolver selector
 
-Open the Vercel home page to choose between the stable v4 resolver and the v5 candidate. Each selection has its own manifest URL, so both resolver versions can be installed side-by-side:
+Open the Vercel home page to choose between the production v5 resolver and the legacy v4 resolver. Each selection has its own manifest URL, so both resolver versions can be installed side-by-side:
 
 ```text
 https://nuvio-anime-releases-addon-rho.vercel.app/v4/manifest.json
 https://nuvio-anime-releases-addon-rho.vercel.app/v5/manifest.json
 ```
 
-The root manifest remains the v4-compatible production manifest. Selecting v5 does not change the v4 installation.
-
-The resolver selector candidate has passed the full Node 20 regression suite and is ready for consolidated production validation.
+The root manifest now resolves to v5. The explicit v4 manifest continues to use the v4 resolver, so existing v4 testing remains available.
 
 ## Resolver versions
 
-### v4 — production
+### v4 — legacy / side-by-side validation
 
 `api/meta-resolver-v4.js` is the current production resolver.
 
@@ -86,9 +84,9 @@ Install/test directly:
 
 `https://nuvio-anime-releases-addon-rho.vercel.app/v4/manifest.json`
 
-### v5 — refactored candidate
+### v5 — production
 
-`api/meta-resolver-v5.js` is the refactored candidate. It is covered by the regression suite and is being validated before promotion to production.
+`api/meta-resolver-v5.js` is the production resolver. It is covered by the regression suite and is now the root production resolver.
 
 Install/test directly:
 
@@ -119,14 +117,14 @@ The TDD regression suite covers:
 
 ```text
 /                         Resolver selection home page
-/manifest.json            Existing v4-compatible addon manifest
+/manifest.json            Production v5 addon manifest
 /v4/manifest.json         Explicit v4 addon manifest
 /v5/manifest.json         Explicit v5 addon manifest
-/catalog/series/:id.json  Series catalog (v4-compatible)
-/meta/series/:id.json     Series metadata (v4-compatible)
+/catalog/series/:id.json  Series catalog (production)
+/meta/series/:id.json     Series metadata (production v5)
 /v4/meta/series/:id.json Explicit v4 metadata
 /v5/meta/series/:id.json Explicit v5 metadata
-/api/meta/series/:id.json Series metadata compatibility route
+/api/meta/series/:id.json Series metadata compatibility route (v5)
 ```
 
 ## Data sources
@@ -137,7 +135,7 @@ AniList is the primary source for metadata, season/status information, artwork, 
 
 The repository's version file is currently the source of truth for the patch-level development version. `package.json`, `api/stremio.js`, and the README version are synchronized by the workflow.
 
-The current autonomous deployment checkpoint is **3/5** for the active cycle. The latest successful deployment recorded in `ops/release-state.json` is source commit `3b92f8a81e8acc5bcd55880ab9b321f3307f9685`, deployed as version **2.8.5**, with the next deployment baseline **2.9.0**. The current development version is **2.9.2**.
+The current autonomous deployment checkpoint is **3/5** for the active cycle. The latest successful deployment recorded in `ops/release-state.json` is source commit `3b92f8a81e8acc5bcd55880ab9b321f3307f9685`, deployed as version **2.8.5**, with the next deployment baseline **2.9.0**. The current development version is **2.10.3**.
 
 ## Vercel rewrites
 
