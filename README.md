@@ -7,7 +7,7 @@ A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio
 - **Branch:** `main`
 - **Development version:** `2.16.6`
 - **Next minor release baseline:** `2.16.0`
-- **Latest production tag (pending correction):** `v2.15.4`
+- **Latest production tag:** `v2.15.0`
 - **Latest production source commit:** `cc9ea9cff4b5e7bf70985f3dedbbea751e88c5e6`
 - **Latest production source version:** `2.15.4`
 - **Production resolver:** **v5**
@@ -16,7 +16,7 @@ A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio
 - **Total production deployments:** **19**
 - **CI status for rich metadata changes:** **green**
 
-The current production source is being corrected from the erroneous patch-level tag `v2.15.4` to the required minor release baseline `v2.15.0`. No older release tags are being rewritten or backfilled.
+The latest production deployment is tagged at the required minor baseline `v2.15.0`. An accidental patch-level tag `v2.15.4` remains as an existing historical tag; no historical tags are being rewritten or backfilled further.
 
 Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated: normal commits run CI without deploying; `[deploy-prod]` is used only after CI passes and the deployment is worth consuming one checkpoint slot.
 
@@ -123,4 +123,4 @@ This is a **catalog and metadata addon only**. It does not provide video streams
 
 ## Release state
 
-The latest production deployment is source version `2.15.4` from commit `cc9ea9cff4b5e7bf70985f3dedbbea751e88c5e6`. The active deployment checkpoint is 4/5. The patch-level deployment tag is being corrected to `v2.15.0` for this release baseline.
+The latest production deployment is source version `2.15.4` from commit `cc9ea9cff4b5e7bf70985f3dedbbea751e88c5e6`, tagged `v2.15.0`. The active deployment checkpoint is 4/5. Development is currently `2.16.6`.
