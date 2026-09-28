@@ -31,6 +31,41 @@ test("catalog delegation converts mapped MAL IDs to IMDb IDs", async () => {
   }
 });
 
+test("catalog delegation batches large MAL ID sets for AniList lookup", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async (_url, options = {}) => {
+    calls += 1;
+    const variables = JSON.parse(String(options.body)).variables;
+    const ids = variables.idMal_in;
+    const media = ids.map((id) => ({
+      id: id + 100000,
+      idMal: id,
+      title: { romaji: `Anime ${id}`, english: `Anime ${id}`, native: `Anime ${id}` },
+      synonyms: [],
+      externalLinks: [{ site: "IMDb", url: `https://www.imdb.com/title/tt${String(id).padStart(7, "0")}/` }],
+      relations: { edges: [] },
+    }));
+    return new Response(JSON.stringify({ data: { Page: { media } } }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+
+  try {
+    const input = Array.from({ length: 51 }, (_, index) => ({
+      id: `mal:${10000 + index}`,
+      type: "series",
+      name: `Anime ${10000 + index}`,
+    }));
+    const result = await delegateCompatibleIds(input);
+
+    assert.equal(calls, 2);
+    assert.equal(result.length, 51);
+    assert.equal(result[0].id, "tt00010000");
+    assert.equal(result[50].id, "tt00010050");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("catalog delegation uses AniZip when AniList has no compatible link", async () => {
   const originalFetch = globalThis.fetch;
   let call = 0;
