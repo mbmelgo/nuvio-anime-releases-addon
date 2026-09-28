@@ -37,7 +37,7 @@ test("catalog delegation batches large MAL ID sets for AniList lookup", async ()
   globalThis.fetch = async (_url, options = {}) => {
     calls += 1;
     const variables = JSON.parse(String(options.body)).variables;
-    const ids = variables.idMal_in;
+    const ids = variables.ids;
     const media = ids.map((id) => ({
       id: id + 100000,
       idMal: id,
