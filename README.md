@@ -1,18 +1,18 @@
-# Anime Releases for Nuvio — v2.12.8
+# Anime Releases for Nuvio — v2.13.0
 
 A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `2.12.8`
-- **Release candidate:** `2.11.9`
+- **Development version:** `2.13.0`
+- **Release candidate:** `2.13.0`
 - **Latest production release:** `v2.12.0`
-- **Latest production source commit:** `55f716bc65dbae127c48215065f5de10aa82c9d1`
+- **Latest production source commit:** `2fd117a9bccad9cc49d1cdbda627432abe274709`
 - **Production resolver:** **v5**
 - **Legacy resolver:** **v4**, retained for side-by-side validation
-- **Active deployment checkpoint:** **0/5**
-- **Total production deployments:** **15**
+- **Active deployment checkpoint:** **1/5**
+- **Total production deployments:** **16**
 
 Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated: normal commits run CI without deploying; `[deploy-prod]` is used only after CI passes and the deployment is worth consuming one checkpoint slot.
 
@@ -60,6 +60,7 @@ The landing page provides a resolver selector so v4 and v5 can be installed and 
 - Finished-series primary-source selection
 - Ongoing-series freshness fallback
 - v4/v5 manifest selection and production routing
+- Rich series metadata including release information, country, cast, trailers, and season/episode presentation data
 
 ## Data sources
 
@@ -87,8 +88,9 @@ The deployment checkpoint is stored in `ops/release-state.json`.
 
 ### Versioning
 
-- Every source commit increments the patch version.
-- Every successful production deployment creates the next minor release (`2.11.x → 2.12.0`).
+- Every source commit increments the patch version during normal development.
+- Each successful production deployment is a minor release (`2.11.x → 2.12.0 → 2.13.0`).
+- After deployment, development advances to the next minor baseline for subsequent patch commits.
 - Major releases are manually decided.
 - Minor and major releases receive annotated Git tags with human-readable change summaries.
 
@@ -112,4 +114,4 @@ This is a **catalog and metadata addon only**. It does not provide video streams
 
 ## Release state
 
-The latest production deployment is `v2.12.0`, sourced from commit `55f716bc65dbae127c48215065f5de10aa82c9d1`. The current development line is `2.12.8`; these development commits have not yet been promoted to production.
+The latest production deployment is `v2.12.0`, sourced from commit `2fd117a9bccad9cc49d1cdbda627432abe274709`. The current development/release-candidate line is `2.13.0`; it contains the accumulated rich-metadata changes and is pending the next production deployment.
