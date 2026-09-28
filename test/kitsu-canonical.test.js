@@ -53,7 +53,7 @@ test("title fallback only accepts an exact normalized Kitsu title", async () => 
     { match: (url) => url.includes("api.ani.zip"), status: 404, body: {} },
     { match: (url) => url.includes("api.malsync.moe"), status: 404, body: {} },
     {
-      match: (url) => url.includes("kitsu.io") && url.includes("filter%5Btext%5D=The%20Elusive%20Samurai%20Season%202"),
+      match: (url) => url.includes("kitsu.io/api/edge/anime"),
       body: { data: [
         { id: "111", attributes: { canonicalTitle: "The Elusive Samurai", titles: { en: "The Elusive Samurai" } } },
         { id: "222", attributes: { canonicalTitle: "The Elusive Samurai Season 2", titles: { en: "The Elusive Samurai Season 2" } } },
