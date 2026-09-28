@@ -25,14 +25,15 @@ test("runtime source does not use deprecated url.parse API", async () => {
   assert.deepEqual(offenders, []);
 });
 
-test("retired metadata and duplicate runtime entrypoints stay removed", async () => {
-  const retired = [
-    "api/stremio.js",
-    "api/home.js",
-    "lib/http.js",
-    "lib/release-version.js",
-  ];
+test("retired runtime entrypoints and helpers stay removed", async () => {
+  const retired = ["api/home.js", "lib/http.js"];
   for (const file of retired) {
     await assert.rejects(access(file), undefined, `${file} should remain removed`);
   }
+});
+
+test("catalog source is the only retained catalog runtime implementation", async () => {
+  await access("api/catalog-source.js");
+  await access("api/catalog-delegation.js");
+  await assert.rejects(access("api/stremio.js"));
 });
