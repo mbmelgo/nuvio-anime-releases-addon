@@ -156,7 +156,32 @@ function normalizeFranchiseStem(value) {
 }
 
 function nextSeasonNumber(groups) { const max = groups.reduce((n, g) => Math.max(n, Number(g.season) || 0), 0); return max + 1; }
-function explicitSeason(node) { const titles = [...(node?.synonyms || []), node?.title?.english, node?.title?.romaji, node?.title?.native].filter(Boolean).map(String); for (const t of titles) { const m = t.match(/\bseason\s*(\d+)\b/i) || t.match(/\b(\d+)(?:st|nd|rd|th)\s+season\b/i) || t.match(/\bS(\d+)\b/i); if (m) return Number(m[1]); const r = t.match(/\b(II|III|IV|V)\b/i); if (r) return ({II:2,III:3,IV:4,V:5})[r[1].toUpperCase()]; } return null; }
+function explicitSeason(node) {
+  const titles = [...(node?.synonyms || []), node?.title?.english, node?.title?.romaji, node?.title?.native].filter(Boolean).map(String);
+  for (const t of titles) {
+    const m = t.match(/\bseason\s*(\d+)\b/i) || t.match(/\b(\d+)(?:st|nd|rd|th)\s+season\b/i) || t.match(/\bS(\d+)\b/i);
+    if (m) return Number(m[1]);
+
+    const r = t.match(/\b(I|II|III|IV|V|VI|VII|VIII|IX|X)\b/i);
+    if (r) {
+      const value = romanSeasonNumber(r[1]);
+      if (value) return value;
+    }
+  }
+  return null;
+}
+
+function romanSeasonNumber(value) {
+  const roman = String(value || "").toUpperCase();
+  const values = { I: 1, V: 5, X: 10 };
+  let total = 0;
+  for (let i = 0; i < roman.length; i++) {
+    const current = values[roman[i]];
+    const next = values[roman[i + 1]] || 0;
+    total += current < next ? -current : current;
+  }
+  return total >= 2 && total <= 10 ? total : null;
+}
 function isPart(node) { const t = [...(node?.synonyms || []), node?.title?.english, node?.title?.romaji, node?.title?.native].filter(Boolean).join(" "); return /\b(?:part|cour)\s*[12]\b/i.test(t) || /第\s*[12]\s*クール/.test(t); }
 function startTime(entry) { const d = entry.node?.startDate; return d?.year ? Date.UTC(d.year, (d.month || 1) - 1, d.day || 1) : Date.UTC(2100,0,1); }
 
