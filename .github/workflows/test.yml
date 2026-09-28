@@ -38,6 +38,7 @@ jobs:
       - name: Check deployment checkpoint and deploy
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+          RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
         shell: bash
         run: |
           set -euo pipefail
@@ -117,5 +118,17 @@ jobs:
 
           release_tag="$(cat /tmp/release-tag)"
           git push
+
+          if [ -z "$RELEASE_PAT" ]; then
+            echo "RELEASE_PAT is not configured; deployment completed without creating the GitHub release tag."
+            exit 0
+          fi
+
+          git remote set-url origin "https://x-access-token:${RELEASE_PAT}@github.com/${GITHUB_REPOSITORY}.git"
+          if git ls-remote --exit-code --tags origin "refs/tags/$release_tag" >/dev/null 2>&1; then
+            echo "Tag $release_tag already exists."
+            exit 0
+          fi
+
           git tag -a "$release_tag" "$GITHUB_SHA" -m "Release $release_tag"
-          git push origin "$release_tag"
+          git push origin "refs/tags/$release_tag"
