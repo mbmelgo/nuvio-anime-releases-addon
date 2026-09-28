@@ -20,6 +20,10 @@ The current production metadata routing uses **v4**. **v5** is the refactored ca
 
 
 > Deployment candidate: TVMaze fallback is now supplemental-only for finished series and cannot replace missing primary episode datasets. [deploy-prod]
+
+
+> Deployment candidate: keep TVMaze episode freshness supplementation limited to ongoing long-running series; finished-series resolution remains on primary Jikan/AniZip sources. [deploy-prod]
+
 ## v2.5.1 highlights
 
 - Refactored metadata resolver architecture.
