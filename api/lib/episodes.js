@@ -8,12 +8,16 @@ export function normalizeAniZipEpisode(item) {
   const season = Number(item.seasonNumber ?? item.season ?? 1) || 1;
   const title = titleOf(item.title) || `Episode ${episode}`;
   if (isSpecial(item, title)) return null;
+  const released = validDate(item.airDateUtc ?? item.airDate ?? item.airdate);
+  // Do not expose episodes that have not aired yet. This is especially important
+  // for ongoing anime where providers can publish scheduled episodes in advance.
+  if (released && new Date(released).getTime() > Date.now()) return null;
   return {
     number: episode,
     sourceSeason: season,
     absoluteEpisodeNumber: Number(item.absoluteEpisodeNumber ?? item.absoluteNumber ?? 0) || 0,
     title,
-    released: validDate(item.airDateUtc ?? item.airDate ?? item.airdate),
+    released,
     thumbnail: item.image || null
   };
 }
@@ -24,12 +28,14 @@ export function normalizeJikanEpisode(item) {
   if (!Number.isInteger(number) || number <= 0) return null;
   const title = titleOf(item.title) || `Episode ${number}`;
   if (isSpecial(item, title)) return null;
+  const released = validDate(item.aired?.from);
+  if (released && new Date(released).getTime() > Date.now()) return null;
   return {
     number,
     sourceSeason: 0,
     absoluteEpisodeNumber: 0,
     title,
-    released: validDate(item.aired?.from),
+    released,
     thumbnail: item.images?.jpg?.image_url || null
   };
 }
