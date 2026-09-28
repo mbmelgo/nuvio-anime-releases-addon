@@ -61,18 +61,22 @@ jobs:
           echo "Waiting for production to serve source version $source_version..."
           smoke_ok=0
           for attempt in $(seq 1 30); do
+            root_manifest="$(curl --fail --silent --show-error "https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json" || true)"
             v4_manifest="$(curl --fail --silent --show-error "https://nuvio-anime-releases-addon-rho.vercel.app/v4/manifest.json" || true)"
             v5_manifest="$(curl --fail --silent --show-error "https://nuvio-anime-releases-addon-rho.vercel.app/v5/manifest.json" || true)"
             v5_meta="$(curl --fail --silent --show-error "https://nuvio-anime-releases-addon-rho.vercel.app/v5/meta/series/mal%3A39535.json" || true)"
 
-            if python - "$source_version" "$v4_manifest" "$v5_manifest" "$v5_meta" <<'PY'
+            if python - "$source_version" "$root_manifest" "$v4_manifest" "$v5_manifest" "$v5_meta" <<'PY'
           import json, sys
-          expected, v4_raw, v5_raw, meta_raw = sys.argv[1:]
+          expected, root_raw, v4_raw, v5_raw, meta_raw = sys.argv[1:]
           try:
+              root = json.loads(root_raw)
               v4 = json.loads(v4_raw)
               v5 = json.loads(v5_raw)
               meta = json.loads(meta_raw)
           except json.JSONDecodeError:
+              raise SystemExit(1)
+          if root.get("version") != expected or root.get("id") != "com.marki.nuvio.anime-releases.v5":
               raise SystemExit(1)
           if v4.get("version") != expected or v4.get("id") != "com.marki.nuvio.anime-releases.v4":
               raise SystemExit(1)
