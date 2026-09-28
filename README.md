@@ -9,7 +9,6 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 - **Production release:** `v2.18.0`
 - **Next minor release baseline:** `2.19.0`
 - **Latest production tag:** `v2.18.0`
-- **Production resolver:** **v5**
 - **Architecture:** **catalog-only**
 - **Detailed metadata:** delegated to **BingeCat / the configured metadata addon**
 - **CI status:** **green**
@@ -32,18 +31,18 @@ All catalogs are generated dynamically from the current date and AniList data. S
 
 | Catalog | Production URL | Purpose |
 |---|---|---|
-| **Ongoing** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/ongoing.json | Currently releasing anime from the current and previous season |
-| **Airing Today** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/airing_today.json | Anime with an episode airing today in Asia/Manila time |
-| **New Episodes — Last 7 Days** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/new_episodes.json | Anime with recently aired episodes |
-| **Next Episodes — Next 7 Days** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/next_episodes.json | Anime with scheduled episodes in the next 7 days |
-| **Upcoming** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/upcoming.json | Not-yet-released anime in the next season |
-| **Finished — Current Season** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/finished_current.json | Anime that finished during the current season |
-| **Previous Season** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/previous_season.json | Anime from the immediately preceding season |
-| **Popular — Current Season** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/popular_current.json | Current-season anime ordered by popularity |
-| **Top Rated — Current Season** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/top_rated_current.json | Current-season anime ordered by score |
-| **Trending — Current Season** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/trending_current.json | Current-season anime ordered by AniList trending score |
+| **Ongoing** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/ongoing.json | Currently releasing anime from the current and previous season |
+| **Airing Today** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/airing_today.json | Anime with an episode airing today in Asia/Manila time |
+| **New Episodes — Last 7 Days** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/new_episodes.json | Anime with recently aired episodes |
+| **Next Episodes — Next 7 Days** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/next_episodes.json | Anime with scheduled episodes in the next 7 days |
+| **Upcoming** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/upcoming.json | Not-yet-released anime in the next season |
+| **Finished — Current Season** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/finished_current.json | Anime that finished during the current season |
+| **Previous Season** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/previous_season.json | Anime from the immediately preceding season |
+| **Popular — Current Season** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/popular_current.json | Current-season anime ordered by popularity |
+| **Top Rated — Current Season** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/top_rated_current.json | Current-season anime ordered by score |
+| **Trending — Current Season** | https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/trending_current.json | Current-season anime ordered by AniList trending score |
 
-The explicit `/v5/...` URLs above are the preferred direct catalog URLs for testing. Equivalent `/catalog/series/...` routes remain available through the Vercel compatibility rewrite.
+The unversioned `/...` URLs are the **canonical production URLs**. There is no separate public v4/v5 route namespace; the current addon architecture is simply the current production API.
 
 ## Resolver architecture
 
@@ -145,13 +144,11 @@ The deployment checkpoint is stored in `ops/release-state.json`.
 
 ```text
 /                         Installer home page
-/manifest.json            Production v5 catalog-only addon manifest
-/v5/manifest.json         Explicit v5 catalog-only manifest
-/catalog/series/:id.json  Production series catalog
-/v5/catalog/series/:id.json Explicit v5 series catalog
+/manifest.json            Canonical production catalog-only addon manifest
+/catalog/series/:id.json  Canonical production series catalog
 ```
 
-There are intentionally no public `/meta` routes in the production Vercel configuration.
+There are intentionally no `/v5` aliases and no public `/meta` routes in the production Vercel configuration.
 
 ## Streams
 
