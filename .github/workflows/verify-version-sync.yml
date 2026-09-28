@@ -12,10 +12,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout versioned commit
+      - name: Checkout current main after version automation
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: main
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
