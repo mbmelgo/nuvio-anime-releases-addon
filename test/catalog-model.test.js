@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { catalogDefinitions, getLast7DaysRangeManila, getNext7DaysRangeManila } from "../api/catalog-source.js";
+import {
+  catalogDefinitions,
+  getCatalogPageCount,
+  getLast7DaysRangeManila,
+  getNext7DaysRangeManila,
+  MAX_CATALOG_ITEMS,
+} from "../api/catalog-source.js";
 import { selectUniqueWikidataMappings } from "../api/catalog-delegation.js";
 
 test("catalog model exposes exactly the five requested catalogs", () => {
@@ -22,6 +28,16 @@ test("catalog model exposes exactly the five requested catalogs", () => {
   assert.equal(catalogs[2].name, "Previous Season — Spring 2026");
   assert.equal(catalogs[3].name, "Latest Anime — Last 7 Days");
   assert.equal(catalogs[4].name, "Upcoming Anime — Next 7 Days");
+});
+
+test("catalogs are exposed as a single page with up to 1000 anime", () => {
+  assert.equal(MAX_CATALOG_ITEMS, 1000);
+  assert.equal(getCatalogPageCount(0), 0);
+  assert.equal(getCatalogPageCount(1), 1);
+  assert.equal(getCatalogPageCount(50), 1);
+  assert.equal(getCatalogPageCount(51), 2);
+  assert.equal(getCatalogPageCount(1000), 20);
+  assert.equal(getCatalogPageCount(1001), 20);
 });
 
 test("rolling catalog windows are exactly seven days wide", () => {
