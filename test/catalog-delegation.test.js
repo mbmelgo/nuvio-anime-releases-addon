@@ -119,6 +119,38 @@ test("catalog delegation prefers the original anime's related metadata for a sea
   }
 });
 
+test("catalog delegation falls back to another related title when the first relation is unmapped", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options = {}) => {
+    if (String(url) === "https://graphql.anilist.co") {
+      return new Response(JSON.stringify({ data: { Page: { media: [{
+        id: 300001,
+        idMal: 70001,
+        title: { romaji: "Example Anime Season 3", english: "Example Anime Season 3", native: "例示アニメ 第3期" },
+        externalLinks: [],
+        relations: { edges: [
+          { relationType: "PREQUEL", node: { id: 300000, idMal: 70000, title: { romaji: "Unmapped Prequel", english: "Unmapped Prequel", native: "" }, externalLinks: [] } },
+          { relationType: "PARENT", node: { id: 299999, idMal: 69999, title: { romaji: "Example Anime", english: "Example Anime", native: "" }, externalLinks: [] } },
+        ] },
+      }] } } }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+
+    assert.match(String(url), /https:\/\/api\.ani\.zip\/v1\/mappings/);
+    const query = new URL(String(url)).search;
+    if (query.includes("mal_id=69999")) {
+      return new Response(JSON.stringify({ mappings: { imdb_id: "tt76543210" } }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    return new Response(JSON.stringify({ mappings: {} }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+
+  try {
+    const result = await delegateCompatibleIds([{ id: "mal:70001", type: "series", name: "Example Anime Season 3" }]);
+    assert.equal(result[0].id, "tt76543210");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("catalog delegation uses the original anime name when ID and AniZip metadata have no compatible link", async () => {
   const originalFetch = globalThis.fetch;
   let call = 0;
