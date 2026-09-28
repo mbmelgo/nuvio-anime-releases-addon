@@ -148,12 +148,12 @@ jobs:
           fi
 
           tag_message="$(cat <<EOF
-Release $release_tag
+          Release $release_tag
 
-Deployed source commit: $GITHUB_SHA
-$since_line
-$change_summary
-EOF
+          Deployed source commit: $GITHUB_SHA
+          $since_line
+          $change_summary
+          EOF
           )"
 
           git config user.name "github-actions[bot]"
@@ -213,12 +213,12 @@ EOF
           fi
 
           tag_message="$(cat <<EOF
-Release $tag
+          Release $tag
 
-Source commit: $GITHUB_SHA
-$since_line
-$change_summary
-EOF
+          Source commit: $GITHUB_SHA
+          $since_line
+          $change_summary
+          EOF
           )"
 
           git tag -a "$tag" "$GITHUB_SHA" -m "$tag_message"
@@ -271,12 +271,12 @@ EOF
           fi
 
           tag_message="$(cat <<EOF
-Release $tag
+          Release $tag
 
-Historical deployment source commit: $target_sha
-$since_line
-$change_summary
-EOF
+          Historical deployment source commit: $target_sha
+          $since_line
+          $change_summary
+          EOF
           )"
 
           git tag -a "$tag" "$target_sha" -m "$tag_message"
