@@ -10,6 +10,10 @@ function routeSources() {
   return (vercelConfig.rewrites || []).map((route) => route.source);
 }
 
+function routeFor(source) {
+  return (vercelConfig.rewrites || []).find((route) => route.source === source);
+}
+
 test("catalog-only architecture does not expose versioned or legacy metadata routes", () => {
   const sources = routeSources();
   assert.equal(sources.some((source) => /^\/v\d+\//.test(source)), false);
@@ -23,6 +27,13 @@ test("catalog-only architecture uses the canonical unversioned production routes
   assert.equal(sources.includes("/catalog/:type/:id.json"), true);
   assert.equal(sources.includes("/v5/manifest.json"), false);
   assert.equal(sources.includes("/v5/catalog/:type/:id.json"), false);
+});
+
+test("catalog requests are routed to the canonical catalog source", () => {
+  const route = routeFor("/catalog/:type/:id.json");
+  assert.ok(route);
+  assert.equal(route.destination, "/api/catalog-source?resource=catalog&type=:type&id=:id");
+  assert.equal(route.destination.includes("catalog-delegation"), false);
 });
 
 test("catalog source implements catalog resources without local metadata resolution", () => {
