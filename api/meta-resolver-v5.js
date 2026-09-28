@@ -48,10 +48,7 @@ export function numberSeasons(entries, requestedMalId) {
   const filtered = entries.filter(entry => {
     if (!root) return false;
     const malId = Number(entry.jikan?.mal_id);
-    // discoverTvGraph has already restricted this collection to TV entries
-    // connected to the requested MAL title. Keep each distinct TV entry as
-    // its own season unless its metadata explicitly identifies a shared season.
-    return malId === Number(requestedMalId) || Boolean(entry.node);
+    return malId === Number(requestedMalId) || isSeasonContinuation(root.node, entry.node);
   });
 
   const sorted = [...filtered].sort((a,b) => startTime(a) - startTime(b));
@@ -71,7 +68,7 @@ export function numberSeasons(entries, requestedMalId) {
 
 export function isSeasonContinuation(rootNode, candidateNode) {
   if (!candidateNode) return false;
-  return Boolean(explicitSeason(candidateNode) || isPart(candidateNode) || candidateNode.title);
+  return Boolean(explicitSeason(candidateNode) || isPart(candidateNode));
 }
 
 function nextSeasonNumber(groups) { const max = groups.reduce((n, g) => Math.max(n, Number(g.season) || 0), 0); return max + 1; }
