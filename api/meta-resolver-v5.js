@@ -1,4 +1,4 @@
-import { getAniListByMal, searchAniListTvByTitle, getJikanAnime, getAniZipMapping, getAniZipEpisodes, getJikanEpisodes, getTvMazeEpisodes, discoverTvGraph } from "../lib/providers.js";
+import { getAniListByMal, getJikanAnime, getAniZipMapping, getAniZipEpisodes, getJikanEpisodes, getTvMazeEpisodes, discoverTvGraph } from "../lib/providers.js";
 import { mergeEpisodeRows, normalizeJikanEpisode } from "../lib/episodes.js";
 import { reconcileEpisodeSequences } from "../lib/episode-sequences.js";
 
@@ -23,17 +23,7 @@ export async function resolveBase(requestedId, type = "series") {
   try {
     const rootJikan = await getJikanAnime(malId), rootAniList = await getAniListByMal(malId);
     if (!rootJikan && !rootAniList) return { statusCode: 404, meta: null, graph: [], seasons: [], videos: [], root: null };
-    const root = rootJikan || aniListToJikan(rootAniList);
-    let graph = await discoverTvGraph(malId, root, MAX_GRAPH_NODES);
-    let seasons = numberSeasons(graph, malId);
-    if (needsFranchiseSearch(root, seasons)) {
-      const searchTitle = franchiseSearchTitle(root);
-      const candidates = await searchAniListTvByTitle(searchTitle);
-      const discovered = candidates.map(node => ({ node, jikan: aniListToJikan(node) })).filter(entry => Number(entry.jikan?.mal_id) > 0);
-      graph = mergeGraphEntries(graph, discovered, MAX_GRAPH_NODES);
-      seasons = numberSeasons(graph, malId);
-    }
-    const videos = await buildVideos(seasons), meta = buildMeta(root, requestedId, videos);
+    const root = rootJikan || aniListToJikan(rootAniList), graph = await discoverTvGraph(malId, root, MAX_GRAPH_NODES), seasons = numberSeasons(graph, malId), videos = await buildVideos(seasons), meta = buildMeta(root, requestedId, videos);
     return { statusCode: 200, meta, graph, seasons, videos, root };
   } catch (error) { console.error("[meta-resolver-v5]", error); return { statusCode: 502, meta: null, graph: [], seasons: [], videos: [], root: null }; }
 }
@@ -43,9 +33,6 @@ function getQuery(req,key){try{const value=req.query?.[key];if(Array.isArray(val
 export function parseMalId(id){const m=String(id||"").match(/^mal:(\d+)$/i)||String(id||"").match(/^(\d+)$/);return m?Number(m[1]):0;}
 function aniListToJikan(node){return node?{mal_id:Number(node.idMal),type:"TV",episodes:Number(node.episodes)||null,title:node.title?.romaji||node.title?.english||node.title?.native||`MAL ${node.idMal}`,title_english:node.title?.english||null,title_japanese:node.title?.native||null,title_synonyms:node.synonyms||[],aired:{from:partsDate(node.startDate),to:partsDate(node.endDate)},year:Number(node.seasonYear)||null}:null;}
 function partsDate(x){return x?.year&&x?.month&&x?.day?`${x.year}-${String(x.month).padStart(2,"0")}-${String(x.day).padStart(2,"0")}T00:00:00.000Z`:null;}
-export function needsFranchiseSearch(root,seasons){const requestedSeason=explicitSeason(root)||0;return requestedSeason>=2&&(!Array.isArray(seasons)||seasons.length<requestedSeason);}
-function franchiseSearchTitle(root){const values=titleValues(root,root);const preferred=values.find(value=>/\b(?:season|s)\s*\d+\b|\b(?:part|cour)\s*[12]\b|\b(?:ii|iii|iv|v|vi|vii|viii|ix|x)\b/i.test(value));const title=preferred||values[0]||"";return title.replace(/\b(?:season|s)\s*\d+\b/gi," ").replace(/\b(?:part|cour)\s*[12]\b/gi," ").replace(/\b(?:ii|iii|iv|v|vi|vii|viii|ix|x)\b/gi," ").replace(/[：:：\-–—,]+/g," ").replace(/\s+/g," ").trim();}
-function mergeGraphEntries(existing,additional,maxNodes){const map=new Map((Array.isArray(existing)?existing:[]).map(entry=>[Number(entry.jikan?.mal_id),entry]));for(const entry of additional||[]){const malId=Number(entry.jikan?.mal_id);if(!malId||map.has(malId))continue;map.set(malId,entry);if(map.size>=maxNodes)break;}return[...map.values()];}
 export function numberSeasons(entries,requestedMalId){const requested=entries.find(x=>Number(x.jikan?.mal_id)===Number(requestedMalId)),root=requested||entries.find(x=>Number(x.jikan?.mal_id)),filtered=collectFranchiseEntries(entries,requestedMalId,root),sorted=[...filtered].sort((a,b)=>startTime(a)-startTime(b)),groups=[];for(const entry of sorted){const explicit=explicitSeason(entry.node),part=isPart(entry.node);let season=explicit||(part&&groups.length?groups[groups.length-1].season:null);if(!season)season=nextSeasonNumber(groups);let group=groups.find(g=>g.season===season);if(!group){group={season,entries:[]};groups.push(group);}if(!group.entries.some(x=>Number(x.jikan?.mal_id)===Number(entry.jikan?.mal_id)))group.entries.push(entry);}if(requested&&!groups.some(g=>g.entries.some(x=>Number(x.jikan?.mal_id)===Number(requestedMalId))))groups.unshift({season:1,entries:[requested]});return groups.sort((a,b)=>a.season-b.season);}
 function collectFranchiseEntries(entries,requestedMalId,root){const included=new Map([[Number(requestedMalId),root]]),queue=[root];while(queue.length){const parent=queue.shift();for(const entry of entries){const malId=Number(entry.jikan?.mal_id);if(!malId||included.has(malId))continue;const qualifiesFromRoot=parent===root&&isSeasonContinuation(root.node,entry.node,root.jikan,entry.jikan),qualifiesFromContinuation=parent!==root&&relatedByTvRelation(entry,parent);if(!qualifiesFromRoot&&!qualifiesFromContinuation)continue;included.set(malId,entry);queue.push(entry);}}return[...included.values()];}
 function relatedByTvRelation(entry,parent){const parentMalId=Number(parent?.jikan?.mal_id||0);if(!parentMalId)return false;const hasRelatedEdge=(edges=[],targetMalId)=>edges.some(edge=>{const relationType=String(edge?.relationType||"").toUpperCase(),malId=Number(edge?.node?.idMal||0);return malId===targetMalId&&["PREQUEL","SEQUEL"].includes(relationType);});if(hasRelatedEdge(entry.node?.relations?.edges,parentMalId))return true;if(hasRelatedEdge(parent?.node?.relations?.edges,Number(entry.jikan?.mal_id||0)))return true;const hasJikanRelation=(relations=[],targetMalId)=>relations.some(rel=>/^(Sequel|Prequel)$/i.test(String(rel?.relation||""))&&(rel.entry||[]).some(child=>Number(child?.mal_id)===targetMalId));return hasJikanRelation(entry.jikan?.relations,parentMalId)||hasJikanRelation(parent?.jikan?.relations,Number(entry.jikan?.mal_id||0));}
