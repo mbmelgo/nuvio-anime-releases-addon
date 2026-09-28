@@ -1,4 +1,4 @@
-# Anime Releases for Nuvio — v2.7.3
+# Anime Releases for Nuvio — v2.7.4
 
 A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio-compatible clients**.
 
@@ -131,7 +131,7 @@ The repository's version file is currently the source of truth for the patch-lev
 
 The current autonomous deployment checkpoint is **1/5** for the active cycle. The latest successful deployment recorded in `ops/release-state.json` is source commit `54cb48bba679a3d27336f169846a830f374c4082`, deployed as version **2.6.5**, with the next minor release baseline **2.7.0**.
 
-The release-tag backfill mechanism is currently repairing the missing historical `v2.7.0` tag for that exact deployed source commit.
+The release-tag backfill mechanism is currently repairing the missing historical `v2.7.4` tag for that exact deployed source commit.
 
 ## Project structure
 
