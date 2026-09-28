@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { reconcileEpisodeSequences, looksLikeSameSequence } from "../api/lib/episode-sequences.js";
 import { isSpecial, normalizeAniZipEpisode } from "../api/lib/episodes.js";
-import { numberSeasons, chooseRows, getReleaseInfo } from "../api/meta-resolver-v5.js";
+import { numberSeasons, chooseRows, getReleaseInfo, isOngoing } from "../api/meta-resolver-v5.js";
 
 const titles = (prefix, count, start = 1) =>
   Array.from({ length: count }, (_, index) => ({
@@ -102,6 +102,22 @@ test("One Piece regression: provider seasons may reuse episode numbers without c
   assert.equal(result.length, 4);
   assert.deepEqual(result.map((row) => row.canonicalNumber), [1, 2, 3, 4]);
   assert.deepEqual(result.map((row) => row.sourceSeason), [1, 1, 2, 2]);
+});
+
+
+test("One Piece regression: undated generic placeholder episodes are excluded", () => {
+  const result = normalizeAniZipEpisode({
+    episodeNumber: 1181,
+    seasonNumber: 1,
+    title: "Episode 1181",
+  });
+
+  assert.equal(result, null);
+});
+
+test("Ongoing-state regression: missing end dates do not make finished anime ongoing", () => {
+  assert.equal(isOngoing({ status: "Finished Airing", airing: false, aired: { from: "2023-01-01T00:00:00.000Z", to: null } }), false);
+  assert.equal(isOngoing({ status: "Currently Airing", airing: true, aired: { from: "2026-01-01T00:00:00.000Z", to: null } }), true);
 });
 
 test("One Piece regression: an incomplete Jikan tranche does not beat a complete AniZip sequence", () => {
