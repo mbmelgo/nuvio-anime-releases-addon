@@ -86,25 +86,15 @@ test("follows a parent-side sequel relation through a continuation chain", () =>
     },
     {
       jikan: { mal_id: 101, title: "Parent Show Season 2", episodes: 12 },
-      node: {
-        ...continuation,
-        startDate: { year: 2021, month: 1, day: 1 }
-      }
+      node: { ...continuation, startDate: { year: 2021, month: 1, day: 1 } }
     },
     {
       jikan: { mal_id: 102, title: "Parent Show: Later Arc", episodes: 12 },
-      node: {
-        ...nextContinuation,
-        startDate: { year: 2022, month: 1, day: 1 }
-      }
+      node: { ...nextContinuation, startDate: { year: 2022, month: 1, day: 1 } }
     }
   ];
-  entries[0].node.relations = {
-    edges: [{ relationType: "SEQUEL", node: { idMal: 101 } }]
-  };
-  entries[1].node.relations = {
-    edges: [{ relationType: "SEQUEL", node: { idMal: 102 } }]
-  };
+  entries[0].node.relations = { edges: [{ relationType: "SEQUEL", node: { idMal: 101 } }] };
+  entries[1].node.relations = { edges: [{ relationType: "SEQUEL", node: { idMal: 102 } }] };
 
   const groups = numberSeasons(entries, 100);
   assert.deepEqual(groups.map(group => group.entries.map(entry => entry.jikan.mal_id)), [[100], [101], [102]]);
@@ -119,7 +109,6 @@ test("recognizes higher Roman-numeral season titles as continuations", () => {
 test("does not treat an ordinary standalone I in a title as a Roman numeral season marker", () => {
   const root = { title: { english: "The Show" } };
   const ordinary = { title: { english: "The Show I Love" } };
-
   assert.equal(isSeasonContinuation(root, ordinary), false);
 });
 
@@ -133,4 +122,43 @@ test("groups the original season first when the requested entry is a later seaso
   const groups = numberSeasons(entries, 59193);
   assert.deepEqual(groups.map(group => group.season), [1, 2, 3]);
   assert.deepEqual(groups.map(group => group.entries.map(entry => entry.jikan.mal_id)), [[39535, 45576], [51179], [59193]]);
+});
+
+test("recovers an unmarked Season 1 when the requested entry is Season 2", () => {
+  const season1 = { title: { english: "Hell Mode: Yarikomi Suki no Gamer wa Hai Settei no Isekai de Musou Suru" }, startDate: { year: 2024, month: 1, day: 1 } };
+  const season2 = { title: { english: "Hell Mode Season 2" }, startDate: { year: 2026, month: 1, day: 1 }, relations: { edges: [{ relationType: "PREQUEL", node: { idMal: 1 } }] } };
+  const entries = [
+    { jikan: { mal_id: 1, title: season1.title.english }, node: season1 },
+    { jikan: { mal_id: 2, title: season2.title.english }, node: season2 }
+  ];
+  assert.equal(isSeasonContinuation(season2, season1), true);
+  const groups = numberSeasons(entries, 2);
+  assert.deepEqual(groups.map(group => group.entries.map(entry => entry.jikan.mal_id)), [[1], [2]]);
+});
+
+test("recovers an unmarked Season 1 for differently formatted later-season titles", () => {
+  const cases = [
+    [10, "Trapped in a Dating Sim: The World of Otome Games Is Tough for Mobs", 11, "Trapped in a Dating Sim Season 2"],
+    [20, "From Old Country Bumpkin to Master Swordsman", 21, "From Old Country Bumpkin to Master Swordsman II"]
+  ];
+  for (const [s1Id, s1Title, s2Id, s2Title] of cases) {
+    const entries = [
+      { jikan: { mal_id: s1Id, title: s1Title }, node: { title: { english: s1Title }, startDate: { year: 2024, month: 1, day: 1 } } },
+      { jikan: { mal_id: s2Id, title: s2Title }, node: { title: { english: s2Title }, startDate: { year: 2026, month: 1, day: 1 }, relations: { edges: [{ relationType: "PREQUEL", node: { idMal: s1Id } }] } } }
+    ];
+    assert.equal(isSeasonContinuation(entries[1].node, entries[0].node), true);
+    const groups = numberSeasons(entries, s2Id);
+    assert.deepEqual(groups.map(group => group.entries.map(entry => entry.jikan.mal_id)), [[s1Id], [s2Id]]);
+  }
+});
+
+test("does not turn a separate prequel franchise into Season 1", () => {
+  const root = { title: { english: "Naruto" }, relations: { edges: [{ relationType: "SEQUEL", node: { idMal: 1735 } }] } };
+  const sequel = { title: { english: "Naruto: Shippuden" }, relations: { edges: [{ relationType: "PREQUEL", node: { idMal: 20 } }] } };
+  const entries = [
+    { jikan: { mal_id: 20, title: "Naruto" }, node: root },
+    { jikan: { mal_id: 1735, title: "Naruto: Shippuden" }, node: sequel }
+  ];
+  assert.equal(isSeasonContinuation(root, sequel), false);
+  assert.equal(numberSeasons(entries, 20).length, 1);
 });
