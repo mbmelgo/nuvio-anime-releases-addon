@@ -7,15 +7,33 @@ A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio
 - **GitHub:** https://github.com/mbmelgo/nuvio-anime-releases-addon
 - **Vercel:** https://nuvio-anime-releases-addon-rho.vercel.app
 - **Manifest:** https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json
+- **Resolver selector:** https://nuvio-anime-releases-addon-rho.vercel.app/
 - **Branch:** `main`
 
 ## Current status
 
 GitHub is the source of truth. Automatic Vercel Git deployments are intentionally disabled. Production deployments are **test-gated**: a normal GitHub push runs CI without deploying, while a commit containing `[deploy-prod]` triggers the Vercel Deploy Hook only after the unit-test job passes.
 
-Release tags are created for successful deployment minor releases (`vX.Y.0`) and major releases (`vX.0.0`). Annotated tags include a human-readable summary of the source changes included in that release. Historical deployment tags can be backfilled from `ops/release-state.json`.
+Release tags are created for successful deployment minor releases (`vX.Y.0`) and major releases (`vX.0.0`). Annotated tags include a human-readable summary of the source changes included in that release. Historical deployment tags are currently non-blocking.
 
 The current production metadata routing uses **v4**. **v5** is the refactored candidate and remains available for validation.
+
+## Resolver selection
+
+The landing page now provides a resolver selector. It generates a resolver-specific manifest URL so v4 and v5 can be installed and tested independently.
+
+```text
+Home / selector
+    ↓
+Choose v4 or v5
+    ↓
+/v4/manifest.json       → v4 metadata routes
+/v5/manifest.json       → v5 metadata routes
+```
+
+The manifests use separate addon IDs, allowing side-by-side installation in compatible clients. The root `/manifest.json` remains the existing v4-compatible manifest until v5 is deliberately promoted.
+
+Stremio supports parameterized addon repository paths, where the selected path segment can be carried through the addon resource routes. citeturn4search1turn4search2
 
 ## Current release workflow
 
@@ -49,11 +67,19 @@ Generated version commits use `[skip-version-automation]` to prevent recursion.
 
 ### v4 — production
 
-`api/meta-resolver-v4.js` is the current production resolver. Existing Vercel rewrites continue to point metadata requests to v4.
+`api/meta-resolver-v4.js` is the current production resolver.
+
+Install/test directly:
+
+`https://nuvio-anime-releases-addon-rho.vercel.app/v4/manifest.json`
 
 ### v5 — refactored candidate
 
 `api/meta-resolver-v5.js` is the refactored candidate. It is covered by the regression suite and is being validated before promotion to production.
+
+Install/test directly:
+
+`https://nuvio-anime-releases-addon-rho.vercel.app/v5/manifest.json`
 
 Recent regression coverage includes franchise continuation detection for titles such as **Attack on Titan: The Final Season**, while separately titled sequel series remain excluded.
 
@@ -74,14 +100,19 @@ The TDD regression suite covers:
 - Episode ID uniqueness and normalization
 - Special/recap/OVA/ONA/movie filtering
 - Production routing regressions
+- v4/v5 resolver manifest selection and addon IDs
 
 ## Key endpoints
 
 ```text
-/                         Home page
-/manifest.json            Addon manifest
-/catalog/series/:id.json  Series catalog
-/meta/series/:id.json     Series metadata
+/                         Resolver selection home page
+/manifest.json            Existing v4-compatible addon manifest
+/v4/manifest.json         Explicit v4 addon manifest
+/v5/manifest.json         Explicit v5 addon manifest
+/catalog/series/:id.json  Series catalog (v4-compatible)
+/meta/series/:id.json     Series metadata (v4-compatible)
+/v4/meta/series/:id.json Explicit v4 metadata
+/v5/meta/series/:id.json Explicit v5 metadata
 /api/meta/series/:id.json Series metadata compatibility route
 ```
 
@@ -93,13 +124,11 @@ AniList is the primary source for metadata, season/status information, artwork, 
 
 The repository's version file is currently the source of truth for the patch-level development version. `package.json`, `api/stremio.js`, and the README version are synchronized by the workflow.
 
-The current autonomous deployment checkpoint is **1/5** for the active cycle. The latest successful deployment recorded in `ops/release-state.json` is source commit `54cb48bba679a3d27336f169846a830f374c4082`, deployed as version **2.6.5**, with the next minor release baseline **2.7.0**.
-
-The release-tag backfill mechanism is repairing the missing historical `v2.7.12` tag for that exact deployed source commit.
+The current autonomous deployment checkpoint remains **1/5** for the active cycle. The latest successful deployment recorded in `ops/release-state.json` is source commit `54cb48bba679a3d27336f169846a830f374c4082`, deployed as version **2.6.5**, with the next minor release baseline **2.7.0**.
 
 ## Vercel rewrites
 
-Production metadata routing currently remains on v4. Automatic Git deployment remains disabled.
+Production metadata routing currently remains on v4. The new `/v5/*` namespace is available for candidate validation but has **not been deployed yet**.
 
 ## Streams
 
@@ -107,6 +136,4 @@ This is a **catalog and metadata addon only**. It does not provide video streams
 
 ## Version
 
-**2.7.5**
-
-<!-- Release-tag backfill retry [tag-backfill] -->
+**2.7.12**
