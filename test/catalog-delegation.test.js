@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { delegateCompatibleIds, selectUniqueWikidataMappings } from "../api/catalog-delegation.js";
 
+// Identity delegation regression coverage.
+
 test("catalog delegation converts mapped MAL IDs to IMDb IDs", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response(JSON.stringify({ data: { Page: { media: [{ id: 39535, idMal: 34134, title: { romaji: "Mushoku Tensei II", english: "Mushoku Tensei: Jobless Reincarnation Season 2 Part 2", native: "無職転生 II" }, synonyms: ["Mushoku Tensei II"], externalLinks: [{ site: "IMDb", url: "https://www.imdb.com/title/tt13293588/" }] }] } } }), { status: 200, headers: { "content-type": "application/json" } });
