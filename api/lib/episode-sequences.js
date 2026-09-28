@@ -6,21 +6,20 @@ export function reconcileEpisodeSequences(sequences) {
     const rows = dedupeRows(sequence?.rows);
     if (!rows.length) continue;
 
+    const identity = String(sequence?.identity || "");
     const duplicateOf = accepted.find((candidate) => looksLikeSameSequence(candidate.rows, rows));
     if (duplicateOf) {
       duplicateOf.rows = mergeRows(duplicateOf.rows, rows);
       continue;
     }
 
-    const planned = rows.map((row) => ({
+    const planned = rows.map((row, index) => ({
       ...row,
-      canonicalNumber: nextEpisode + Number(row.number) - 1,
+      identity,
+      canonicalNumber: nextEpisode + index,
     }));
-    nextEpisode += rows.length;
-    accepted.push({
-      identity: sequence?.identity || "",
-      rows: planned,
-    });
+    nextEpisode += planned.length;
+    accepted.push({ identity, rows: planned });
   }
 
   return accepted.flatMap((sequence) => sequence.rows);
@@ -31,17 +30,29 @@ export function looksLikeSameSequence(aRows, bRows) {
   const b = dedupeRows(bRows);
   if (!a.length || !b.length) return false;
 
+  // Compare episode identity by relative position, not only provider episode number.
+  // This handles providers that use absolute numbering while another provider
+  // resets numbering for a season/cour.
+  const comparable = Math.min(a.length, b.length);
+  if (comparable >= 3) {
+    let matches = 0;
+    for (let i = 0; i < comparable; i++) {
+      if (sameEpisodeIdentity(a[i], b[i])) matches++;
+    }
+    if (matches / comparable >= 0.6) return true;
+  }
+
+  // Also support equal-number sequences when one provider has extra rows.
   const byNumber = new Map(a.map((row) => [Number(row.number), row]));
   let matches = 0;
-
+  let comparableByNumber = 0;
   for (const row of b) {
     const other = byNumber.get(Number(row.number));
     if (!other) continue;
+    comparableByNumber++;
     if (sameEpisodeIdentity(other, row)) matches++;
   }
-
-  const comparable = Math.min(a.length, b.length);
-  return matches >= 3 && matches / comparable >= 0.6;
+  return comparableByNumber >= 3 && matches / comparableByNumber >= 0.6;
 }
 
 function sameEpisodeIdentity(a, b) {
@@ -68,8 +79,7 @@ function dedupeRows(rows) {
 function mergeRows(aRows, bRows) {
   const map = new Map(aRows.map((row) => [Number(row.canonicalNumber ?? row.number), { ...row }]));
   for (const row of bRows) {
-    const key = Number(row.number);
-    const existing = [...map.values()].find((candidate) => Number(candidate.number) === key);
+    const existing = [...map.values()].find((candidate) => sameEpisodeIdentity(candidate, row));
     if (!existing) continue;
     if (betterRow(row, existing)) Object.assign(existing, row);
   }
