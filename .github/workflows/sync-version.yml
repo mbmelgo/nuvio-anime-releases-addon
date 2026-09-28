@@ -7,6 +7,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: automatic-patch-versioning-main
+  cancel-in-progress: false
+
 jobs:
   bump-patch:
     if: >-
