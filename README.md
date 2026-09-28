@@ -8,16 +8,16 @@ A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio
 - **Development version:** `2.16.28`
 - **Next minor release baseline:** `2.17.0`
 - **Latest production tag:** `v2.16.0`
-- **Latest production source commit:** `55d371580ee8a20dc0f25e5bd5102c5a333da630`
-- **Latest production source version:** `2.16.10`
-- **Latest production deployment:** `dpl_DVzT6p2jrMheaNVsyrtCgDJkRBZF`
+- **Latest production source commit:** `e0a6411a57dd87ad91570b54ca5376c80fcb3532`
+- **Latest production source version:** `2.16.15`
+- **Latest production deployment:** `dpl_6HEm7mWPqx9aXA5W1aDspsRw4Wae`
 - **Production resolver:** **v5**
 - **Legacy resolver:** **v4**, retained for side-by-side validation
-- **Active deployment checkpoint:** **5/5 — PAUSED**
-- **Total production deployments:** **20**
+- **Active deployment checkpoint:** **1/5**
+- **Total production deployments:** **21**
 - **CI status:** **green**
 
-The fifth production deployment has been completed and the autonomous deployment checkpoint is intentionally paused. No additional production deployment should be made until the user explicitly resumes the loop.
+The current production build contains the root-series metadata and IMDb identity fixes. The active deployment checkpoint has one production deployment consumed; the next deployment is reserved for the current TDD/performance batch.
 
 Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated through GitHub Actions and the Vercel deployment hook.
 
@@ -55,6 +55,7 @@ The landing page provides a resolver selector so v4 and v5 can be installed and 
 ## Resolver behavior covered by regression tests
 
 - Franchise continuation detection, including parent-side sequel relationships
+- Root-series identity when a later seasonal entry is requested
 - `Final Season` continuation handling
 - Roman-numeral season markers `II` through `X`
 - Protection against treating ordinary standalone `I` as a season marker
@@ -71,6 +72,8 @@ The landing page provides a resolver selector so v4 and v5 can be installed and 
 
 The production v5 metadata resolver currently exposes, when provider data is available:
 
+- Root/original series title and description for seasonal requests
+- Root-series artwork and genres where available
 - Release range and last-air date
 - Airing status and runtime
 - Country and language
@@ -83,8 +86,15 @@ The production v5 metadata resolver currently exposes, when provider data is ava
 - Actual trailers, separate from streaming episodes
 - Streaming-episode metadata under `app_extras.streamingEpisodes`
 - Recommendations / related anime
+- IMDb ID for client-side IMDb metadata enrichment
 - External links
 - Season and episode presentation metadata
+
+Season-specific episode and airing data remains available while the primary series identity comes from the franchise root.
+
+## Performance
+
+The v5 rich metadata path is optimized to avoid repeating the expensive base resolver work. The rich layer reuses the resolved franchise graph and season groups instead of resolving the same MAL graph a second time. Franchise graph discovery is performed in bounded parallel batches, while provider caching remains enabled with Vercel-friendly `s-maxage`/stale-while-revalidate headers.
 
 ## Data sources
 
@@ -139,4 +149,4 @@ This is a **catalog and metadata addon only**. It does not provide video streams
 
 ## Release state
 
-The fifth production deployment is source version `2.16.10` from commit `55d371580ee8a20dc0f25e5bd5102c5a333da630`, with production deployment ID `dpl_DVzT6p2jrMheaNVsyrtCgDJkRBZF`. The release baseline is `v2.16.0`. The autonomous deployment checkpoint is **5/5 and paused**; the next development minor baseline is `2.17.0`.
+The latest production deployment is source version `2.16.15` from commit `e0a6411a57dd87ad91570b54ca5376c80fcb3532`, with production deployment ID `dpl_6HEm7mWPqx9aXA5W1aDspsRw4Wae`. The release baseline is `v2.16.0`. The active deployment checkpoint is **1/5**; the next development minor baseline is `2.17.0`.
