@@ -6,15 +6,13 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 
 - **Branch:** `main`
 - **Development version:** `2.20.0`
-- **Production release:** `v2.19.0`
-- **Next minor release baseline:** `2.20.0`
-- **Latest production tag:** `v2.19.0`
-- **Release candidate:** `2.20.0` — five-catalog architecture + rolling seven-day episode windows
-- **Deployment requested:** `v2.20.0` (smoke-test automation retry)
+- **Production release:** `v2.20.0`
+- **Next minor release baseline:** `2.21.0`
+- **Latest production tag:** `v2.20.0`
 - **Architecture:** **catalog-only**
 - **Detailed metadata:** delegated to **BingeCat / the configured metadata addon**
-- **CI status:** **green** for the current main tree
-- **Deployment checkpoint:** **1/5 — deployment #1 of the current checkpoint cycle**
+- **CI status:** **green** for the current release
+- **Deployment checkpoint:** **3/5 — three production deployments used in the current checkpoint cycle**
 
 The addon is intentionally responsible only for anime release and airing catalogs. Detailed metadata is delegated to BingeCat rather than duplicated inside this addon. Legacy metadata routes and the old local metadata resolver have been retired.
 
