@@ -15,10 +15,17 @@ export function reconcileEpisodeSequences(sequences) {
     accepted.push({ identity, rows: rows.map((row) => ({ ...row, identity })) });
   }
 
-  // Every accepted sequence owns a contiguous canonical numbering space. Provider
-  // episode numbers are source metadata only; they must never leak into Nuvio's
-  // season/episode numbering.
-  return accepted.flatMap((sequence) => canonicalizeRows(sequence.rows, sequence.identity));
+  // Accepted sequences are distinct canonical segments. Duplicate/alternate
+  // provider sequences have already been merged above. Remaining segments must
+  // continue the same canonical numbering space rather than restarting at 1.
+  let offset = 0;
+  const result = [];
+  for (const sequence of accepted) {
+    const rows = canonicalizeRows(sequence.rows, sequence.identity, offset);
+    result.push(...rows);
+    offset += rows.length;
+  }
+  return result;
 }
 
 export function looksLikeSameSequence(aRows, bRows) {
@@ -60,11 +67,11 @@ function mergeRows(aRows, bRows) {
   return [...byIdentity.values()].sort(compareRows);
 }
 
-function canonicalizeRows(rows, identity) {
+function canonicalizeRows(rows, identity, offset = 0) {
   return dedupeRows(rows).map((row, index) => ({
     ...row,
     identity: row.identity || identity,
-    canonicalNumber: index + 1,
+    canonicalNumber: offset + index + 1,
   }));
 }
 
