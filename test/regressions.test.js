@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { reconcileEpisodeSequences, looksLikeSameSequence } from "../api/lib/episode-sequences.js";
 import { isSpecial, normalizeAniZipEpisode } from "../api/lib/episodes.js";
-import { numberSeasons, chooseRows, getReleaseInfo, isOngoing, mergeFreshAbsoluteEpisodes, fillMissingRowsFromFallback } from "../api/meta-resolver-v5.js";
+import { numberSeasons, chooseRows, getReleaseInfo, isOngoing, mergeFreshAbsoluteEpisodes, fillMissingRowsFromFallback, canSupplementWithFallback } from "../api/meta-resolver-v5.js";
 
 const titles = (prefix, count, start = 1) =>
   Array.from({ length: count }, (_, index) => ({
@@ -129,6 +129,12 @@ test("One Piece regression: an incomplete Jikan tranche does not beat a complete
   assert.equal(result.length, 1200);
   assert.equal(result[0].title, "AniZip Episode 1");
   assert.equal(result.at(-1).number, 1200);
+});
+
+test("Episode source regression: missing primary data must not be replaced wholesale by the fallback", () => {
+  assert.equal(canSupplementWithFallback([], 366), false);
+  assert.equal(canSupplementWithFallback([{ number: 1 }], 366), false);
+  assert.equal(canSupplementWithFallback(Array.from({ length: 293 }, (_, i) => ({ number: i + 1 })), 366), true);
 });
 
 test("Episode source regression: a complete fallback fills a stale finished sequence without replacing primary rows", () => {
