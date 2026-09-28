@@ -38,7 +38,6 @@ jobs:
       - name: Check deployment checkpoint and deploy
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
-          RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
         shell: bash
         run: |
           set -euo pipefail
@@ -118,17 +117,65 @@ jobs:
 
           release_tag="$(cat /tmp/release-tag)"
           git push
-
-          if [ -z "$RELEASE_PAT" ]; then
-            echo "RELEASE_PAT is not configured; deployment completed without creating the GitHub release tag."
-            exit 0
-          fi
-
-          git remote set-url origin "https://x-access-token:${RELEASE_PAT}@github.com/${GITHUB_REPOSITORY}.git"
           if git ls-remote --exit-code --tags origin "refs/tags/$release_tag" >/dev/null 2>&1; then
             echo "Tag $release_tag already exists."
             exit 0
           fi
-
           git tag -a "$release_tag" "$GITHUB_SHA" -m "Release $release_tag"
           git push origin "refs/tags/$release_tag"
+
+
+  tag-major-release:
+    name: Tag major release
+    needs: test
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[major-release]') && !contains(github.event.head_commit.message, '[deploy-prod]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate and tag major release
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p' api/version.js)"
+          if ! [[ "$version" =~ ^[0-9]+\.0\.0$ ]]; then
+            echo "Major release marker requires an x.0.0 version; found $version."
+            exit 1
+          fi
+          tag="v$version"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" "$GITHUB_SHA" -m "Release $tag"
+          git push origin "refs/tags/$tag"
+
+  backfill-release-tag:
+    name: Backfill an existing deployment tag
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[tag-backfill]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create requested historical tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          target_sha="0cb81fc8b23c751029e470f8d7386603ee6b9ae8"
+          tag="v2.2.0"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" "$target_sha" -m "Release $tag"
+          git push origin "refs/tags/$tag"
