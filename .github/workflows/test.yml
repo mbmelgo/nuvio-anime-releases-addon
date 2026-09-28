@@ -121,7 +121,26 @@ jobs:
             echo "Tag $release_tag already exists."
             exit 0
           fi
-          git tag -a "$release_tag" "$GITHUB_SHA" -m "Release $release_tag"
+          previous_tag="$(git tag --list 'v*' --sort=-version:refname | head -n1 || true)"
+          if [ -n "$previous_tag" ]; then
+            change_summary="$(git log --pretty=format:'- %s (%h)' "$previous_tag..$GITHUB_SHA")"
+          else
+            change_summary="$(git log --pretty=format:'- %s (%h)' "$GITHUB_SHA")"
+          fi
+
+          if [ -z "$change_summary" ]; then
+            change_summary="- No commit summary available."
+          fi
+
+          tag_message="$(cat <<EOF
+Release $release_tag
+
+Summary of changes included in this release:
+$change_summary
+EOF
+          )"
+
+          git tag -a "$release_tag" "$GITHUB_SHA" -m "$tag_message"
           git push origin "refs/tags/$release_tag"
 
 
@@ -152,7 +171,26 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$tag" "$GITHUB_SHA" -m "Release $tag"
+          previous_tag="$(git tag --list 'v*' --sort=-version:refname | head -n1 || true)"
+          if [ -n "$previous_tag" ]; then
+            change_summary="$(git log --pretty=format:'- %s (%h)' "$previous_tag..$GITHUB_SHA")"
+          else
+            change_summary="$(git log --pretty=format:'- %s (%h)' "$GITHUB_SHA")"
+          fi
+
+          if [ -z "$change_summary" ]; then
+            change_summary="- No commit summary available."
+          fi
+
+          tag_message="$(cat <<EOF
+Release $tag
+
+Summary of changes included in this release:
+$change_summary
+EOF
+          )"
+
+          git tag -a "$tag" "$GITHUB_SHA" -m "$tag_message"
           git push origin "refs/tags/$tag"
 
   backfill-release-tag:
