@@ -6,23 +6,23 @@ A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio
 
 - **Branch:** `main`
 - **Development version:** `2.16.1`
-- **Next minor release baseline:** `2.15.0`
-- **Latest production tag:** `v2.13.6`
-- **Latest production source commit:** `1e733067921e9d514d8e870d880a51652d3bee79`
-- **Latest production source version:** `2.13.6`
+- **Next minor release baseline:** `2.16.0`
+- **Latest production tag (pending correction):** `v2.15.4`
+- **Latest production source commit:** `cc9ea9cff4b5e7bf70985f3dedbbea751e88c5e6`
+- **Latest production source version:** `2.15.4`
 - **Production resolver:** **v5**
 - **Legacy resolver:** **v4**, retained for side-by-side validation
-- **Active deployment checkpoint:** **3/5**
-- **Total production deployments:** **18**
+- **Active deployment checkpoint:** **4/5**
+- **Total production deployments:** **19**
 - **CI status for rich metadata changes:** **green**
 
-The current production tag is retained as-is; historical/current tag rewriting is intentionally not performed. The release workflow is being corrected so future deployments create the proper minor baseline tag automatically.
+The current production source is being corrected from the erroneous patch-level tag `v2.15.4` to the required minor release baseline `v2.15.0`. No older release tags are being rewritten or backfilled.
 
 Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated: normal commits run CI without deploying; `[deploy-prod]` is used only after CI passes and the deployment is worth consuming one checkpoint slot.
 
 ## Production validation target
 
-The next controlled production deployment validates the rich-metadata semantic fixes: streaming episodes must not be exposed as trailers, producer companies must not be mislabeled as the broadcast network, and release/last-air dates must aggregate across resolved seasons and episode dates.
+The latest controlled production deployment validated the rich-metadata semantic fixes: streaming episodes are no longer exposed as trailers, producer companies are separated from broadcast-network metadata, and release/last-air dates aggregate across resolved seasons and episode dates.
 
 ## URLs
 
@@ -123,4 +123,4 @@ This is a **catalog and metadata addon only**. It does not provide video streams
 
 ## Release state
 
-The latest production deployment is source version `2.14.13` from commit `869333d0575139b57936eb0f3056ef431a9b359e`, currently tagged `v2.14.13` by the existing deployment workflow. The next intended minor release baseline is `2.15.0`; the active deployment checkpoint is 3/5.
+The latest production deployment is source version `2.15.4` from commit `cc9ea9cff4b5e7bf70985f3dedbbea751e88c5e6`. The active deployment checkpoint is 4/5. The patch-level deployment tag is being corrected to `v2.15.0` for this release baseline.
