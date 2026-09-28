@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { reconcileEpisodeSequences, looksLikeSameSequence } from "../api/lib/episode-sequences.js";
 import { isSpecial, normalizeAniZipEpisode } from "../api/lib/episodes.js";
-import { numberSeasons, chooseRows, getReleaseInfo, isOngoing, mergeFreshAbsoluteEpisodes } from "../api/meta-resolver-v5.js";
+import { numberSeasons, chooseRows, getReleaseInfo, isOngoing, mergeFreshAbsoluteEpisodes, fillMissingRowsFromFallback } from "../api/meta-resolver-v5.js";
 
 const titles = (prefix, count, start = 1) =>
   Array.from({ length: count }, (_, index) => ({
@@ -129,6 +129,25 @@ test("One Piece regression: an incomplete Jikan tranche does not beat a complete
   assert.equal(result.length, 1200);
   assert.equal(result[0].title, "AniZip Episode 1");
   assert.equal(result.at(-1).number, 1200);
+});
+
+test("Episode source regression: a complete fallback fills a stale finished sequence without replacing primary rows", () => {
+  const primary = [
+    { number: 1, title: "Primary 1" },
+    { number: 2, title: "Primary 2" },
+    { number: 4, title: "Primary 4" }
+  ];
+  const fallback = [
+    { number: 1, title: "Fallback 1" },
+    { number: 2, title: "Fallback 2" },
+    { number: 3, title: "Fallback 3" },
+    { number: 4, title: "Fallback 4" }
+  ];
+
+  const result = fillMissingRowsFromFallback(primary, fallback, 4);
+
+  assert.deepEqual(result.map(row => row.number), [1, 2, 3, 4]);
+  assert.deepEqual(result.map(row => row.title), ["Primary 1", "Primary 2", "Fallback 3", "Primary 4"]);
 });
 
 test("TVMaze regression: IMDb lookup response is treated as a show object before fetching episodes", () => {
