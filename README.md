@@ -6,7 +6,7 @@ A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio
 
 - **Branch:** `main`
 - **Development version:** `2.17.11`
-- **Production candidate:** `v2.17.9`
+- **Production candidate:** `v2.17.11`
 - **Next minor release baseline:** `2.17.0`
 - **Latest production tag:** `v2.16.0`
 - **Production resolver:** **v5**
@@ -48,7 +48,7 @@ The root manifest is the recommended installation URL. The explicit `/v5/...` ro
 
 ## Rich metadata delegation
 
-The addon is catalog-only for external metadata delegation. Seasonal catalog entries are dynamically resolved and their MAL/AniList identities are translated to compatible IMDb/TMDB/TVDB identities when available. For later-season entries, the mapper first checks related original/prequel anime metadata, then falls back to original/base-name candidates with seasonal suffixes removed. This allows compatible metadata addons such as BingeCat to resolve the franchise identity without maintaining a duplicate metadata resolver.
+The addon is catalog-only for external metadata delegation. Seasonal catalog entries are dynamically resolved and their MAL/AniList identities are translated to compatible IMDb/TMDB/TVDB identities when available. For later-season entries, the mapper first checks related original/prequel anime metadata, then uses AniZip's maintained cross-database mappings, then falls back to original/base-name candidates with seasonal suffixes removed. This allows compatible metadata addons such as BingeCat to resolve the franchise identity without maintaining a duplicate metadata resolver.
 
 ## Resolver behavior covered by regression tests
 
