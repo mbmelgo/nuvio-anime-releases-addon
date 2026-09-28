@@ -22,6 +22,61 @@ export function extractAniZipEpisodeBatch(json) {
   return [];
 }
 
+export async function getTvMazeEpisodes(imdbId) {
+  const normalizedImdbId = String(imdbId || "").trim();
+  if (!/^tt\\d+$/i.test(normalizedImdbId)) return [];
+
+  const key = `tm:e:${normalizedImdbId}`;
+  const cached = getCached(key);
+  if (cached !== undefined) return cached;
+
+  try {
+    const json = await requestJson(
+      `https://api.tvmaze.com/lookup/shows?imdb=${encodeURIComponent(normalizedImdbId)}&embed=episodes`,
+      { retries: 2, cacheKey: key }
+    );
+    const episodes = Array.isArray(json?.episodes) ? json.episodes : [];
+    const rows = episodes.map(normalizeTvMazeEpisode).filter(Boolean);
+    return setCached(key, rows);
+  } catch {
+    setCached(key, []);
+    return [];
+  }
+}
+
+function normalizeTvMazeEpisode(item) {
+  const number = Number(item?.number);
+  if (!Number.isInteger(number) || number <= 0) return null;
+
+  const sourceSeason = Number(item?.season) || 1;
+  const title = String(item?.name || `Episode ${number}`).trim();
+  const released = validEpisodeDate(item?.airdate, item?.airtime);
+  if (!released || new Date(released).getTime() > Date.now()) return null;
+
+  const absoluteEpisodeNumber = extractAbsoluteEpisodeNumber(title);
+
+  return {
+    number,
+    sourceSeason,
+    absoluteEpisodeNumber,
+    title,
+    released,
+    thumbnail: item?.image?.original || item?.image?.medium || null
+  };
+}
+
+function extractAbsoluteEpisodeNumber(title) {
+  const match = String(title || "").match(/\\b(?:episode|ep\\.)\\s*#?\\s*(\\d+)\\b/i);
+  return match ? Number(match[1]) : 0;
+}
+
+function validEpisodeDate(airdate, airtime) {
+  if (!airdate) return null;
+  const iso = airtime ? `${airdate}T${airtime}:00Z` : `${airdate}T00:00:00Z`;
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 export async function getAniZipEpisodes(anilistId) {
   const key = `az:e:${anilistId}`;
   const cached = getCached(key);
