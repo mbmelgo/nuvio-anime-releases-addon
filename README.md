@@ -1,4 +1,4 @@
-# Anime Releases for Nuvio — v2.7.0
+# Anime Releases for Nuvio — v2.7.1
 
 A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio-compatible clients**.
 
@@ -21,7 +21,7 @@ The current production metadata routing uses **v4**. **v5** is the refactored ca
 
 > Deployment candidate: recognize \"Final Season\" titles as franchise continuations (for example, Attack on Titan: The Final Season), while keeping separately titled sequels excluded.
 
-## v2.7.0 highlights
+## v2.7.1 highlights
 
 - Refactored metadata resolver architecture.
 - Franchise discovery separated from episode retrieval, classification, and Nuvio response formatting.
