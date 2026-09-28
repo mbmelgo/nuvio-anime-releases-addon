@@ -6,6 +6,7 @@ A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio
 
 - **Branch:** `main`
 - **Development version:** `2.17.9`
+- **Production candidate:** `v2.17.9`
 - **Next minor release baseline:** `2.17.0`
 - **Latest production tag:** `v2.16.0`
 - **Production resolver:** **v5**
