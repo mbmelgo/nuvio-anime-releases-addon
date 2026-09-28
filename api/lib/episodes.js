@@ -11,7 +11,7 @@ export function normalizeAniZipEpisode(item) {
   const released = validDate(item.airDateUtc ?? item.airDate ?? item.airdate);
   // A provider may publish placeholder rows such as "Episode 1181" before
   // an episode has a release date. Do not expose those as real episodes.
-  if (!released && /^Episode\\s+\\d+$/i.test(title)) return null;
+  if (!released && /^Episode\s+\d+$/i.test(title)) return null;
   // Do not expose episodes that have not aired yet. This is especially important
   // for ongoing anime where providers can publish scheduled episodes in advance.
   if (released && new Date(released).getTime() > Date.now()) return null;
