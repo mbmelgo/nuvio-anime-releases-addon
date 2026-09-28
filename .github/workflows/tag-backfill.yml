@@ -1,8 +1,7 @@
-name: Production release tag backfill
+name: Production release tag recovery
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -11,19 +10,11 @@ jobs:
   tag:
     runs-on: ubuntu-latest
     steps:
-      - name: Check for tag-backfill marker
-        env:
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-        run: |
-          if [[ "$COMMIT_MESSAGE" != *"[tag-backfill]"* ]]; then
-            echo "No [tag-backfill] marker; nothing to do."
-            exit 0
-          fi
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Create annotated production tag
+      - name: Create missing annotated production tag
         run: |
           set -euo pipefail
           target="$(python -c 'import json;print(json.load(open("ops/release-state.json"))["lastDeploymentSha"])')"
