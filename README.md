@@ -5,19 +5,19 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `2.18.23`
+- **Development version:** `2.18.23` (patch version is automatically advanced by CI for development commits)
 - **Production release:** `v2.18.0`
 - **Next minor release baseline:** `2.19.0`
 - **Latest production tag:** `v2.18.0`
 - **Production resolver:** **v5**
-- **Legacy resolver:** **retired**
-- **Metadata ownership:** delegated to the user's preferred metadata addon
+- **Architecture:** **catalog-only**
+- **Detailed metadata:** delegated to **BingeCat / the configured metadata addon**
 - **CI status:** **green**
 - **Deployment checkpoint:** **5/5 — PAUSED**
 
-The production addon is catalog-only. It supplies anime release/airing catalogs and delegates detailed metadata to the user's preferred metadata addon, such as BingeCat. Legacy metadata routes are retired from Vercel routing so this addon does not intercept metadata requests.
+The addon is now intentionally responsible only for anime release, airing, seasonal, and ranking catalogs. Detailed metadata is delegated to BingeCat rather than being duplicated inside this addon. Legacy metadata routes and the old local metadata resolver have been retired.
 
-Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated through GitHub Actions and the Vercel deployment hook.
+Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated through GitHub Actions and the Vercel deployment hook. Production deployment #6 requires explicit authorization because the current internal checkpoint is 5/5.
 
 ## URLs
 
@@ -26,31 +26,48 @@ Automatic Vercel Git deployments are intentionally disabled. Production deployme
 - Production manifest: https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json
 - Installer home: https://nuvio-anime-releases-addon-rho.vercel.app/
 
+## Supported catalogs
+
+All catalogs are generated dynamically from the current date and AniList data. Seasonal names therefore move automatically from one year/season to the next; no annual catalog rewrite is required.
+
+| Catalog | Production URL | Purpose |
+|---|---|---|
+| **Ongoing** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/ongoing.json | Currently releasing anime from the current and previous season |
+| **Airing Today** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/airing_today.json | Anime with an episode airing today in Asia/Manila time |
+| **New Episodes — Last 7 Days** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/new_episodes.json | Anime with recently aired episodes |
+| **Next Episodes — Next 7 Days** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/next_episodes.json | Anime with scheduled episodes in the next 7 days |
+| **Upcoming** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/upcoming.json | Not-yet-released anime in the next season |
+| **Finished — Current Season** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/finished_current.json | Anime that finished during the current season |
+| **Previous Season** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/previous_season.json | Anime from the immediately preceding season |
+| **Popular — Current Season** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/popular_current.json | Current-season anime ordered by popularity |
+| **Top Rated — Current Season** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/top_rated_current.json | Current-season anime ordered by score |
+| **Trending — Current Season** | https://nuvio-anime-releases-addon-rho.vercel.app/v5/catalog/series/trending_current.json | Current-season anime ordered by AniList trending score |
+
+The explicit `/v5/...` URLs above are the preferred direct catalog URLs for testing. Equivalent `/catalog/series/...` routes remain available through the Vercel compatibility rewrite.
+
 ## Resolver architecture
 
 ```text
-/manifest.json
-    ↓
-  v5 catalog-only resolver
-
-/catalog/series/:id.json
-    ↓
-  season-aware anime release catalog
-    ↓
-  MAL/AniList identity
-    ↓
-  IMDb/TMDB/TVDB compatibility mapping
-    ↓
-  Nuvio metadata delegation
-    ↓
-  BingeCat / preferred metadata addon
+AniList
+   ↓
+Season-aware catalog generation
+   ↓
+MAL/AniList identity
+   ↓
+IMDb/TMDB/TVDB compatibility mapping
+   ↓
+Nuvio catalog
+   ↓
+BingeCat / configured metadata addon
+   ↓
+Detailed anime metadata
 ```
 
-The root manifest is the recommended installation URL. The explicit `/v5/...` catalog route remains available for compatibility/testing. Metadata is intentionally not advertised or routed by this addon.
+The root manifest is the recommended installation URL. The addon does not provide detailed metadata itself and intentionally does not expose public `/meta` routes.
 
 ## Metadata delegation
 
-The addon is catalog-only for external metadata delegation. Seasonal catalog entries are dynamically resolved and their MAL/AniList identities are translated to compatible IMDb/TMDB/TVDB identities when available. For later-season entries, the mapper first checks related original/prequel anime metadata, then uses AniZip's maintained cross-database mappings, then falls back to original/base-name candidates with seasonal suffixes removed. This allows compatible metadata addons such as BingeCat to resolve the franchise identity without maintaining a duplicate metadata resolver.
+Seasonal catalog entries are dynamically resolved and their MAL/AniList identities are translated to compatible IMDb/TMDB/TVDB identities when available. For later-season entries, the mapper checks related original/prequel anime metadata, then AniZip maintained cross-database mappings, then original/base-name candidates with seasonal suffixes removed. This allows BingeCat to resolve the franchise identity without maintaining a duplicate metadata resolver in this project.
 
 Unmapped entries retain their original MAL/AniList identity rather than being assigned an unsupported or guessed ID.
 
@@ -81,7 +98,7 @@ Performance optimization remains a secondary priority while functional correctne
 
 ## Data sources
 
-AniList is the primary source for anime metadata, season/status information, artwork, scores, popularity, airing schedules, franchise relationships, and external links. Jikan and AniZip provide MAL mappings, episode data, broadcast/provider information, and fallbacks. Wikidata provides an additional cross-database fallback when a compatible identity cannot be obtained from the primary mapping sources. TVMaze is limited to freshness supplementation for ongoing long-running series.
+AniList is the primary source for anime release, season/status, artwork, scores, popularity, airing schedules, franchise relationships, and external links. Jikan and AniZip provide MAL mappings, episode data, broadcast/provider information, and fallbacks. Wikidata provides an additional cross-database fallback when a compatible identity cannot be obtained from the primary mapping sources. TVMaze is limited to freshness supplementation for ongoing long-running series.
 
 ## Release workflow
 
@@ -121,7 +138,7 @@ The deployment checkpoint is stored in `ops/release-state.json`.
 - Each successful production deployment creates a minor release baseline.
 - Major releases are manually decided.
 - Minor and major releases receive annotated Git tags with human-readable change summaries.
-- No historical tag backfill is performed unless explicitly requested.
+- The historical `v2.16.0` tag was intentionally left uncreated per project decision; existing release tags were not otherwise rewritten.
 - Production release tags are created by the marker-gated GitHub Actions workflow.
 
 ## Key endpoints
