@@ -9,6 +9,7 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 - **Production release:** `v2.19.0`
 - **Next minor release baseline:** `2.20.0`
 - **Latest production tag:** `v2.19.0`
+- **Release candidate:** `2.20.0` — five-catalog architecture + rolling seven-day episode windows
 - **Architecture:** **catalog-only**
 - **Detailed metadata:** delegated to **BingeCat / the configured metadata addon**
 - **CI status:** **green** for the current main tree
