@@ -10,9 +10,9 @@ test("detects later seasons from real-world title formats", () => {
 });
 
 test("normalizes numeric and Roman-numeral season suffixes to the franchise search title", () => {
-  assert.equal(franchiseSearchQuery({ title_english: "Trapped in a Dating Sim: The World of Otome Games is Tough for Mobs 2" }), "Trapped in a Dating Sim: The World of Otome Games is Tough for Mobs");
+  assert.equal(franchiseSearchQuery({ title_english: "Trapped in a Dating Sim: The World of Otome Games is Tough for Mobs 2" }), "Trapped in a Dating Sim The World of Otome Games is Tough for Mobs");
   assert.equal(franchiseSearchQuery({ title_english: "From Old Country Bumpkin to Master Swordsman II" }), "From Old Country Bumpkin to Master Swordsman");
-  assert.equal(franchiseSearchQuery({ title_english: "Hell Mode: The Hardcore Gamer Dominates in Another World with Garbage Balancing 2nd Season" }), "Hell Mode: The Hardcore Gamer Dominates in Another World with Garbage Balancing");
+  assert.equal(franchiseSearchQuery({ title_english: "Hell Mode: The Hardcore Gamer Dominates in Another World with Garbage Balancing 2nd Season" }), "Hell Mode The Hardcore Gamer Dominates in Another World with Garbage Balancing");
 });
 
 test("does not trigger later-season discovery from an ordinary title number alone when no season context exists", () => {
@@ -29,5 +29,5 @@ test("keeps franchise matching tolerant of a seasonal suffix", () => {
 test("does not match an unrelated similarly prefixed title", () => {
   const root = { title_english: "Hell Mode" };
   const unrelated = { title_english: "Hell Mode Academy" };
-  assert.equal(sameFranchiseTitle(root, unrelated), true);
+  assert.equal(sameFranchiseTitle(root, unrelated), false);
 });
