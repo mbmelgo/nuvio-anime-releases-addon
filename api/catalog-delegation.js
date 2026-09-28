@@ -48,7 +48,7 @@ export async function delegateCompatibleIds(metas) {
   }
 
   const unresolved = rows.filter((meta) => !extractCompatibleId(byKey.get(String(meta?.id || ""))?.externalLinks));
-  const wikidata = await queryWikidataMappings(unresolved);
+  const wikidata = await queryWikidataMappings(unresolved, byKey);
 
   return rows.map((meta) => {
     const sourceId = String(meta?.id || "");
@@ -60,7 +60,7 @@ export async function delegateCompatibleIds(metas) {
 
 async function queryMedia(filter) {
   const variableName = Object.keys(filter)[0];
-  const query = `query ($ids:[Int]) { Page(perPage:50) { media(type:ANIME,${variableName}:$ids) { id idMal externalLinks { site url } } } }`;
+  const query = `query ($ids:[Int]) { Page(perPage:50) { media(type:ANIME,${variableName}:$ids) { id idMal title { romaji english native } synonyms externalLinks { site url } } } }`;
   const payload = await fetchJson(ANILIST_URL, {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json" },
@@ -69,24 +69,40 @@ async function queryMedia(filter) {
   return payload?.data?.Page?.media || [];
 }
 
-async function queryWikidataMappings(metas) {
+async function queryWikidataMappings(metas, byKey) {
   const malIds = [];
   const anilistIds = [];
+  const names = [];
+  const sourceIdsByName = new Map();
+
   for (const meta of metas) {
     const id = String(meta?.id || "");
     const mal = parseId(id, "mal");
     const anilist = parseId(id, "anilist");
     if (mal) malIds.push(String(mal));
     if (anilist) anilistIds.push(String(anilist));
+
+    const media = byKey.get(id);
+    for (const name of originalNameCandidates(media)) {
+      names.push(name);
+      if (!sourceIdsByName.has(name.toLowerCase())) sourceIdsByName.set(name.toLowerCase(), []);
+      sourceIdsByName.get(name.toLowerCase()).push(id);
+    }
   }
-  if (!malIds.length && !anilistIds.length) return new Map();
+  if (!malIds.length && !anilistIds.length && !names.length) return new Map();
 
   const values = [
     malIds.length ? `{ VALUES ?mal { ${malIds.map((id) => `"${id}"`).join(" ")} } ?item wdt:P4086 ?mal . }` : "",
     anilistIds.length ? `{ VALUES ?anilist { ${anilistIds.map((id) => `"${id}"`).join(" ")} } ?item wdt:P8729 ?anilist . }` : "",
   ].filter(Boolean).join(" UNION ");
 
-  const query = `SELECT ?item ?mal ?anilist ?imdb ?tmdb ?tvdb WHERE { { ${values} } OPTIONAL { ?item wdt:P4086 ?mal } OPTIONAL { ?item wdt:P8729 ?anilist } OPTIONAL { ?item wdt:P345 ?imdb } OPTIONAL { ?item wdt:P4983 ?tmdb } OPTIONAL { ?item wdt:P4835 ?tvdb } } LIMIT 200`;
+  const nameValues = names.length
+    ? `VALUES ?label { ${[...new Set(names)].map((name) => `"${escapeSparqlString(name)}"`).join(" ")} } ?item rdfs:label ?label . FILTER(LANG(?label) = "en" || LANG(?label) = "")`
+    : "";
+  const nameBranch = nameValues ? `{ ${nameValues} }` : "";
+  const branches = [values, nameBranch].filter(Boolean).join(" UNION ");
+
+  const query = `SELECT ?item ?mal ?anilist ?label ?imdb ?tmdb ?tvdb WHERE { { ${branches} } OPTIONAL { ?item wdt:P4086 ?mal } OPTIONAL { ?item wdt:P8729 ?anilist } OPTIONAL { ?item rdfs:label ?label } OPTIONAL { ?item wdt:P345 ?imdb } OPTIONAL { ?item wdt:P4983 ?tmdb } OPTIONAL { ?item wdt:P4835 ?tvdb } } LIMIT 500`;
   const payload = await fetchJson(`${WIKIDATA_URL}?query=${encodeURIComponent(query)}&format=json`, {
     headers: {
       accept: "application/sparql-results+json",
@@ -98,6 +114,7 @@ async function queryWikidataMappings(metas) {
   for (const binding of payload?.results?.bindings || []) {
     const mal = binding.mal?.value;
     const anilist = binding.anilist?.value;
+    const label = binding.label?.value;
     const compatible = binding.imdb?.value
       ? binding.imdb.value
       : binding.tmdb?.value
@@ -108,8 +125,38 @@ async function queryWikidataMappings(metas) {
     if (!compatible) continue;
     if (mal) result.set(`mal:${mal}`, compatible);
     if (anilist) result.set(`anilist:${anilist}`, compatible);
+    if (label) {
+      for (const sourceId of sourceIdsByName.get(label.toLowerCase()) || []) result.set(sourceId, compatible);
+    }
   }
   return result;
+}
+
+function originalNameCandidates(media) {
+  if (!media) return [];
+  const titles = [media.title?.romaji, media.title?.english, media.title?.native, ...(Array.isArray(media.synonyms) ? media.synonyms : [])]
+    .filter(Boolean)
+    .map((name) => String(name).trim())
+    .filter(Boolean);
+  const candidates = new Set(titles);
+  for (const name of titles) {
+    const base = stripSeasonSuffix(name);
+    if (base && base !== name) candidates.add(base);
+  }
+  return [...candidates];
+}
+
+function stripSeasonSuffix(name) {
+  return String(name)
+    .replace(/\s*[-:–—]\s*(?:season|part|cour)\s*[0-9IVXLCDM]+\s*$/i, "")
+    .replace(/\s+(?:season|part|cour)\s*[0-9IVXLCDM]+\s*$/i, "")
+    .replace(/\s+(?:[0-9]+(?:st|nd|rd|th)?|[IVXLCDM]+)\s+season\s*$/i, "")
+    .replace(/\s*\(?(?:season|part|cour)\s*[0-9IVXLCDM]+\)?\s*$/i, "")
+    .trim();
+}
+
+function escapeSparqlString(value) {
+  return String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 function parseId(id, prefix) {
