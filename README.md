@@ -20,6 +20,10 @@ The current production tag is retained as-is; historical/current tag rewriting i
 
 Automatic Vercel Git deployments are intentionally disabled. Production deployments are test-gated: normal commits run CI without deploying; `[deploy-prod]` is used only after CI passes and the deployment is worth consuming one checkpoint slot.
 
+## Production validation target
+
+The next controlled production deployment is intended to validate the complete rich-metadata path in the live v5 resolver, including series details, cast, trailers, networks, studios, recommendations, external links, season posters, and episode presentation data.
+
 ## URLs
 
 - GitHub: https://github.com/mbmelgo/nuvio-anime-releases-addon
