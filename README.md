@@ -1,4 +1,4 @@
-# Anime Releases for Nuvio — v2.3.3
+# Anime Releases for Nuvio — v2.3.4
 
 A season-aware anime catalog and metadata addon for **Nuvio / BingeCat / Stremio-compatible clients**.
 
@@ -17,7 +17,7 @@ GitHub is the source of truth. Automatic Vercel Git deployments are intentionall
 
 The current production metadata routing uses **v4**. **v5** is the refactored candidate and remains available for validation.
 
-## v2.3.3 highlights
+## v2.3.4 highlights
 
 - Refactored metadata resolver architecture.
 - Franchise discovery separated from episode retrieval, classification, and Nuvio response formatting.
