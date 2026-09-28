@@ -59,6 +59,7 @@ The root manifest is the recommended installation URL. The explicit `/v5/...` ro
 - Special/recap/OVA/ONA/movie filtering
 - Finished-series primary-source selection
 - Ongoing-series freshness fallback
+- Upcoming episode preservation with scheduled release dates
 - Rich series metadata including release information, country, language, certification, background art, networks, studios, cast, trailers, recommendations, external links, and season/episode presentation data
 
 ## Rich metadata
@@ -78,6 +79,7 @@ The production v5 metadata resolver currently exposes, when provider data is ava
 - Cast, characters, voice actors, and cast images
 - Actual trailers, separate from streaming episodes
 - Streaming-episode metadata under `app_extras.streamingEpisodes`
+- Upcoming episodes with future `released` dates so compatible clients can display scheduled/unavailable episode cards
 - Recommendations / related anime
 - IMDb ID for client-side IMDb metadata enrichment, including a fallback from resolved episode-source identities when Jikan lacks an IMDb external link
 - External links
