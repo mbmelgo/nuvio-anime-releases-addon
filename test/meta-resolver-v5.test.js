@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { chooseRows, isSeasonContinuation, needsFranchiseSearch, numberSeasons, parseMalId } from "../api/meta-resolver-v5.js";
+import { chooseRows, isSeasonContinuation, numberSeasons, parseMalId } from "../api/meta-resolver-v5.js";
 
 test("parses canonical and numeric MAL IDs", () => {
   assert.equal(parseMalId("mal:39535"), 39535);
@@ -151,12 +151,4 @@ test("does not turn a separate prequel franchise into Season 1", () => {
   ];
   assert.equal(isSeasonContinuation(root, sequel, { mal_id: 20 }, { mal_id: 1735 }), false);
   assert.equal(numberSeasons(entries, 20).length, 1);
-});
-
-test("requests franchise expansion only when a later season is explicit and the graph is incomplete", () => {
-  assert.equal(needsFranchiseSearch({ title: { english: "Hell Mode Season 2" } }, [{ season: 2 }]), true);
-  assert.equal(needsFranchiseSearch({ title: { english: "From Old Country Bumpkin to Master Swordsman II" } }, [{ season: 2 }]), true);
-  assert.equal(needsFranchiseSearch({ title: { english: "Trapped in a Dating Sim Season 2" } }, [{ season: 2 }]), true);
-  assert.equal(needsFranchiseSearch({ title: { english: "Mushoku Tensei Season 3" } }, [{ season: 1 }, { season: 2 }, { season: 3 }]), false);
-  assert.equal(needsFranchiseSearch({ title: { english: "Naruto: Shippuden" } }, [{ season: 1 }]), false);
 });
