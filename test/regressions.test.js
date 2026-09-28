@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { reconcileEpisodeSequences, looksLikeSameSequence } from "../api/lib/episode-sequences.js";
 import { isSpecial, normalizeAniZipEpisode } from "../api/lib/episodes.js";
-import { numberSeasons } from "../api/meta-resolver-v5.js";
+import { numberSeasons, chooseRows, getReleaseInfo } from "../api/meta-resolver-v5.js";
 
 const titles = (prefix, count, start = 1) =>
   Array.from({ length: count }, (_, index) => ({
@@ -86,6 +86,26 @@ test("One Piece regression: absolute episode numbering can be used when provider
   assert.deepEqual(result.map((row) => row.canonicalNumber), [1, 2, 3]);
 });
 
+test("One Piece regression: an incomplete Jikan tranche does not beat a complete AniZip sequence", () => {
+  const jikan = titles("Jikan", 100);
+  const aniZip = titles("AniZip", 1200);
+
+  const result = chooseRows(jikan, aniZip, 1200);
+  assert.equal(result.length, 1200);
+  assert.equal(result[0].title, "AniZip Episode 1");
+  assert.equal(result.at(-1).number, 1200);
+});
+
+test("Episode source regression: a complete Jikan sequence remains authoritative when AniZip has extras", () => {
+  const jikan = titles("Jikan", 24);
+  const aniZip = titles("AniZip", 25);
+
+  const result = chooseRows(jikan, aniZip, 24);
+  assert.equal(result.length, 24);
+  assert.equal(result[0].title, "Jikan Episode 1");
+  assert.equal(result.at(-1).number, 24);
+});
+
 test("Episode identity regression: reconciled rows retain the source identity needed for stable Nuvio IDs", () => {
   const result = reconcileEpisodeSequences([
     { identity: "mal:1535", rows: [{ number: 1, title: "Pilot" }] },
@@ -132,6 +152,17 @@ test("Mushoku Tensei regression fixture: explicit season names remain authoritat
   const groups = numberSeasons(entries, 39535);
   assert.deepEqual(groups.map((group) => group.season), [1, 2]);
   assert.deepEqual(groups.map((group) => group.entries[0].jikan.episodes), [23, 24]);
+});
+
+test("release range regression: end year comes from resolved episode dates, not root MAL year", () => {
+  const root = { aired: { from: "2013-04-07T00:00:00.000Z" } };
+  const videos = [
+    { released: "2013-04-07T00:00:00.000Z" },
+    { released: "2019-07-01T00:00:00.000Z" },
+    { released: "2023-11-04T00:00:00.000Z" },
+  ];
+
+  assert.equal(getReleaseInfo(root, videos), "2013-2023");
 });
 
 test("reconciled episode rows retain canonical numbering and source identity", () => {
