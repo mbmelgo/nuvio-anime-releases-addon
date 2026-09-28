@@ -10,7 +10,8 @@ const FETCH_TIMEOUT_MS = 8000;
 export default async function handler(req, res) {
   const url = new URL(req.url, `https://${req.headers.host || "localhost"}`);
   const parts = url.pathname.split("/").filter(Boolean);
-  const query = req.query || {};
+  const pathExtra = parseCatalogExtraPath(parts.slice(3).join("/"));
+  const query = { ...pathExtra, ...(req.query || {}) };
   const resource = query.resource || parts[0];
   const type = query.type || parts[1];
   const rawId = query.id || parts[2]?.replace(/\.json$/, "");
@@ -33,6 +34,23 @@ export default async function handler(req, res) {
   }
 
   return send(res, { error: "Not found" }, 404);
+}
+
+export function parseCatalogExtraPath(value) {
+  const result = {};
+  for (const pair of String(value || "").split("&")) {
+    if (!pair) continue;
+    const separator = pair.indexOf("=");
+    const rawKey = separator >= 0 ? pair.slice(0, separator) : pair;
+    const rawValue = separator >= 0 ? pair.slice(separator + 1) : "";
+    if (!rawKey) continue;
+    try {
+      result[decodeURIComponent(rawKey)] = decodeURIComponent(rawValue);
+    } catch {
+      result[rawKey] = rawValue;
+    }
+  }
+  return result;
 }
 
 const MEDIA_FIELDS = `id idMal title { romaji english native } coverImage { large } bannerImage description genres duration format status season seasonYear episodes averageScore popularity trending favourites countryOfOrigin source siteUrl startDate { year month day } endDate { year month day } nextAiringEpisode { episode airingAt }`;

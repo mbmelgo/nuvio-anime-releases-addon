@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { filterCatalogMetasBySearch, catalogDefinitions } from "../api/catalog-source.js";
+import { filterCatalogMetasBySearch, catalogDefinitions, parseCatalogExtraPath } from "../api/catalog-source.js";
 
 test("all user-facing catalogs advertise optional search support", () => {
   for (const catalog of catalogDefinitions({
@@ -22,4 +22,11 @@ test("search matches English, Romaji, and native titles", () => {
   assert.equal(filterCatalogMetasBySearch(metas, "逃げ上手").length, 1);
   assert.equal(filterCatalogMetasBySearch(metas, "ブリーチ").length, 1);
   assert.equal(filterCatalogMetasBySearch(metas, "does-not-exist").length, 0);
+});
+
+test("parses Stremio catalog extra properties from the path", () => {
+  assert.deepEqual(parseCatalogExtraPath("search=Pokémon%20Horizons&skip=100"), {
+    search: "Pokémon Horizons",
+    skip: "100",
+  });
 });
