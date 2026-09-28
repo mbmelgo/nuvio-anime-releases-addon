@@ -1,0 +1,23 @@
+name: Apply Wikidata TVDB validation patch
+
+on:
+  push:
+    branches: [fix/wikidata-tvdb-validation]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[patch-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add Wikidata TVDB validation
+        run: |
+          python -c 'from pathlib import Path; p=Path("lib/kitsu-canonical.js"); s=p.read_text(); s=s.replace("const ANIBRIDGE_URL = \"https://mappings.anibridge.eliasbenb.dev/api/v3/mappings\";\n", "const ANIBRIDGE_URL = \"https://mappings.anibridge.eliasbenb.dev/api/v3/mappings\";\nconst WIKIDATA_SPARQL_URL = \"https://query.wikidata.org/sparql\";\n"); s=s.replace("const anibridgeTvdbCache = new Map();\n", "const anibridgeTvdbCache = new Map();\nconst wikidataTvdbCache = new Map();\n"); old="""  try {\n    if (anilistSourceId) preferredTvdbId = await resolveWithAniBridgeTvdb(\"anilist\", anilistSourceId, fetchImpl, now);\n    if (!preferredTvdbId) preferredTvdbId = await resolveWithAniBridgeTvdb(source.source, source.id, fetchImpl, now);\n  } catch (error) {"""; new="""  try {\n    if (anilistSourceId) preferredTvdbId = await resolveWithWikidataTvdb(anilistSourceId, fetchImpl, now);\n    if (!preferredTvdbId && anilistSourceId) preferredTvdbId = await resolveWithAniBridgeTvdb(\"anilist\", anilistSourceId, fetchImpl, now);\n    if (!preferredTvdbId) preferredTvdbId = await resolveWithAniBridgeTvdb(source.source, source.id, fetchImpl, now);\n  } catch (error) {"""; assert old in s; marker="async function resolveWithAniBridgeTvdb(source, id, fetchImpl, now) {"; helper="""async function resolveWithWikidataTvdb(anilistId, fetchImpl, now) {\n  const key = String(anilistId);\n  const cached = wikidataTvdbCache.get(key);\n  if (cached && cached.expiresAt > now) return cached.tvdbId || null;\n  const query = `SELECT ?tvdb WHERE { ?item wdt:P8729 \"${key}\"; wdt:P4835 ?tvdb . } LIMIT 1`;\n  try {\n    const data = await getJson(fetchImpl, WIKIDATA_SPARQL_URL, { query, format: \"json\" }, { acceptJson: true, headers: { Accept: \"application/sparql-results+json\" } });\n    const value = data?.results?.bindings?.[0]?.tvdb?.value;\n    const tvdbId = /^\\d+$/.test(String(value || \"\")) ? String(value) : null;\n    wikidataTvdbCache.set(key, { tvdbId, expiresAt: now + (tvdbId ? CACHE_TTL_MS : NEGATIVE_CACHE_TTL_MS) });\n    return tvdbId;\n  } catch (error) {\n    wikidataTvdbCache.set(key, { tvdbId: null, expiresAt: now + NEGATIVE_CACHE_TTL_MS });\n    return null;\n  }\n}\n\n"""; assert marker in s; s=s.replace(old,new,1).replace(marker,helper+marker,1).replace("  anibridgeTvdbCache.clear();\n}","  anibridgeTvdbCache.clear();\n  wikidataTvdbCache.clear();\n}"); p.write_text(s)'
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lib/kitsu-canonical.js
+          git commit -m "fix: validate AniList TVDB mapping through Wikidata [patch-applied]"
+          git push
