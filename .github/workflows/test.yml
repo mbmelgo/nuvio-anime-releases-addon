@@ -1,4 +1,4 @@
-name: Unit tests
+name: Unit tests and controlled Vercel deployment
 
 on:
   push:
@@ -12,9 +12,29 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - name: Run unit tests
         run: npm test
+
+  deploy-production:
+    name: Deploy to Vercel production
+    needs: test
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, '[deploy-prod]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel deployment
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$VERCEL_DEPLOY_HOOK_URL" ]; then
+            echo "VERCEL_DEPLOY_HOOK_URL is not configured."
+            exit 1
+          fi
+          curl --fail --silent --show-error \
+            --request POST \
+            "$VERCEL_DEPLOY_HOOK_URL"
