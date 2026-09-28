@@ -63,6 +63,17 @@ The autonomous loop pauses after every **5 Vercel production deployments**. The 
 
 Generated version commits use `[skip-version-automation]` to prevent recursion.
 
+## Resolver selector
+
+Open the Vercel home page to choose between the stable v4 resolver and the v5 candidate. Each selection has its own manifest URL, so both resolver versions can be installed side-by-side:
+
+```text
+https://nuvio-anime-releases-addon-rho.vercel.app/v4/manifest.json
+https://nuvio-anime-releases-addon-rho.vercel.app/v5/manifest.json
+```
+
+The root manifest remains the v4-compatible production manifest. Selecting v5 does not change the v4 installation.
+
 ## Resolver versions
 
 ### v4 — production
