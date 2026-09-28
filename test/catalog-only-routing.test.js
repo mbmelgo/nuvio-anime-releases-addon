@@ -43,3 +43,9 @@ test("manifest uses the canonical addon identity without a legacy version suffix
   assert.equal(manifestSource.includes('id: "com.marki.nuvio.anime-releases"'), true);
   assert.equal(manifestSource.includes('id: "com.marki.nuvio.anime-releases.v5"'), false);
 });
+
+test("manifest cache is short enough to pick up seasonal catalog changes promptly", () => {
+  const match = manifestSource.match(/max-age=(\d+)/);
+  assert.ok(match);
+  assert.ok(Number(match[1]) <= 60);
+});
