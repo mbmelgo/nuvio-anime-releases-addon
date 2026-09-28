@@ -115,3 +115,10 @@ test("recognizes higher Roman-numeral season titles as continuations", () => {
   assert.equal(isSeasonContinuation(root, { title: { english: "Saga VI" } }), true);
   assert.equal(isSeasonContinuation(root, { title: { english: "Saga X" } }), true);
 });
+
+test("does not treat an ordinary standalone I in a title as a Roman numeral season marker", () => {
+  const root = { title: { english: "The Show" } };
+  const ordinary = { title: { english: "The Show I Love" } };
+
+  assert.equal(isSeasonContinuation(root, ordinary), false);
+});
