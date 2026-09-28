@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 
 const vercelConfig = JSON.parse(fs.readFileSync(new URL("../vercel.json", import.meta.url), "utf8"));
-const stremioSource = fs.readFileSync(new URL("../api/stremio.js", import.meta.url), "utf8");
+const catalogSource = fs.readFileSync(new URL("../api/catalog-source.js", import.meta.url), "utf8");
 
 function routeSources() {
   return (vercelConfig.rewrites || []).map((route) => route.source);
@@ -22,8 +22,8 @@ test("catalog-only architecture keeps catalog routes available", () => {
   assert.equal(sources.includes("/catalog/:type/:id.json"), true);
 });
 
-test("catalog-only handler no longer implements a local metadata resource", () => {
-  assert.equal(stremioSource.includes('resource === "meta"'), false);
-  assert.equal(stremioSource.includes("buildDetailedMeta"), false);
-  assert.equal(stremioSource.includes("JIKAN_URL"), false);
+test("catalog source implements catalog resources without local metadata resolution", () => {
+  assert.equal(catalogSource.includes('resource === "meta"'), false);
+  assert.equal(catalogSource.includes("buildDetailedMeta"), false);
+  assert.equal(catalogSource.includes("JIKAN_URL"), false);
 });
