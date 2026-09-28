@@ -1,6 +1,7 @@
 import stremioHandler from "./stremio.js";
 
 const ANILIST_URL = "https://graphql.anilist.co";
+const WIKIDATA_URL = "https://query.wikidata.org/sparql";
 const FETCH_TIMEOUT_MS = 8000;
 
 export default async function handler(req, res) {
@@ -13,9 +14,9 @@ export default async function handler(req, res) {
 
   await stremioHandler(req, proxyRes);
 
-  if (req.query?.resource !== "catalog" || req.query?.type !== "series" || !captured.body?.metas) {
-    return sendCaptured(res, captured);
-  }
+  // This endpoint is only mounted on catalog routes, so do not depend on
+  // Vercel rewrite query propagation to decide whether delegation runs.
+  if (!captured.body?.metas) return sendCaptured(res, captured);
 
   try {
     captured.body.metas = await delegateCompatibleIds(captured.body.metas);
@@ -48,11 +49,14 @@ export async function delegateCompatibleIds(metas) {
     if (item.id) byKey.set(`anilist:${item.id}`, item);
   }
 
+  const unresolved = rows.filter((meta) => !extractCompatibleId(byKey.get(String(meta?.id || ""))?.externalLinks));
+  const wikidata = await queryWikidataMappings(unresolved);
+
   return rows.map((meta) => {
     const sourceId = String(meta?.id || "");
-    const mapped = byKey.get(sourceId);
-    const imdbId = extractImdbId(mapped?.externalLinks);
-    return imdbId ? { ...meta, id: imdbId } : meta;
+    const anilistMapped = extractCompatibleId(byKey.get(sourceId)?.externalLinks);
+    const mapped = anilistMapped || wikidata.get(sourceId);
+    return mapped ? { ...meta, id: mapped } : meta;
   });
 }
 
@@ -67,21 +71,67 @@ async function queryMedia(filter) {
   return payload?.data?.Page?.media || [];
 }
 
+async function queryWikidataMappings(metas) {
+  const ids = metas
+    .map((meta) => {
+      const id = String(meta?.id || "");
+      const mal = parseId(id, "mal");
+      const anilist = parseId(id, "anilist");
+      return mal ? { key: id, property: "P4086", value: mal } : anilist ? { key: id, property: "P8729", value: anilist } : null;
+    })
+    .filter(Boolean);
+  if (!ids.length) return new Map();
+
+  const values = ids.map(({ property, value }) => `(wdt:${property} "${value}")`).join(" ");
+  const query = `SELECT ?item ?mal ?anilist ?imdb ?tmdb ?tvdb WHERE { VALUES (?property ?value) { ${values} } ?item ?property ?value . OPTIONAL { ?item wdt:P4086 ?mal } OPTIONAL { ?item wdt:P8729 ?anilist } OPTIONAL { ?item wdt:P345 ?imdb } OPTIONAL { ?item wdt:P4983 ?tmdb } OPTIONAL { ?item wdt:P4835 ?tvdb } } LIMIT 200`;
+  const payload = await fetchJson(`${WIKIDATA_URL}?query=${encodeURIComponent(query)}&format=json`, {
+    headers: { accept: "application/sparql-results+json" },
+  });
+
+  const result = new Map();
+  for (const binding of payload?.results?.bindings || []) {
+    const mal = binding.mal?.value;
+    const anilist = binding.anilist?.value;
+    const compatible = binding.imdb?.value
+      ? binding.imdb.value
+      : binding.tmdb?.value
+        ? `tmdb:${binding.tmdb.value}`
+        : binding.tvdb?.value
+          ? `tvdb:${binding.tvdb.value}`
+          : null;
+    if (!compatible) continue;
+    if (mal) result.set(`mal:${mal}`, compatible);
+    if (anilist) result.set(`anilist:${anilist}`, compatible);
+  }
+  return result;
+}
+
 function parseId(id, prefix) {
   const match = String(id || "").match(new RegExp(`^${prefix}:(\\d+)$`, "i"));
   return match ? Number(match[1]) : null;
 }
 
-function extractImdbId(links) {
+function extractCompatibleId(links) {
   for (const link of Array.isArray(links) ? links : []) {
-    if (!/imdb/i.test(String(link?.site || ""))) continue;
-    const match = String(link?.url || "").match(/tt\d+/i);
-    if (match) return match[0].toLowerCase();
+    const site = String(link?.site || "");
+    const url = String(link?.url || "");
+    if (/imdb/i.test(site)) {
+      const match = url.match(/tt\d+/i);
+      if (match) return match[0].toLowerCase();
+    }
+    if (/tmdb/i.test(site)) {
+      const match = url.match(/(?:tv|movie)\/(\d+)/i);
+      if (match) return `tmdb:${match[1]}`;
+    }
+    if (/tvdb/i.test(site)) {
+      const match = url.match(/(?:series|dereferrer\/series)\/(\d+)/i);
+      if (match) return `tvdb:${match[1]}`;
+    }
   }
   return null;
 }
 
-async function fetchJson(url, options) {
+async function fetchJson(url, options = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
