@@ -1,4 +1,5 @@
 {
+  "purpose": "One-time recovery manifest for production release tags that were not created historically.",
   "releases": [
     {
       "tag": "v2.16.0",
