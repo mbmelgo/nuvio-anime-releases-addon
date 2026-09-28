@@ -48,7 +48,7 @@ export function numberSeasons(entries, requestedMalId) {
   const filtered = entries.filter(entry => {
     if (!root) return false;
     const malId = Number(entry.jikan?.mal_id);
-    return malId === Number(requestedMalId) || isSeasonContinuation(root.node, entry.node);
+    return malId === Number(requestedMalId) || isSeasonContinuation(root.node, entry.node, root.jikan, entry.jikan);
   });
 
   const sorted = [...filtered].sort((a,b) => startTime(a) - startTime(b));
@@ -66,9 +66,44 @@ export function numberSeasons(entries, requestedMalId) {
   return groups.sort((a,b) => a.season - b.season);
 }
 
-export function isSeasonContinuation(rootNode, candidateNode) {
-  if (!candidateNode) return false;
-  return Boolean(explicitSeason(candidateNode) || isPart(candidateNode));
+export function isSeasonContinuation(rootNode, candidateNode, rootJikan = null, candidateJikan = null) {
+  if (!candidateNode && !candidateJikan) return false;
+  const candidate = candidateNode || candidateJikan;
+  const root = rootNode || rootJikan;
+  if (!candidate || !root) return false;
+  const hasSeasonMarker = Boolean(explicitSeason(candidateNode) || isPart(candidateNode));
+  if (!hasSeasonMarker) return false;
+
+  const rootKeys = titleKeys(rootNode, rootJikan);
+  const candidateKeys = titleKeys(candidateNode, candidateJikan);
+  if (!rootKeys.length || !candidateKeys.length) return false;
+
+  // A continuation must retain the same normalized franchise title after
+  // removing explicit season/part markers. This prevents Naruto -> Shippuden
+  // and Naruto -> Boruto from being promoted to seasons while still allowing
+  // Mushoku Tensei II / Part 2 and Attack on Titan Season 2.
+  return candidateKeys.some(key => rootKeys.includes(key));
+}
+
+function titleKeys(node, jikan) {
+  const values = [
+    ...(Array.isArray(node?.synonyms) ? node.synonyms : []),
+    node?.title?.english, node?.title?.romaji, node?.title?.native,
+    ...(Array.isArray(jikan?.title_synonyms) ? jikan.title_synonyms : []),
+    jikan?.title_english, jikan?.title, jikan?.title_japanese
+  ].filter(Boolean).map(normalizeFranchiseTitle);
+  return [...new Set(values.filter(Boolean))];
+}
+
+function normalizeFranchiseTitle(value) {
+  return String(value)
+    .toLowerCase()
+    .replace(/\b(?:season|s)\s*\d+\b/gi, " ")
+    .replace(/\b(?:part|cour)\s*[12]\b/gi, " ")
+    .replace(/\b(?:ii|iii|iv|v)\b/gi, " ")
+    .replace(/[：:：\-–—,]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function nextSeasonNumber(groups) { const max = groups.reduce((n, g) => Math.max(n, Number(g.season) || 0), 0); return max + 1; }
@@ -90,7 +125,7 @@ async function buildVideos(groups) {
       const ongoing = isOngoing(entry.jikan);
       const mapping = await getAniZipMapping(malId);
       const aniZipRows = mapping?.anilist_id
-        ? mergeEpisodeRows(await getAniZipEpisodes(mapping.anilist_id, MAX_EPISODE_PAGES))
+        ? mergeEpisodeRows(await getAniZipEpisodes(mapping.anilist_id))
         : [];
       const jikanRows = (await getJikanEpisodes(malId, MAX_EPISODE_PAGES))
         .map(normalizeJikanEpisode)
@@ -145,13 +180,10 @@ export function chooseRows(jikanRows, aniZipRows, expected = 0, ongoing = false)
   const jikan = Array.isArray(jikanRows) ? jikanRows : [];
   const aniZip = Array.isArray(aniZipRows) ? aniZipRows : [];
 
-  // A complete Jikan sequence is preferred for finished/ordinary anime because
-  // AniZip can contain provider-specific extras. For ongoing anime, however,
-  // Jikan's episode count can represent only the currently published tranche
-  // while AniZip may already contain a substantially longer canonical sequence.
   if (ongoing && aniZip.length > jikan.length) return enrichRows(aniZip, jikan);
-  if (expected > 0 && jikan.length === expected) return enrichRows(jikan, aniZip);
-  if (expected > 0 && aniZip.length >= expected && jikan.length < expected) return enrichRows(aniZip, jikan);
+  if (expected > 0 && jikan.length >= expected) return enrichRows(jikan, aniZip);
+  if (expected > 0 && jikan.length > 0 && aniZip.length >= expected) return fillMissingRows(jikan, aniZip, expected);
+  if (expected > 0 && aniZip.length >= expected) return enrichRows(aniZip, jikan);
   if (aniZip.length > jikan.length) return enrichRows(aniZip, jikan);
   return enrichRows(jikan, aniZip);
 }
@@ -167,6 +199,14 @@ function enrichRows(primary, secondary) {
     if ((!row.sourceSeason || row.sourceSeason === 0) && e.sourceSeason) merged.sourceSeason = e.sourceSeason;
     return merged;
   });
+}
+function fillMissingRows(primary, secondary, expected) {
+  const merged = new Map(primary.map(row => [Number(row.number), row]));
+  for (const row of secondary) {
+    const number = Number(row.number);
+    if (number > 0 && number <= expected && !merged.has(number)) merged.set(number, row);
+  }
+  return [...merged.values()].sort((a,b) => Number(a.number) - Number(b.number));
 }
 function better(a,b) { return (/^Episode \d+$/i.test(b.title) && !/^Episode \d+$/i.test(a.title)) || (!b.thumbnail && a.thumbnail) || (!b.released && a.released); }
 
