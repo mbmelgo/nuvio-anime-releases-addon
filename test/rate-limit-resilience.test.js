@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { requestJsonWithRetry } from "../api/catalog-source.js";
+import { requestJsonWithRetry } from "../lib/anilist-rate-limit.js";
 
 test("retries AniList 429 responses and succeeds on the next attempt", async () => {
   let calls = 0;
