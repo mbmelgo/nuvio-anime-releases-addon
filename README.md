@@ -1,27 +1,23 @@
-# Anime Releases for Nuvio — v3.31.0
+# Anime Releases for Nuvio — v3.31.1
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `3.31.0`
+- **Development version:** `3.31.1`
 - **Production release:** `v3.31.0`
 - **Latest production tag:** `v3.31.0`
 - **Next minor release baseline:** `3.32.0`
 - **Architecture:** **catalog-only**
 - **Catalog source:** AniList release/airing data
 - **Canonical identity:** multi-source MAL/AniList → Kitsu resolution with TVDB mapping when verified
-- **Nuvio-facing identity:** verified `tvdb:<seriesId>` when a canonical TVDB mapping is available; seasonal entries can traverse AniList PREQUEL/PARENT relationships to locate a verified root/franchise TVDB series; English, romaji, and native/Japanese title variants are compared during canonicalization; otherwise the original `mal:` / `anilist:` identity is preserved
-- **Canonicalization implementation:** split into serverless-safe modules under `lib/`, while `lib/kitsu-canonical.js` remains the stable compatibility entry point
+- **Nuvio-facing identity:** verified `tvdb:<seriesId>` when a canonical TVDB mapping is available; validated IMDb/TMDB identities are used as BingeCat-compatible fallbacks; unresolved identities retain their source ID until a verified mapping is available
 - **Metadata:** delegated to **BingeCat / the configured metadata addon**
-- **Catalog search:** all five catalogs advertise optional search support and match English, romaji, and native/Japanese titles; Stremio catalog extra parameters are parsed from the protocol path, including `.json` on the final extra value and combined `search` + `skip` forms
-- **Identity validation:** TVDB candidates are validated against title, year, continuation/season evidence, and provider identity evidence before being exposed to Nuvio; continuing TVDB series can represent later seasons when the base title matches, without collapsing unrelated franchise entries or reboot identities; when TVDB is a franchise-level mismatch, validated IMDb/TMDB identities can be used as BingeCat-compatible fallbacks
-- **Title display priority:** English → Romaji → native/Japanese, while identity matching continues to consider all supported title variants and aliases
+- **Identity matching:** English, romaji, native/Japanese, alias, continuation, season, and root-title evidence are considered; season-marked titles can also use their canonical root-title variant for external TMDB/IMDb recovery
 - **Provider resilience:** AniList 429 responses honor `Retry-After` and retry with bounded backoff; unresolved canonical identities use a short negative-cache window so transient provider misses can be retried instead of persisting for an hour
 
-## v3.31.0 release
+## v3.31.1 development change
 
-- Shortened transient canonical identity negative caching from 1 hour to 2 minutes.
-- Added regression coverage proving unresolved identities are retried after the transient-miss window.
-- This release is a generalized provider-resilience fix; no anime-specific exceptions were added.
+- Generalized season-title external identity fallback: season-marked titles can recover verified TMDB/IMDb identities from their root title through Wikidata.
+- Added regression coverage for numeric and Roman-numeral season markers.

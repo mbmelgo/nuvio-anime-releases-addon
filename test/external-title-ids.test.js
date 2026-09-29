@@ -1,25 +1,51 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveExternalMetadataIdsByAniListId, selectExternalMetadataIds } from "../lib/external-title-ids.js";
+import { expandTitleVariants, resolveExternalMetadataIdsByTitle } from "../lib/external-title-ids.js";
 
-test("resolves external metadata identities from an AniList-linked Wikidata entity", async () => {
-  const fetchImpl = async () => ({ results: { bindings: [
-    { item: { value: "https://www.wikidata.org/entity/Q115733264" }, label: { value: "Pokémon Horizons: The Series" }, tmdb: { value: "220150" }, imdb: { value: "tt26692417" } },
-    { item: { value: "https://www.wikidata.org/entity/Q999999999" }, label: { value: "Pokémon" }, tmdb: { value: "76148" } },
-  ] } });
-  assert.deepEqual(await resolveExternalMetadataIdsByAniListId("158871", ["Pokémon Horizons: The Series"], fetchImpl), { tmdb: "220150", imdb: "tt26692417" });
+function wikidataFetchFor(expectedTitle, tmdb, imdb = null) {
+  return async (url) => {
+    const query = decodeURIComponent(new URL(url).searchParams.get("query") || "").toLowerCase();
+    if (!query.includes(`lcase(str(?label)) = "${expectedTitle.toLowerCase()}"`)) {
+      return new Response(JSON.stringify({ results: { bindings: [] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    return new Response(JSON.stringify({
+      results: {
+        bindings: [{
+          item: { value: "http://www.wikidata.org/entity/Q1" },
+          label: { value: expectedTitle },
+          tmdb: { value: tmdb },
+          ...(imdb ? { imdb: { value: imdb } } : {}),
+        }],
+      },
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+}
+
+test("season-title expansion derives a canonical root-title variant", () => {
+  assert.deepEqual(expandTitleVariants(["From Old Country Bumpkin to Master Swordsman II"]).slice(0, 2), [
+    "From Old Country Bumpkin to Master Swordsman II",
+    "From Old Country Bumpkin to Master Swordsman",
+  ]);
+  assert.deepEqual(expandTitleVariants(["Trapped in a Dating Sim: The World of Otome Games is Tough for Mobs Season 2"]).slice(0, 2), [
+    "Trapped in a Dating Sim: The World of Otome Games is Tough for Mobs Season 2",
+    "Trapped in a Dating Sim: The World of Otome Games is Tough for Mobs",
+  ]);
 });
 
-test("selects the uniquely title-matching identity when an external ID is duplicated", () => {
-  assert.deepEqual(selectExternalMetadataIds([
-    { item: { value: "https://www.wikidata.org/entity/Q1" }, label: { value: "Pokémon" }, tmdb: { value: "100" } },
-    { item: { value: "https://www.wikidata.org/entity/Q2" }, label: { value: "Pokémon Horizons: The Series" }, tmdb: { value: "220150" }, imdb: { value: "tt26692417" } },
-  ], ["Pokémon Horizons: The Series"]), { tmdb: "220150", imdb: "tt26692417" });
+test("external title fallback resolves a season entry through its root title", async () => {
+  const result = await resolveExternalMetadataIdsByTitle(
+    ["From Old Country Bumpkin to Master Swordsman II"],
+    wikidataFetchFor("From Old Country Bumpkin to Master Swordsman", "260823", "tt35346717"),
+  );
+
+  assert.deepEqual(result, { tmdb: "260823", imdb: "tt35346717" });
 });
 
-test("rejects ambiguous exact-title external identity matches", () => {
-  assert.deepEqual(selectExternalMetadataIds([
-    { item: { value: "https://www.wikidata.org/entity/Q1" }, label: { value: "Duplicate Title" }, tmdb: { value: "100" } },
-    { item: { value: "https://www.wikidata.org/entity/Q2" }, label: { value: "Duplicate Title" }, tmdb: { value: "200" } },
-  ], ["Duplicate Title"]), { tmdb: null, imdb: null });
+test("external title fallback resolves numeric season markers without anime-specific logic", async () => {
+  const result = await resolveExternalMetadataIdsByTitle(
+    ["Trapped in a Dating Sim: The World of Otome Games is Tough for Mobs Season 2"],
+    wikidataFetchFor("Trapped in a Dating Sim: The World of Otome Games is Tough for Mobs", "139512", "tt16255458"),
+  );
+
+  assert.deepEqual(result, { tmdb: "139512", imdb: "tt16255458" });
 });
