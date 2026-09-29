@@ -1,1 +1,0 @@
-Temporary trigger for the TVDB reader patch workflow; it will be removed automatically.
