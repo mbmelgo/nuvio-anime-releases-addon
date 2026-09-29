@@ -73,13 +73,31 @@ export function catalogDefinitions(info) {
 }
 export function getCatalogPageCount(itemCount) { return Math.ceil(Math.min(Math.max(0, Number(itemCount) || 0), MAX_CATALOG_ITEMS) / ANILIST_PAGE_SIZE); }
 
+export function getCatalogPagePlan(skip, search = "") {
+  const normalizedSkip = Math.max(0, Number(skip) || 0);
+  const hasSearch = String(search || "").trim().length > 0;
+  if (normalizedSkip >= MAX_CATALOG_ITEMS) return { firstPage: MAX_ANILIST_PAGES + 1, targetCount: 0 };
+  return {
+    firstPage: hasSearch ? 1 : Math.floor(normalizedSkip / ANILIST_PAGE_SIZE) + 1,
+    targetCount: hasSearch ? Math.min(MAX_CATALOG_ITEMS, normalizedSkip + ANILIST_PAGE_SIZE) : ANILIST_PAGE_SIZE,
+  };
+}
+
 async function buildCatalog(id, info, now, skip, search) {
   if (id === "new_episodes") { const range = getLast7DaysRangeManila(now); return scheduleCatalog(range.start, range.end, false, skip, search); }
   if (id === "upcoming_episodes") { const range = getNext7DaysRangeManila(now); return scheduleCatalog(range.start, range.end, true, skip, search); }
   const filter = id === "current_season" ? { season: info.ongoing, sort: ["START_DATE", "TITLE_ROMAJI"] } : id === "previous_season" ? { season: info.previous, sort: ["START_DATE", "SCORE_DESC", "TITLE_ROMAJI"] } : id === "upcoming_season" ? { season: info.upcoming, status: "NOT_YET_RELEASED", sort: ["START_DATE", "TITLE_ROMAJI"] } : null;
   if (!filter) return [];
-  const metas = await queryAnimeAll(filter);
-  return canonicalizeCatalogMetas(metas).then((items) => filterCatalogMetasBySearch(items, search).slice(skip, skip + MAX_CATALOG_ITEMS));
+  const plan = getCatalogPagePlan(skip, search);
+  if (!plan.targetCount) return [];
+  const items = [];
+  for (let page = plan.firstPage; page <= MAX_ANILIST_PAGES && items.length < plan.targetCount; page++) {
+    const rows = await queryAnime({ ...filter, page });
+    const canonical = await canonicalizeCatalogMetas(rows);
+    items.push(...filterCatalogMetasBySearch(canonical, search));
+    if (rows.length < ANILIST_PAGE_SIZE) break;
+  }
+  return items.slice(skip, skip + ANILIST_PAGE_SIZE);
 }
 
 export function filterCatalogMetasBySearch(metas, search) {
@@ -120,7 +138,7 @@ async function scheduleCatalog(start, end, futureOnly, skip, search) {
   for (const schedule of schedules) { const media = schedule.media; if (!media || media.format !== "TV") continue; const existing = latestByAnime.get(media.id); if (!existing || schedule.airingAt > existing.airingAt) latestByAnime.set(media.id, schedule); }
   const metas = [...latestByAnime.values()].sort((a, b) => futureOnly ? a.airingAt - b.airingAt : b.airingAt - a.airingAt).map((s) => toMeta(s.media, { episode: s.episode, airingAt: s.airingAt })).filter(Boolean);
   const filtered = canonicalizeCatalogMetas(filterCatalogMetasBySearch(metas, search));
-  return filtered.then((items) => items.slice(skip, skip + MAX_CATALOG_ITEMS));
+  return filtered.then((items) => items.slice(skip, skip + ANILIST_PAGE_SIZE));
 }
 
 export async function queryAiringSchedule(start, end, futureOnly, now = Date.now()) {
