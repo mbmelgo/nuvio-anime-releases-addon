@@ -1,12 +1,9 @@
 import { canonicalizeCatalogMetasFast } from "../lib/kitsu-canonical.js";
 import {
   ANILIST_PAGE_SIZE,
-  MAX_CATALOG_ITEMS,
-  MAX_ANILIST_PAGES,
+  MAX_CATALOG_FILL_PAGES,
   buildCatalogMediaVariables,
   catalogDefinitions as getCatalogDefinitions,
-  getCatalogPageCount,
-  getCatalogPagePlan,
   getLast7DaysRangeManila,
   getNext7DaysRangeManila,
   getSeasonInfo as getSeasonInfoValue,
@@ -15,14 +12,12 @@ import {
 import { filterCatalogMetasBySearch, toMeta } from "../lib/catalog-meta.js";
 import { queryAnime } from "../lib/catalog-anilist.js";
 import { scheduleCatalog } from "../lib/catalog-schedule.js";
+import { collectValidatedCatalogPage } from "../lib/catalog-pagination.js";
 
 export {
   ANILIST_PAGE_SIZE,
-  MAX_CATALOG_ITEMS,
-  MAX_ANILIST_PAGES,
+  MAX_CATALOG_FILL_PAGES,
   buildCatalogMediaVariables,
-  getCatalogPageCount,
-  getCatalogPagePlan,
   getLast7DaysRangeManila,
   getNext7DaysRangeManila,
   parseCatalogExtraPath,
@@ -90,25 +85,14 @@ export async function buildCatalog(id, info, now, skip, search) {
   const filter = getCatalogFilter(id, info);
   if (!filter) return [];
 
-  const plan = getCatalogPagePlan(skip);
-  if (!plan.limit) return [];
-
-  // One AniList request per Nuvio page. Vercel serverless invocations should
-  // not walk the entire season to construct a single catalog response.
-  const rows = await queryAnime(filter, plan.page, search);
-  const canonical = await canonicalizeCatalogMetasFast(rows);
-
-  // AniList applies the search term server-side. Keep this as a defensive
-  // check for alternate titles exposed by canonical metadata.
-  // Do not slice again: `queryAnime` already returns exactly the requested
-  // AniList page, and applying the Nuvio skip a second time would empty every
-  // page after the first one.
-  return search ? filterCatalogMetasBySearch(canonical, search) : canonical;
+  return collectValidatedCatalogPage({
+    skip,
+    pageSize: ANILIST_PAGE_SIZE,
+    maxPages: MAX_CATALOG_FILL_PAGES,
+    fetchPage: (page) => queryAnime(filter, page, search),
+    canonicalizePage: (metas) => canonicalizeCatalogMetasFast(metas),
+  });
 }
-
-// Kept as a compatibility no-op. Catalog generation no longer depends on
-// per-instance in-memory caches, which are not durable across Vercel workers.
-export function clearCatalogSourceCache() {}
 
 function send(res, body, status = 200) {
   res.status(status);
