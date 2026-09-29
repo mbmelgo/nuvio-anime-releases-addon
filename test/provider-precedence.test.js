@@ -1,8 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { canonicalizeCatalogMetas, clearCanonicalizationCache } from "../lib/canonical-identity.js";
-
-test.beforeEach(() => clearCanonicalizationCache());
+import { canonicalizeCatalogMetas } from "../lib/canonical-identity.js";
 
 test("prefers the AniList TVDB mapping when MAL points to a franchise-level identity", async () => {
   const fetchImpl = async (url) => {
