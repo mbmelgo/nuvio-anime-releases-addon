@@ -1,6 +1,6 @@
 {
   "name": "nuvio-anime-releases-addon",
-  "version": "3.31.1",
+  "version": "3.31.2",
   "private": true,
   "type": "module",
   "engines": {
