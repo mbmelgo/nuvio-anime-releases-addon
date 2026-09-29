@@ -10,7 +10,8 @@ const FETCH_TIMEOUT_MS = 8000;
 export default async function handler(req, res) {
   const url = new URL(req.url, `https://${req.headers.host || "localhost"}`);
   const parts = url.pathname.split("/").filter(Boolean);
-  const pathExtra = parseCatalogExtraPath(parts.slice(3).join("/"));
+  const rawExtraPath = req.query?.extra ?? parts.slice(3).join("/");
+  const pathExtra = parseCatalogExtraPath(rawExtraPath);
   const query = { ...pathExtra, ...(req.query || {}) };
   const resource = query.resource || parts[0];
   const type = query.type || parts[1];
@@ -38,12 +39,15 @@ export default async function handler(req, res) {
 
 export function parseCatalogExtraPath(value) {
   const result = {};
-  for (const pair of String(value || "").split("&")) {
+  const parts = String(value || "").split("&");
+  for (let index = 0; index < parts.length; index++) {
+    const pair = parts[index];
     if (!pair) continue;
     const separator = pair.indexOf("=");
     const rawKey = separator >= 0 ? pair.slice(0, separator) : pair;
-    const rawValue = separator >= 0 ? pair.slice(separator + 1) : "";
+    let rawValue = separator >= 0 ? pair.slice(separator + 1) : "";
     if (!rawKey) continue;
+    if (index === parts.length - 1) rawValue = rawValue.replace(/\.json$/i, "");
     try {
       result[decodeURIComponent(rawKey)] = decodeURIComponent(rawValue);
     } catch {
