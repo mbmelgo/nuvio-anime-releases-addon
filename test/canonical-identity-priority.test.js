@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { canonicalizeCatalogMetas, clearCanonicalizationCache } from "../lib/kitsu-canonical.js";
+import { NEGATIVE_CACHE_TTL_MS } from "../lib/canonical-state.js";
 
 function mockFetch(routes) {
   return async (url) => {
@@ -28,4 +29,24 @@ test("prefers the identity-specific Wikidata TVDB mapping over a generic MAL-Syn
 
   assert.equal(meta.id, "tvdb:433862");
   assert.equal(meta.extra.tvdbId, "433862");
+});
+
+test("retries an unresolved identity after the short negative-cache window", async () => {
+  let secondPass = false;
+  const fetchImpl = async (url) => {
+    const key = new URL(url).toString();
+    if (secondPass && key.toLowerCase().includes("query.wikidata.org")) {
+      return new Response(JSON.stringify({ results: { bindings: [{ tvdb: { value: "452710" } }] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    return new Response(JSON.stringify({}), { status: 404, headers: { "Content-Type": "application/json" } });
+  };
+
+  const input = [{ id: "mal:123456", name: "From Old Country Bumpkin to Master Swordsman", type: "series", released: "2025-04-05T00:00:00.000Z" }];
+  const [first] = await canonicalizeCatalogMetas(input, { fetchImpl, now: 1000 });
+  assert.equal(first.id, "mal:123456");
+
+  secondPass = true;
+  const [second] = await canonicalizeCatalogMetas(input, { fetchImpl, now: 1000 + NEGATIVE_CACHE_TTL_MS + 1 });
+  assert.equal(second.id, "tvdb:452710");
+  assert.equal(second.extra.tvdbId, "452710");
 });

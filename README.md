@@ -1,11 +1,11 @@
-# Anime Releases for Nuvio — v3.30.0
+# Anime Releases for Nuvio — v3.30.1
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `3.30.0`
+- **Development version:** `3.30.1`
 - **Production release:** `v3.30.0`
 - **Latest production tag:** `v3.30.0`
 - **Next minor release baseline:** `3.31.0`
@@ -18,3 +18,4 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 - **Catalog search:** all five catalogs advertise optional search support and match English, romaji, and native/Japanese titles; Stremio catalog extra parameters are parsed from the protocol path, including `.json` on the final extra value and combined `search` + `skip` forms
 - **Identity validation:** TVDB candidates are validated against title, year, continuation/season evidence, and provider identity evidence before being exposed to Nuvio; continuing TVDB series can represent later seasons when the base title matches, without collapsing unrelated franchise entries or reboot identities; when TVDB is a franchise-level mismatch, validated IMDb/TMDB identities can be used as BingeCat-compatible fallbacks
 - **Title display priority:** English → Romaji → native/Japanese, while identity matching continues to consider all supported title variants and aliases
+- **Provider resilience:** AniList 429 responses honor `Retry-After` and retry with bounded backoff; unresolved canonical identities use a short negative-cache window so transient provider misses can be retried instead of persisting for an hour
