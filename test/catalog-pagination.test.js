@@ -73,3 +73,28 @@ test("validated catalog pagination deduplicates canonical identities before appl
   assert.deepEqual(result.map((meta) => meta.id), ["tvdb:100", "tvdb:200", "tvdb:250", "tvdb:300"]);
   assert.deepEqual(calls, [1, 2]);
 });
+
+test("validated catalog pagination prefetches the next AniList page while validating the current page", async () => {
+  const calls = [];
+  let releaseValidation;
+  const validationGate = new Promise((resolve) => { releaseValidation = resolve; });
+
+  const resultPromise = collectValidatedCatalogPage({
+    skip: 0,
+    pageSize: 2,
+    maxPages: 2,
+    fetchPage: async (page) => {
+      calls.push(page);
+      return [{ id: `${page}-a` }, { id: `${page}-b` }];
+    },
+    canonicalizePage: async (rows) => {
+      assert.deepEqual(calls, [1, 2]);
+      releaseValidation();
+      await validationGate;
+      return rows;
+    },
+  });
+
+  const result = await resultPromise;
+  assert.deepEqual(result.map((meta) => meta.id), ["1-a", "1-b"]);
+});
