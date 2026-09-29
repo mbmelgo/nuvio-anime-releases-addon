@@ -11,14 +11,13 @@ test("prefers the AniList TVDB mapping when MAL points to a franchise-level iden
       return new Response(JSON.stringify({ results: [{ hits: [] }] }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     if (target.hostname === "query.wikidata.org") {
-      const query = target.searchParams.get("query") || "";
-      if (query.includes("P8729") && query.includes("158871")) {
-        return new Response(JSON.stringify({ results: { bindings: [{ tvdb: { value: "433862" } }] } }), { status: 200, headers: { "Content-Type": "application/sparql-results+json" } });
-      }
-      if (query.includes("P4086") && query.includes("53876")) {
-        return new Response(JSON.stringify({ results: { bindings: [{ tvdb: { value: "76703" } }] } }), { status: 200, headers: { "Content-Type": "application/sparql-results+json" } });
-      }
       return new Response(JSON.stringify({ results: { bindings: [] } }), { status: 200, headers: { "Content-Type": "application/sparql-results+json" } });
+    }
+    if (target.hostname === "mappings.anibridge.eliasbenb.dev") {
+      const source = target.searchParams.get("provider");
+      const id = target.searchParams.get("id");
+      const tvdb = source === "anilist" && id === "158871" ? "433862" : source === "mal" && id === "53876" ? "76703" : null;
+      return new Response(JSON.stringify({ data: tvdb ? { [`${source}:${id}`]: { [`tvdb_show:${tvdb}`]: {} } } : {} }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     return new Response(JSON.stringify({}), { status: 404 });
   };
