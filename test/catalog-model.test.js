@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  ANILIST_PAGE_SIZE,
   buildCatalogMediaVariables,
   catalogDefinitions,
   getCatalogPageCount,
@@ -22,29 +23,38 @@ test("catalog model exposes exactly the five requested catalogs", () => {
   assert.equal(catalogs[4].name, "Upcoming Anime — Next 7 Days");
 });
 
-test("catalogs are exposed as a single page with up to 1000 anime", () => {
+test("catalog pages are intentionally small for serverless latency", () => {
+  assert.equal(ANILIST_PAGE_SIZE, 10);
   assert.equal(MAX_CATALOG_ITEMS, 1000);
   assert.equal(getCatalogPageCount(0), 0);
   assert.equal(getCatalogPageCount(1), 1);
-  assert.equal(getCatalogPageCount(50), 1);
-  assert.equal(getCatalogPageCount(51), 2);
-  assert.equal(getCatalogPageCount(1000), 20);
-  assert.equal(getCatalogPageCount(1001), 20);
+  assert.equal(getCatalogPageCount(10), 1);
+  assert.equal(getCatalogPageCount(11), 2);
+  assert.equal(getCatalogPageCount(1000), 100);
+  assert.equal(getCatalogPageCount(1001), 100);
 });
 
 test("catalog pagination maps Nuvio skip directly to one AniList page", () => {
-  assert.deepEqual(getCatalogPagePlan(0), { page: 1, offset: 0, limit: 50 });
-  assert.deepEqual(getCatalogPagePlan(49), { page: 1, offset: 49, limit: 50 });
-  assert.deepEqual(getCatalogPagePlan(50), { page: 2, offset: 0, limit: 50 });
-  assert.deepEqual(getCatalogPagePlan(100), { page: 3, offset: 0, limit: 50 });
-  assert.deepEqual(getCatalogPagePlan(950), { page: 20, offset: 0, limit: 50 });
-  assert.deepEqual(getCatalogPagePlan(1000), { page: 21, offset: 0, limit: 0 });
+  assert.deepEqual(getCatalogPagePlan(0), { page: 1, offset: 0, limit: 10 });
+  assert.deepEqual(getCatalogPagePlan(9), { page: 1, offset: 9, limit: 10 });
+  assert.deepEqual(getCatalogPagePlan(10), { page: 2, offset: 0, limit: 10 });
+  assert.deepEqual(getCatalogPagePlan(20), { page: 3, offset: 0, limit: 10 });
+  assert.deepEqual(getCatalogPagePlan(990), { page: 100, offset: 0, limit: 10 });
+  assert.deepEqual(getCatalogPagePlan(1000), { page: 101, offset: 0, limit: 0 });
+});
+
+test("catalog pagination does not require a second local skip", () => {
+  const firstPage = getCatalogPagePlan(0);
+  const secondPage = getCatalogPagePlan(10);
+  assert.equal(firstPage.offset, 0);
+  assert.equal(secondPage.offset, 0);
+  assert.notEqual(firstPage.page, secondPage.page);
 });
 
 test("catalog pagination is identical for search because AniList receives the search term", () => {
-  assert.deepEqual(getCatalogPagePlan(0, "bleach"), { page: 1, offset: 0, limit: 50 });
-  assert.deepEqual(getCatalogPagePlan(50, "bleach"), { page: 2, offset: 0, limit: 50 });
-  assert.deepEqual(getCatalogPagePlan(950, "bleach"), { page: 20, offset: 0, limit: 50 });
+  assert.deepEqual(getCatalogPagePlan(0, "bleach"), { page: 1, offset: 0, limit: 10 });
+  assert.deepEqual(getCatalogPagePlan(10, "bleach"), { page: 2, offset: 0, limit: 10 });
+  assert.deepEqual(getCatalogPagePlan(990, "bleach"), { page: 100, offset: 0, limit: 10 });
 });
 
 test("catalog search is passed to AniList instead of requiring full-season local filtering", () => {
@@ -65,12 +75,12 @@ test("fast catalog identity prefers a validated TVDB mapping without invoking th
   assert.equal(result[0].extra.tvdbId, "465988");
 });
 
-test("fast catalog identity falls back to AniList instead of running expensive title searches", async () => {
+test("fast catalog identity preserves MAL instead of falling back to unsupported AniList", async () => {
   const metas = [{ id: "mal:53876", type: "series", name: "Pokémon Horizons", releaseInfo: "2023-", extra: { anilistId: 166254, malId: 53876 } }];
   let called = false;
   const result = await canonicalizeCatalogMetasFast(metas, { resolveTvdb: async () => { called = true; return null; } });
   assert.equal(called, true);
-  assert.equal(result[0].id, "anilist:166254");
+  assert.equal(result[0].id, "mal:53876");
   assert.equal(result[0].extra.originalCatalogId, "mal:53876");
 });
 
