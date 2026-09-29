@@ -2,9 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { getMetaTitles, seasonBaseTitle } from "../lib/canonical-utils.js";
 
-test("season-root title variants are included in canonical metadata titles", () => {
+test("season-root title variants are derived without changing provider title inputs", () => {
   assert.equal(seasonBaseTitle("From Old Country Bumpkin to Master Swordsman II"), "From Old Country Bumpkin to Master Swordsman");
   assert.equal(seasonBaseTitle("Trapped in a Dating Sim: The World of Otome Games is Tough for Mobs Season 2"), "Trapped in a Dating Sim: The World of Otome Games is Tough for Mobs");
+  assert.equal(seasonBaseTitle("片田舎のおっさん、剣聖になるII"), "片田舎のおっさん、剣聖になる");
 
   const titles = getMetaTitles({
     name: "From Old Country Bumpkin to Master Swordsman II",
@@ -15,7 +16,9 @@ test("season-root title variants are included in canonical metadata titles", () 
     },
   });
 
-  assert.ok(titles.includes("From Old Country Bumpkin to Master Swordsman"));
-  assert.ok(titles.includes("Katainaka no Ossan, Kensei ni Naru"));
-  assert.ok(titles.includes("片田舎のおっさん、剣聖になる"));
+  assert.deepEqual(titles, [
+    "From Old Country Bumpkin to Master Swordsman II",
+    "Katainaka no Ossan, Kensei ni Naru II",
+    "片田舎のおっさん、剣聖になるII",
+  ]);
 });
