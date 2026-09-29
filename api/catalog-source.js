@@ -57,7 +57,7 @@ export default async function handler(req, res) {
       const search = String(query.search || "").trim();
       return send(res, { metas: await buildCatalog(id, seasonInfo, now, skip, search) });
     } catch (error) {
-      console.error("[catalog]", error);
+      console.error("[catalog] request failed", { id, skip: query.skip, search: query.search, error });
       return send(res, { metas: [] }, 500);
     }
   }
@@ -83,16 +83,14 @@ export async function canonicalizeCatalogPage(metas, options = {}) {
 
   if (!unresolved.length) return fastResult;
 
-  // The fast resolver deliberately avoids expensive relationship/provider
-  // traversal. Only candidates that remain unresolved are sent through the
-  // complete canonical resolver, which already contains bounded root/season
-  // recovery logic. Never expose a fallback identity that the fast path would
-  // reject as unsupported.
+  // Only unresolved candidates pay the cost of full relationship/provider traversal.
   let recovered = [];
   try {
     const fullResult = await full(unresolved, options);
     recovered = fullResult.filter((meta) => /^(tvdb|tmdb|imdb):/.test(String(meta?.id || "")));
-  } catch {}
+  } catch (error) {
+    console.warn("[catalog] full identity recovery failed", error);
+  }
 
   const recoveredIds = new Set(recovered.map((meta) => String(meta?.extra?.originalCatalogId || "")));
   const combined = [...fastResult, ...recovered];
