@@ -20,11 +20,11 @@ test("catalog external-ID lookup can use a MAL cross-reference when AniList mapp
   };
 
   const result = await resolveExternalMetadataIdsByAniListIds(
-    [269],
-    [{ name: "Bleach", extra: { anilistId: 269, malId: 269 } }],
+    [999],
+    [{ name: "Bleach", extra: { anilistId: 999, malId: 269 } }],
     fetchImpl,
   );
 
   assert.match(queryText, /P4082/);
-  assert.deepEqual(result.get("269"), { tmdb: "30984", imdb: "tt0434665" });
+  assert.deepEqual(result.get("999"), { tmdb: "30984", imdb: "tt0434665" });
 });
