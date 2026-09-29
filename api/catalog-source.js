@@ -6,6 +6,11 @@ export const ANILIST_PAGE_SIZE = 50;
 export const MAX_CATALOG_ITEMS = 1000;
 export const MAX_ANILIST_PAGES = Math.ceil(MAX_CATALOG_ITEMS / ANILIST_PAGE_SIZE);
 const FETCH_TIMEOUT_MS = 8000;
+const CATALOG_CACHE_TTL_MS = 5 * 60 * 1000;
+const CATALOG_STALE_TTL_MS = 24 * 60 * 60 * 1000;
+const catalogQueryCache = new Map();
+const catalogValueCache = new Map();
+const scheduleQueryCache = new Map();
 
 export default async function handler(req, res) {
   const url = new URL(req.url, `https://${req.headers.host || "localhost"}`);
@@ -117,14 +122,55 @@ export function filterCatalogMetasBySearch(metas, search) {
   });
 }
 
-async function queryAnimeAll(filter) {
-  const all = [];
-  for (let page = 1; page <= MAX_ANILIST_PAGES; page++) {
-    const rows = await queryAnime({ ...filter, page });
-    all.push(...rows);
-    if (rows.length < ANILIST_PAGE_SIZE || all.length >= MAX_CATALOG_ITEMS) break;
+function catalogFilterKey(filter) {
+  return JSON.stringify({
+    season: filter?.season || null,
+    status: filter?.status || null,
+    sort: filter?.sort || null,
+  });
+}
+
+export async function queryAnimeAll(filter) {
+  const key = catalogFilterKey(filter);
+  const now = Date.now();
+  const cached = catalogQueryCache.get(key);
+  if (cached?.promise && cached.expiresAt > now) return cached.promise;
+
+  const stale = catalogValueCache.get(key);
+  const promise = (async () => {
+    try {
+      const all = [];
+      for (let page = 1; page <= MAX_ANILIST_PAGES; page++) {
+        const rows = await queryAnime({ ...filter, page });
+        all.push(...rows);
+        if (rows.length < ANILIST_PAGE_SIZE || all.length >= MAX_CATALOG_ITEMS) break;
+      }
+      const result = all.slice(0, MAX_CATALOG_ITEMS);
+      catalogValueCache.set(key, { value: result, expiresAt: Date.now() + CATALOG_STALE_TTL_MS });
+      return result;
+    } catch (error) {
+      if (stale && stale.expiresAt > Date.now()) {
+        console.warn("[catalog] AniList unavailable; serving stale catalog data:", error?.message || error);
+        return stale.value;
+      }
+      throw error;
+    }
+  })();
+
+  catalogQueryCache.set(key, { promise, expiresAt: now + CATALOG_CACHE_TTL_MS });
+  try {
+    return await promise;
+  } catch (error) {
+    const current = catalogQueryCache.get(key);
+    if (current?.promise === promise) catalogQueryCache.delete(key);
+    throw error;
   }
-  return all.slice(0, MAX_CATALOG_ITEMS);
+}
+
+export function clearCatalogSourceCache() {
+  catalogQueryCache.clear();
+  catalogValueCache.clear();
+  scheduleQueryCache.clear();
 }
 
 async function queryAnime(filter) {
@@ -151,15 +197,29 @@ async function scheduleCatalog(start, end, futureOnly, skip, search) {
 }
 
 async function queryAiringSchedule(start, end, futureOnly) {
-  const all = [];
-  for (let page = 1; page <= MAX_ANILIST_PAGES; page++) {
-    const query = `query ($page:Int,$start:Int,$end:Int,$notYetAired:Boolean) { Page(page:$page,perPage:${ANILIST_PAGE_SIZE}) { airingSchedules(airingAt_greater:$start,airingAt_lesser:$end,notYetAired:$notYetAired,sort:TIME_DESC) { id airingAt episode media { ${MEDIA_FIELDS} } } } }`;
-    const data = await anilist(query, { page, start: Math.floor(start / 1000), end: Math.floor(end / 1000), notYetAired: futureOnly });
-    const rows = data?.Page?.airingSchedules || [];
-    all.push(...rows);
-    if (rows.length < ANILIST_PAGE_SIZE || all.length >= MAX_CATALOG_ITEMS) break;
+  const key = `${start}:${end}:${futureOnly ? "future" : "past"}`;
+  const now = Date.now();
+  const cached = scheduleQueryCache.get(key);
+  if (cached?.promise && cached.expiresAt > now) return cached.promise;
+  const promise = (async () => {
+    const all = [];
+    for (let page = 1; page <= MAX_ANILIST_PAGES; page++) {
+      const query = `query ($page:Int,$start:Int,$end:Int,$notYetAired:Boolean) { Page(page:$page,perPage:${ANILIST_PAGE_SIZE}) { airingSchedules(airingAt_greater:$start,airingAt_lesser:$end,notYetAired:$notYetAired,sort:TIME_DESC) { id airingAt episode media { ${MEDIA_FIELDS} } } } }`;
+      const data = await anilist(query, { page, start: Math.floor(start / 1000), end: Math.floor(end / 1000), notYetAired: futureOnly });
+      const rows = data?.Page?.airingSchedules || [];
+      all.push(...rows);
+      if (rows.length < ANILIST_PAGE_SIZE || all.length >= MAX_CATALOG_ITEMS) break;
+    }
+    return all.slice(0, MAX_CATALOG_ITEMS);
+  })();
+  scheduleQueryCache.set(key, { promise, expiresAt: now + CATALOG_CACHE_TTL_MS });
+  try {
+    return await promise;
+  } catch (error) {
+    const current = scheduleQueryCache.get(key);
+    if (current?.promise === promise) scheduleQueryCache.delete(key);
+    throw error;
   }
-  return all.slice(0, MAX_CATALOG_ITEMS);
 }
 
 function toMeta(media, episode) {
