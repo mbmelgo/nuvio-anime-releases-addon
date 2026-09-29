@@ -1,14 +1,14 @@
-# Anime Releases for Nuvio — v3.30.2
+# Anime Releases for Nuvio — v3.31.0
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `3.30.2`
-- **Production release:** `v3.30.0`
-- **Latest production tag:** `v3.30.0`
-- **Next minor release baseline:** `3.31.0`
+- **Development version:** `3.31.0`
+- **Production release:** `v3.31.0`
+- **Latest production tag:** `v3.31.0`
+- **Next minor release baseline:** `3.32.0`
 - **Architecture:** **catalog-only**
 - **Catalog source:** AniList release/airing data
 - **Canonical identity:** multi-source MAL/AniList → Kitsu resolution with TVDB mapping when verified
@@ -19,3 +19,9 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 - **Identity validation:** TVDB candidates are validated against title, year, continuation/season evidence, and provider identity evidence before being exposed to Nuvio; continuing TVDB series can represent later seasons when the base title matches, without collapsing unrelated franchise entries or reboot identities; when TVDB is a franchise-level mismatch, validated IMDb/TMDB identities can be used as BingeCat-compatible fallbacks
 - **Title display priority:** English → Romaji → native/Japanese, while identity matching continues to consider all supported title variants and aliases
 - **Provider resilience:** AniList 429 responses honor `Retry-After` and retry with bounded backoff; unresolved canonical identities use a short negative-cache window so transient provider misses can be retried instead of persisting for an hour
+
+## v3.31.0 release
+
+- Shortened transient canonical identity negative caching from 1 hour to 2 minutes.
+- Added regression coverage proving unresolved identities are retried after the transient-miss window.
+- This release is a generalized provider-resilience fix; no anime-specific exceptions were added.
