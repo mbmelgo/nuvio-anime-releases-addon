@@ -35,9 +35,9 @@ jobs:
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          if [[ "$COMMIT_MESSAGE" == *"[deploy-prod]"* ]]; then echo "release=true" >> "$GITHUB_OUTPUT"; else echo "release=false" >> "$GITHUB_OUTPUT"; fi
+          if [[ "${{ github.event_name }}" == "push" && "$COMMIT_MESSAGE" == *"[deploy-prod]"* ]]; then echo "release=true" >> "$GITHUB_OUTPUT"; else echo "release=false" >> "$GITHUB_OUTPUT"; fi
       - name: Bump patch version and sync metadata
-        if: steps.gate.outputs.release == 'false' && !contains(github.event.head_commit.message, '[skip-version-automation]') && !contains(github.event.head_commit.message, '[major-release]')
+        if: github.event_name == 'push' && steps.gate.outputs.release == 'false' && !contains(github.event.head_commit.message, '[skip-version-automation]') && !contains(github.event.head_commit.message, '[major-release]')
         shell: bash
         run: |
           set -euo pipefail
