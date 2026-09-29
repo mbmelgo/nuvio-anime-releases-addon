@@ -21,6 +21,7 @@ test("catalog model exposes exactly the five requested catalogs", () => {
   assert.equal(catalogs[2].name, "Previous Season — Spring 2026");
   assert.equal(catalogs[3].name, "Latest Anime — Last 7 Days");
   assert.equal(catalogs[4].name, "Upcoming Anime — Next 7 Days");
+  assert.deepEqual(catalogs.map((catalog) => catalog.pageSize), [10, 10, 10, 10, 10]);
 });
 
 test("catalog pages are intentionally small for serverless latency", () => {
@@ -78,10 +79,27 @@ test("fast catalog identity prefers a validated TVDB mapping without invoking th
 test("fast catalog identity preserves MAL instead of falling back to unsupported AniList", async () => {
   const metas = [{ id: "mal:53876", type: "series", name: "Pokémon Horizons", releaseInfo: "2023-", extra: { anilistId: 166254, malId: 53876 } }];
   let called = false;
-  const result = await canonicalizeCatalogMetasFast(metas, { resolveTvdb: async () => { called = true; return null; } });
+  const result = await canonicalizeCatalogMetasFast(metas, { resolveTvdb: async () => { called = true; return null; }, resolveMalTvdb: async () => null, recoverContinuation: async () => { throw new Error("must not run for ordinary title"); } });
   assert.equal(called, true);
   assert.equal(result[0].id, "mal:53876");
   assert.equal(result[0].extra.originalCatalogId, "mal:53876");
+});
+
+test("fast catalog identity recovers the franchise TVDB identity for a roman-numbered continuation", async () => {
+  const metas = [{ id: "mal:61897", type: "series", name: "From Old Country Bumpkin to Master Swordsman II", releaseInfo: "2026", extra: { anilistId: 194829, malId: 61897 } }];
+  let recoveryTitles = null;
+  const result = await canonicalizeCatalogMetasFast(metas, {
+    resolveTvdb: async () => null,
+    resolveMalTvdb: async () => null,
+    recoverContinuation: async (titles) => {
+      recoveryTitles = titles;
+      return { status: "found", tvdbId: "452710" };
+    },
+  });
+  assert.ok(recoveryTitles.includes("From Old Country Bumpkin to Master Swordsman II"));
+  assert.ok(recoveryTitles.includes("From Old Country Bumpkin to Master Swordsman"));
+  assert.equal(result[0].id, "tvdb:452710");
+  assert.equal(result[0].extra.tvdbId, "452710");
 });
 
 test("rolling catalog windows are exactly seven days wide", () => {
