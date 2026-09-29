@@ -147,7 +147,7 @@ test("uses an exact title match in Wikidata to recover a TVDB series when provid
     { match: (url) => url.includes("api.ani.zip"), status: 404, body: {} },
     { match: (url) => url.includes("api.malsync.moe"), status: 404, body: {} },
     { match: (url) => url.includes("kitsu.io/api/edge/anime?") || url.includes("kitsu.io/api/edge/anime&"), body: { data: [] } },
-    { match: (url) => url.includes("query.wikidata.org") && url.includes("P4835") && url.includes("Sazae-san"), body: { results: { bindings: [{ tvdb: { value: "359424" } }] } } },
+    { match: (url) => url.toLowerCase().includes("query.wikidata.org") && url.includes("P4835") && url.toLowerCase().includes("sazae-san"), body: { results: { bindings: [{ tvdb: { value: "359424" } }] } } },
   ]);
   const [meta] = await canonicalizeCatalogMetas([{ id: "mal:2406", name: "Sazae-san", type: "series" }], { fetchImpl, now: 1000 });
   assert.equal(meta.id, "tvdb:359424");
