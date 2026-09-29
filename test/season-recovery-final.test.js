@@ -25,6 +25,11 @@ test("recovers a later season from its base TVDB series title", async () => {
   assert.deepEqual(recovery, { status: "found", tvdbId: "451479" });
 });
 
+test("does not treat generic series wording as a continuation marker", async () => {
+  const recovery = await recoverContinuingTvdbSeries(["Pokémon Horizons: The Series"], tvdbFetch);
+  assert.deepEqual(recovery, { status: "not_applicable", tvdbId: null });
+});
+
 test("uses continuation recovery before falling back to an incomplete canonical identity", async () => {
   const [meta] = await canonicalizeCatalogMetas([{
     id: "anilist:209872",
