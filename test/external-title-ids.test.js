@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { expandTitleVariants, resolveExternalMetadataIdsByTitle } from "../lib/external-title-ids.js";
+import { expandTitleVariants, resolveExternalMetadataIdsByTitle, selectExternalMetadataIds } from "../lib/external-title-ids.js";
 
 function wikidataFetchFor(expectedTitle, tmdb, imdb = null) {
   return async (url) => {
@@ -48,4 +48,17 @@ test("external title fallback resolves numeric season markers without anime-spec
   );
 
   assert.deepEqual(result, { tmdb: "139512", imdb: "tt16255458" });
+});
+
+test("external ID selection rejects a mismatched franchise label instead of returning its identity", () => {
+  const result = selectExternalMetadataIds([
+    {
+      item: { value: "http://www.wikidata.org/entity/Q-pokemon" },
+      label: { value: "Pokémon" },
+      tmdb: { value: "12345" },
+      imdb: { value: "tt0001234" },
+    },
+  ], ["Pokémon Horizons"]);
+
+  assert.deepEqual(result, { tmdb: null, imdb: null });
 });
