@@ -1,14 +1,14 @@
-# Anime Releases for Nuvio — v3.15.1
+# Anime Releases for Nuvio — v3.16.0
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `3.15.1`
-- **Production release:** `v3.14.0`
-- **Next minor release baseline:** `3.15.0`
-- **Latest production tag:** `v3.14.0`
+- **Development version:** `3.16.0`
+- **Production release:** `v3.15.0`
+- **Next minor release baseline:** `3.16.0`
+- **Latest production tag:** `v3.15.0`
 - **Architecture:** **catalog-only**
 - **Catalog source:** AniList release/airing data
 - **Canonical identity:** multi-source MAL/AniList → Kitsu resolution with TVDB mapping when verified
@@ -16,8 +16,8 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 - **Canonicalization implementation:** split into serverless-safe modules under `lib/`, while `lib/kitsu-canonical.js` remains the stable compatibility entry point
 - **Metadata:** delegated to **BingeCat / the configured metadata addon**
 - **Catalog search:** all five catalogs advertise optional search and match English, romaji, and native/Japanese titles; Stremio catalog extra parameters are parsed from the protocol path, including `.json` on the final extra value and combined `search` + `skip` forms
-- **Latest fixes:** generalized Vercel routing resolves Upcoming Season Search/Discover HTTP 404 and supports combined Stremio catalog extras; TVDB title fallback tries English, romaji, and native/Japanese variants and aliases; title-derived TVDB canonical series-page fallback now uses a page-reader fallback when direct TheTVDB access is blocked; AniList catalog and airing-schedule queries are deduplicated and retain stale successful data during temporary rate limiting; MAL identities now have a generalized Wikidata MAL-ID → TVDB-series-ID fallback with regression coverage; Kitsu identities without a direct TVDB mapping can continue through generalized TVDB fallbacks instead of returning prematurely
-- **Deployment checkpoint:** **1/5** for the current autonomous cycle
+- **Latest fixes:** generalized Vercel routing resolves Upcoming Season Search/Discover HTTP 404 and supports combined Stremio catalog extras; TVDB title fallback tries English, romaji, and native/Japanese variants and aliases; title-derived TVDB canonical series-page fallback now uses a page-reader fallback when direct TheTVDB access is blocked; AniList catalog and airing-schedule queries are deduplicated and retain stale successful data during temporary rate limiting; MAL identities now have a generalized Wikidata MAL-ID → TVDB-series-ID fallback with regression coverage; Kitsu identities without a direct TVDB mapping can continue through generalized TVDB fallbacks instead of returning prematurely; canonical TVDB candidates are now validated against title and first-air-year evidence before being exposed to Nuvio, with regression coverage for franchise and reboot collisions
+- **Deployment checkpoint:** **2/5** for the current autonomous cycle
 
 The addon remains responsible for anime release, airing, and upcoming catalogs. AniList remains authoritative for airing dates, seasons, and upcoming episodes. Kitsu is used as the canonical anime identity layer. When a verified TVDB series mapping exists, the catalog exposes that TVDB identity because the current BingeCat integration can consume TVDB-based anime metadata. Seasonal entries that only have season-specific identities can fall back to a root series through AniList relations, preventing season IDs from being sent to BingeCat when only the franchise-level TVDB series is resolvable. Missing mappings never cause an item to be deleted: the original MAL/AniList identity is preserved.
 
