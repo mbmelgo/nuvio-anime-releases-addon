@@ -31,6 +31,22 @@ test("prefers the identity-specific Wikidata TVDB mapping over a generic MAL-Syn
   assert.equal(meta.extra.tvdbId, "433862");
 });
 
+test("uses the catalog's AniList identity when MAL is unresolved so click-through does not retain a failing MAL id", async () => {
+  const fetchImpl = mockFetch([]);
+  const [meta] = await canonicalizeCatalogMetas([
+    {
+      id: "mal:53876",
+      name: "Pokémon Horizons: The Series",
+      type: "series",
+      extra: { anilistId: 158871, malId: 53876 },
+    },
+  ], { fetchImpl, now: 1000 });
+
+  assert.equal(meta.id, "anilist:158871");
+  assert.equal(meta.extra.anilistId, 158871);
+  assert.equal(meta.extra.originalCatalogId, "mal:53876");
+});
+
 test("retries an unresolved identity after the short negative-cache window", async () => {
   let secondPass = false;
   const fetchImpl = async (url) => {
