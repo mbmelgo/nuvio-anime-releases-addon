@@ -18,3 +18,5 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 - **Catalog identity:** seasonal catalogs use a fast AniBridge/Wikidata TVDB mapping path plus TVDB validation; supported downstream identities are required for Nuvio-facing catalog IDs, while AniList remains a source identity only
 - **Canonical identity:** multi-source MAL/AniList → Kitsu resolution with TVDB mapping when verified
 - **Nuvio-facing identity:** verified `tvdb:<seriesId>` when a canonical TVDB mapping is available; validated IMDb/TMDB identities are used as BingeCat-compatible fallbacks; unsupported AniList-only or MAL-only identities are not exposed as catalog click-through IDs
+
+> v3.39.0 is the current production release candidate; the controlled production release pipeline is being run from this commit.
