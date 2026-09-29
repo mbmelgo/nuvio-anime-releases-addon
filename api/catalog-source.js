@@ -83,6 +83,18 @@ export function getCatalogPagePlan(skip, search = "") {
   };
 }
 
+export function buildCatalogMediaVariables(filter, page, search = "") {
+  const normalizedSearch = String(search || "").trim();
+  return {
+    page: page || 1,
+    season: filter.season?.season,
+    seasonYear: filter.season?.year,
+    status: filter.status,
+    sort: filter.sort,
+    ...(normalizedSearch ? { search: normalizedSearch } : {}),
+  };
+}
+
 async function buildCatalog(id, info, now, skip, search) {
   if (id === "new_episodes") { const range = getLast7DaysRangeManila(now); return scheduleCatalog(range.start, range.end, false, skip, search); }
   if (id === "upcoming_episodes") { const range = getNext7DaysRangeManila(now); return scheduleCatalog(range.start, range.end, true, skip, search); }
@@ -92,7 +104,7 @@ async function buildCatalog(id, info, now, skip, search) {
   if (!plan.targetCount) return [];
   const items = [];
   for (let page = plan.firstPage; page <= MAX_ANILIST_PAGES && items.length < plan.targetCount; page++) {
-    const rows = await queryAnime({ ...filter, page });
+    const rows = await queryAnime({ ...filter, page }, search);
     const canonical = await canonicalizeCatalogMetas(rows);
     items.push(...filterCatalogMetasBySearch(canonical, search));
     if (rows.length < ANILIST_PAGE_SIZE) break;
@@ -126,9 +138,9 @@ export async function queryAnimeAll(filter) {
 
 export function clearCatalogSourceCache() { catalogQueryCache.clear(); catalogValueCache.clear(); scheduleQueryCache.clear(); scheduleValueCache.clear(); }
 
-async function queryAnime(filter) {
-  const query = `query ($page:Int,$season:MediaSeason,$seasonYear:Int,$status:MediaStatus,$sort:[MediaSort]) { Page(page:$page,perPage:${ANILIST_PAGE_SIZE}) { media(type:ANIME,format:TV,season:$season,seasonYear:$seasonYear,status:$status,sort:$sort,isAdult:false) { ${MEDIA_FIELDS} } } }`;
-  const data = await anilist(query, { page: filter.page || 1, season: filter.season?.season, seasonYear: filter.season?.year, status: filter.status, sort: filter.sort });
+async function queryAnime(filter, search = "") {
+  const query = `query ($page:Int,$season:MediaSeason,$seasonYear:Int,$status:MediaStatus,$sort:[MediaSort],$search:String) { Page(page:$page,perPage:${ANILIST_PAGE_SIZE}) { media(type:ANIME,format:TV,season:$season,seasonYear:$seasonYear,status:$status,sort:$sort,search:$search,isAdult:false) { ${MEDIA_FIELDS} } } }`;
+  const data = await anilist(query, buildCatalogMediaVariables(filter, filter.page || 1, search));
   return (data?.Page?.media || []).map((media) => toMeta(media, media.nextAiringEpisode)).filter(Boolean);
 }
 
