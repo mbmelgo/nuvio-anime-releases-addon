@@ -9,7 +9,7 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 - **Production release:** `v3.36.0`
 - **Latest production tag:** `v3.36.0`
 - **Next minor release baseline:** `3.37.0`
-- **Autonomous deployment checkpoint:** `2/5`
+- **Autonomous deployment checkpoint:** `3/5`
 - **Architecture:** **catalog-only**
 - **Catalog source:** AniList release/airing data
 - **Catalog pagination:** seasonal catalogs honor Nuvio `skip` and fetch only the requested AniList page; catalog pages are intentionally bounded to 10 items to limit Vercel serverless latency and external identity work
@@ -21,7 +21,7 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 - **Identity matching:** English, romaji, native/Japanese, aliases, continuation, season, and root-title evidence are considered; season-marked titles contribute conservative root-title variants to the TVDB title-resolution fallback while Kitsu matching remains exact
 - **Provider resilience:** AniList 429 responses honor `Retry-After` and retry with bounded backoff; unresolved canonical identities use bounded negative-cache handling for transient provider misses
 
-## v3.37.0 release
+## v3.37.0 release candidate
 
 - Added true page-bounded seasonal catalog processing for Nuvio `skip` pagination.
 - Reduced seasonal catalog page size to 10 so each Vercel serverless invocation performs bounded AniList and identity-resolution work.
