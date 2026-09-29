@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   catalogDefinitions,
   getCatalogPageCount,
+  getCatalogPagePlan,
   getLast7DaysRangeManila,
   getNext7DaysRangeManila,
   MAX_CATALOG_ITEMS,
@@ -38,6 +39,21 @@ test("catalogs are exposed as a single page with up to 1000 anime", () => {
   assert.equal(getCatalogPageCount(51), 2);
   assert.equal(getCatalogPageCount(1000), 20);
   assert.equal(getCatalogPageCount(1001), 20);
+});
+
+test("catalog pagination starts directly at the requested AniList page when no search is used", () => {
+  assert.deepEqual(getCatalogPagePlan(0), { firstPage: 1, targetCount: 50 });
+  assert.deepEqual(getCatalogPagePlan(49), { firstPage: 1, targetCount: 50 });
+  assert.deepEqual(getCatalogPagePlan(50), { firstPage: 2, targetCount: 50 });
+  assert.deepEqual(getCatalogPagePlan(100), { firstPage: 3, targetCount: 50 });
+  assert.deepEqual(getCatalogPagePlan(950), { firstPage: 20, targetCount: 50 });
+  assert.deepEqual(getCatalogPagePlan(1000), { firstPage: 21, targetCount: 0 });
+});
+
+test("catalog search pagination starts at page one and fetches only enough matches for the requested page", () => {
+  assert.deepEqual(getCatalogPagePlan(0, "bleach"), { firstPage: 1, targetCount: 50 });
+  assert.deepEqual(getCatalogPagePlan(50, "bleach"), { firstPage: 1, targetCount: 100 });
+  assert.deepEqual(getCatalogPagePlan(950, "bleach"), { firstPage: 1, targetCount: 1000 });
 });
 
 test("rolling catalog windows are exactly seven days wide", () => {
