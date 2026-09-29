@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildCatalogMediaVariables,
   catalogDefinitions,
   getCatalogPageCount,
   getCatalogPagePlan,
@@ -54,6 +55,25 @@ test("catalog search pagination starts at page one and fetches only enough match
   assert.deepEqual(getCatalogPagePlan(0, "bleach"), { firstPage: 1, targetCount: 50 });
   assert.deepEqual(getCatalogPagePlan(50, "bleach"), { firstPage: 1, targetCount: 100 });
   assert.deepEqual(getCatalogPagePlan(950, "bleach"), { firstPage: 1, targetCount: 1000 });
+});
+
+test("catalog search is passed to AniList instead of requiring full-season local filtering", () => {
+  const filter = { season: { season: "FALL", year: 2026 }, status: "NOT_YET_RELEASED", sort: ["START_DATE", "TITLE_ROMAJI"] };
+  assert.deepEqual(buildCatalogMediaVariables(filter, 1, "  Bleach  "), {
+    page: 1,
+    season: "FALL",
+    seasonYear: 2026,
+    status: "NOT_YET_RELEASED",
+    sort: ["START_DATE", "TITLE_ROMAJI"],
+    search: "Bleach",
+  });
+  assert.deepEqual(buildCatalogMediaVariables(filter, 2, ""), {
+    page: 2,
+    season: "FALL",
+    seasonYear: 2026,
+    status: "NOT_YET_RELEASED",
+    sort: ["START_DATE", "TITLE_ROMAJI"],
+  });
 });
 
 test("rolling catalog windows are exactly seven days wide", () => {
