@@ -5,8 +5,9 @@ import { canonicalizeCatalogMetas, clearCanonicalizationCache } from "../lib/kit
 function fetchImpl(url, options = {}) {
   const body = String(options.body || "");
   if (url.includes("api4.thetvdb.com/web/search/queries")) {
+    const hit = body.includes('"query":"Ranma 1/2 (2024)"');
     return Promise.resolve(new Response(JSON.stringify({
-      results: [{ hits: [{ id: "series-451479", type: "series", name: "らんま½ (2024)", aliases: ["Ranma 1/2 (2024)"], first_air_time: "2024-10-06", status: "Continuing" }] }],
+      results: [{ hits: hit ? [{ id: "series-451479", type: "series", name: "らんま½ (2024)", aliases: ["Ranma 1/2 (2024)"], first_air_time: "2024-10-06" }] : [] }],
       request: body,
     }), { status: 200, headers: { "Content-Type": "application/json" } }));
   }
@@ -24,7 +25,7 @@ function fetchImpl(url, options = {}) {
 
 test.beforeEach(() => clearCanonicalizationCache());
 
-test("accepts a continuing TVDB series for a requested later season when the base title matches", async () => {
+test("recovers a continuing TVDB series for a requested later season using the base title", async () => {
   const [meta] = await canonicalizeCatalogMetas([{
     id: "anilist:209872",
     name: "Ranma1/2 (2024) Season 3",
