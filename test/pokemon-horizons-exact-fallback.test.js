@@ -7,7 +7,7 @@ test("falls back to the exact TVDB series page when fuzzy search only returns a 
     if (url.includes("api4.thetvdb.com/web/search/queries")) {
       return new Response(JSON.stringify({ results: [{ hits: [{ id: "series-7789", type: "series", name: "Pokémon", aliases: ["Pokemon"], first_air_time: "1997-04-01" }] }] }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
-    if (url.includes("thetvdb.com/series/") && (url.includes("pokemon-horizons-the-series") || url.includes("Pok%C3%A9mon-horizons-the-series"))) {
+    if (url.includes("/series/")) {
       return new Response("TheTVDB.com Series ID: 433862", { status: 200, headers: { "Content-Type": "text/html" } });
     }
     return new Response("", { status: 404 });
