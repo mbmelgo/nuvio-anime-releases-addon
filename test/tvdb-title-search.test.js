@@ -45,3 +45,12 @@ test("resolves a TVDB series directly from its canonical title page when search 
   const tvdbId = await resolveWithTvdbSeriesPageByTitle(["Sazae-san"], fetchImpl, 1000);
   assert.equal(tvdbId, "359424");
 });
+
+test("uses the Jina Reader fallback when direct TVDB series pages are blocked", async () => {
+  const fetchImpl = mockFetch([
+    { match: (url) => url === "https://thetvdb.com/series/sazae-san", status: 403, text: "blocked", contentType: "text/html" },
+    { match: (url) => url === "https://r.jina.ai/http://thetvdb.com/series/sazae-san", text: "# サザエさん\nTheTVDB.com Series ID 359424", contentType: "text/plain" },
+  ]);
+  const tvdbId = await resolveWithTvdbSeriesPageByTitle(["Sazae-san"], fetchImpl, 1000);
+  assert.equal(tvdbId, "359424");
+});
