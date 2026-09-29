@@ -1,4 +1,4 @@
-import { canonicalizeCatalogMetas } from "../lib/kitsu-canonical.js";
+import { canonicalizeCatalogMetas, canonicalizeCatalogMetasFast } from "../lib/kitsu-canonical.js";
 
 const ANILIST_URL = "https://graphql.anilist.co";
 const TIME_ZONE = "Asia/Manila";
@@ -72,27 +72,15 @@ export function catalogDefinitions(info) {
   ];
 }
 export function getCatalogPageCount(itemCount) { return Math.ceil(Math.min(Math.max(0, Number(itemCount) || 0), MAX_CATALOG_ITEMS) / ANILIST_PAGE_SIZE); }
-
 export function getCatalogPagePlan(skip, search = "") {
   const normalizedSkip = Math.max(0, Number(skip) || 0);
   const hasSearch = String(search || "").trim().length > 0;
   if (normalizedSkip >= MAX_CATALOG_ITEMS) return { firstPage: MAX_ANILIST_PAGES + 1, targetCount: 0 };
-  return {
-    firstPage: hasSearch ? 1 : Math.floor(normalizedSkip / ANILIST_PAGE_SIZE) + 1,
-    targetCount: hasSearch ? Math.min(MAX_CATALOG_ITEMS, normalizedSkip + ANILIST_PAGE_SIZE) : ANILIST_PAGE_SIZE,
-  };
+  return { firstPage: hasSearch ? 1 : Math.floor(normalizedSkip / ANILIST_PAGE_SIZE) + 1, targetCount: hasSearch ? Math.min(MAX_CATALOG_ITEMS, normalizedSkip + ANILIST_PAGE_SIZE) : ANILIST_PAGE_SIZE };
 }
-
 export function buildCatalogMediaVariables(filter, page, search = "") {
   const normalizedSearch = String(search || "").trim();
-  return {
-    page: page || 1,
-    season: filter.season?.season,
-    seasonYear: filter.season?.year,
-    status: filter.status,
-    sort: filter.sort,
-    ...(normalizedSearch ? { search: normalizedSearch } : {}),
-  };
+  return { page: page || 1, season: filter.season?.season, seasonYear: filter.season?.year, status: filter.status, sort: filter.sort, ...(normalizedSearch ? { search: normalizedSearch } : {}) };
 }
 
 async function buildCatalog(id, info, now, skip, search) {
@@ -105,7 +93,7 @@ async function buildCatalog(id, info, now, skip, search) {
   const items = [];
   for (let page = plan.firstPage; page <= MAX_ANILIST_PAGES && items.length < plan.targetCount; page++) {
     const rows = await queryAnime({ ...filter, page }, search);
-    const canonical = await canonicalizeCatalogMetas(rows);
+    const canonical = await canonicalizeCatalogMetasFast(rows);
     items.push(...filterCatalogMetasBySearch(canonical, search));
     if (rows.length < ANILIST_PAGE_SIZE) break;
   }
@@ -118,7 +106,6 @@ export function filterCatalogMetasBySearch(metas, search) {
   return metas.filter((meta) => [meta.name, meta.extra?.titleEnglish, meta.extra?.titleRomaji, meta.extra?.titleNative].some((value) => String(value || "").toLocaleLowerCase().includes(needle)));
 }
 function catalogFilterKey(filter) { return JSON.stringify({ season: filter?.season || null, status: filter?.status || null, sort: filter?.sort || null }); }
-
 export async function queryAnimeAll(filter) {
   const key = catalogFilterKey(filter); const now = Date.now(); const cached = catalogQueryCache.get(key); if (cached?.promise && cached.expiresAt > now) return cached.promise;
   const stale = catalogValueCache.get(key);
@@ -127,15 +114,11 @@ export async function queryAnimeAll(filter) {
       const all = [];
       for (let page = 1; page <= MAX_ANILIST_PAGES; page++) { const rows = await queryAnime({ ...filter, page }); all.push(...rows); if (rows.length < ANILIST_PAGE_SIZE || all.length >= MAX_CATALOG_ITEMS) break; }
       const result = all.slice(0, MAX_CATALOG_ITEMS); catalogValueCache.set(key, { value: result, expiresAt: Date.now() + CATALOG_STALE_TTL_MS }); return result;
-    } catch (error) {
-      if (stale && stale.expiresAt > Date.now()) { console.warn("[catalog] AniList unavailable; serving stale catalog data:", error?.message || error); return stale.value; }
-      throw error;
-    }
+    } catch (error) { if (stale && stale.expiresAt > Date.now()) return stale.value; throw error; }
   })();
   catalogQueryCache.set(key, { promise, expiresAt: now + CATALOG_CACHE_TTL_MS });
   try { return await promise; } catch (error) { const current = catalogQueryCache.get(key); if (current?.promise === promise) catalogQueryCache.delete(key); throw error; }
 }
-
 export function clearCatalogSourceCache() { catalogQueryCache.clear(); catalogValueCache.clear(); scheduleQueryCache.clear(); scheduleValueCache.clear(); }
 
 async function queryAnime(filter, search = "") {
@@ -149,10 +132,9 @@ async function scheduleCatalog(start, end, futureOnly, skip, search) {
   const latestByAnime = new Map();
   for (const schedule of schedules) { const media = schedule.media; if (!media || media.format !== "TV") continue; const existing = latestByAnime.get(media.id); if (!existing || schedule.airingAt > existing.airingAt) latestByAnime.set(media.id, schedule); }
   const metas = [...latestByAnime.values()].sort((a, b) => futureOnly ? a.airingAt - b.airingAt : b.airingAt - a.airingAt).map((s) => toMeta(s.media, { episode: s.episode, airingAt: s.airingAt })).filter(Boolean);
-  const filtered = canonicalizeCatalogMetas(filterCatalogMetasBySearch(metas, search));
-  return filtered.then((items) => items.slice(skip, skip + ANILIST_PAGE_SIZE));
+  const filtered = await canonicalizeCatalogMetas(filterCatalogMetasBySearch(metas, search));
+  return filtered.slice(skip, skip + ANILIST_PAGE_SIZE);
 }
-
 export async function queryAiringSchedule(start, end, futureOnly, now = Date.now()) {
   const key = `${start}:${end}:${futureOnly ? "future" : "past"}`;
   const cached = scheduleQueryCache.get(key); if (cached?.promise && cached.expiresAt > now) return cached.promise;
@@ -166,10 +148,7 @@ export async function queryAiringSchedule(start, end, futureOnly, now = Date.now
         const rows = data?.Page?.airingSchedules || []; all.push(...rows); if (rows.length < ANILIST_PAGE_SIZE || all.length >= MAX_CATALOG_ITEMS) break;
       }
       const result = all.slice(0, MAX_CATALOG_ITEMS); scheduleValueCache.set(key, { value: result, expiresAt: Date.now() + CATALOG_STALE_TTL_MS }); return result;
-    } catch (error) {
-      if (stale && stale.expiresAt > Date.now()) { console.warn("[catalog] AniList airing schedule unavailable; serving stale schedule data:", error?.message || error); return stale.value; }
-      throw error;
-    }
+    } catch (error) { if (stale && stale.expiresAt > Date.now()) return stale.value; throw error; }
   })();
   scheduleQueryCache.set(key, { promise, expiresAt: now + CATALOG_CACHE_TTL_MS });
   try { return await promise; } catch (error) { const current = scheduleQueryCache.get(key); if (current?.promise === promise) scheduleQueryCache.delete(key); throw error; }
