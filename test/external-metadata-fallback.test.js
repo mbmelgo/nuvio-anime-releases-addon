@@ -6,6 +6,7 @@ function fetchFor(routes){return async(url,options={})=>{const body=String(optio
 
 test.beforeEach(()=>clearCanonicalizationCache());
 
+// Regression coverage: a distinct anime must use a BingeCat-compatible external identity when TVDB collapses it into a franchise.
 test("falls back to a validated TMDB identity when TVDB is a franchise-level mismatch",async()=>{
   const fetchImpl=fetchFor([
     {match:url=>url.includes("mappings.anibridge")&&url.includes("anilist:158871"),body:{data:{"anilist:158871":{"tvdb_show:76703":{}}}}},
