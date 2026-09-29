@@ -6,7 +6,7 @@ function mockFetch() {
   return async (url) => {
     const target = new URL(String(url));
     if (target.hostname === "api4.thetvdb.com") {
-      return new Response(JSON.stringify({ results: [{ hits: [] }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ results: [{ hits: [{ id: "series-433862", type: "series", name: "Pokémon Horizons", first_air_time: "2023-04-14" }] }] }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     if (target.hostname === "query.wikidata.org") {
       return new Response(JSON.stringify({ results: { bindings: [] } }), { status: 200, headers: { "Content-Type": "application/sparql-results+json" } });
@@ -21,7 +21,7 @@ function mockFetch() {
   };
 }
 
-test("prefers the AniList TVDB mapping when MAL points to a franchise-level identity", async () => {
+test("prefers a validated AniList TVDB mapping when MAL points to a different identity", async () => {
   const [meta] = await canonicalizeCatalogMetas([{
     id: "mal:53876",
     name: "Pokémon Horizons",
