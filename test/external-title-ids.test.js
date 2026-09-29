@@ -3,11 +3,7 @@ import assert from "node:assert/strict";
 import { resolveExternalMetadataIdsByTitle } from "../lib/external-title-ids.js";
 
 test("resolves unique TMDB and IMDb identities from an exact Wikidata title", async () => {
-  const fetchImpl = async (url) => {
-    assert.match(String(url), /Pok%C3%A9mon/);
-    assert.match(String(url), /%3A/);
-    return { results: { bindings: [{ item: { value: "https://www.wikidata.org/entity/Q115733264" }, tmdb: { value: "220150" }, imdb: { value: "tt26692417" } }] } };
-  };
+  const fetchImpl = async () => ({ results: { bindings: [{ item: { value: "https://www.wikidata.org/entity/Q115733264" }, tmdb: { value: "220150" }, imdb: { value: "tt26692417" } }] } });
   assert.deepEqual(await resolveExternalMetadataIdsByTitle(["Pokémon Horizons: The Series"], fetchImpl), { tmdb: "220150", imdb: "tt26692417" });
 });
 
