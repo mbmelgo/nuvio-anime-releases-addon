@@ -100,8 +100,10 @@ export async function buildCatalog(id, info, now, skip, search) {
 
   // AniList applies the search term server-side. Keep this as a defensive
   // check for alternate titles exposed by canonical metadata.
-  const searched = search ? filterCatalogMetasBySearch(canonical, search) : canonical;
-  return searched.slice(plan.offset, plan.offset + ANILIST_PAGE_SIZE);
+  // Do not slice again: `queryAnime` already returns exactly the requested
+  // AniList page, and applying the Nuvio skip a second time would empty every
+  // page after the first one.
+  return search ? filterCatalogMetasBySearch(canonical, search) : canonical;
 }
 
 // Kept as a compatibility no-op. Catalog generation no longer depends on
