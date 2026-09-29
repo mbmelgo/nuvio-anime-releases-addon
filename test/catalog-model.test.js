@@ -96,7 +96,8 @@ test("fast catalog identity recovers the franchise TVDB identity for a roman-num
       return { status: "found", tvdbId: "452710" };
     },
   });
-  assert.deepEqual(recoveryTitles, ["From Old Country Bumpkin to Master Swordsman II"]);
+  assert.ok(recoveryTitles.includes("From Old Country Bumpkin to Master Swordsman II"));
+  assert.ok(recoveryTitles.includes("From Old Country Bumpkin to Master Swordsman"));
   assert.equal(result[0].id, "tvdb:452710");
   assert.equal(result[0].extra.tvdbId, "452710");
 });
