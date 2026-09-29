@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { canonicalizeCatalogMetas, clearCanonicalizationCache } from "../lib/kitsu-canonical.js";
+import { canonicalizeCatalogMetas, clearCanonicalizationCache } from "../lib/canonical-identity.js";
 
 test.beforeEach(() => clearCanonicalizationCache());
 
