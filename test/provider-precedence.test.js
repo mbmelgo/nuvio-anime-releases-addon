@@ -2,8 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { canonicalizeCatalogMetas } from "../lib/canonical-identity.js";
 
-test("prefers the AniList TVDB mapping when MAL points to a franchise-level identity", async () => {
-  const fetchImpl = async (url) => {
+function mockFetch() {
+  return async (url) => {
     const target = new URL(String(url));
     if (target.hostname === "api4.thetvdb.com") {
       return new Response(JSON.stringify({ results: [{ hits: [] }] }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -14,12 +14,14 @@ test("prefers the AniList TVDB mapping when MAL points to a franchise-level iden
     if (target.hostname === "mappings.anibridge.eliasbenb.dev") {
       const source = target.searchParams.get("provider");
       const id = target.searchParams.get("id");
-      const tvdb = source === "anilist" && id === "158871" ? "433862" : source === "mal" && id === "53876" ? "76703" : null;
+      const tvdb = source === "anilist" && id === "158871" ? "433862" : source === "mal" && id === "53876" ? "76703" : source === "mal" && id === "99999" ? "999999" : null;
       return new Response(JSON.stringify({ data: tvdb ? { [`${source}:${id}`]: { [`tvdb_show:${tvdb}`]: {} } } : {} }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     return new Response(JSON.stringify({}), { status: 404 });
   };
+}
 
+test("prefers the AniList TVDB mapping when MAL points to a franchise-level identity", async () => {
   const [meta] = await canonicalizeCatalogMetas([{
     id: "mal:53876",
     name: "Pokémon Horizons",
@@ -29,7 +31,17 @@ test("prefers the AniList TVDB mapping when MAL points to a franchise-level iden
       titleRomaji: "Pokemon Horizons",
       titleNative: "ポケットモンスター",
     },
-  }], { fetchImpl });
+  }], { fetchImpl: mockFetch() });
 
   assert.equal(meta.id, "tvdb:433862");
+});
+
+test("falls back to the MAL identity mapping when no AniList identity mapping exists", async () => {
+  const [meta] = await canonicalizeCatalogMetas([{
+    id: "mal:99999",
+    name: "Fallback Test Series",
+    extra: { titleEnglish: "Fallback Test Series" },
+  }], { fetchImpl: mockFetch() });
+
+  assert.equal(meta.id, "tvdb:999999");
 });
