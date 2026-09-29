@@ -10,7 +10,7 @@ function tvdbFetch(url, options = {}) {
     const body = String(options.body || "");
     const query = body.includes('"query":"Ranma 1/2 (2024)"');
     return Promise.resolve(new Response(JSON.stringify({
-      results: [{ hits: query ? [{ id: "series-451479", type: "series", name: "らんま½ (2024)", aliases: ["Ranma 1/2 (2024)"], first_air_time: "2024-10-06" }] : [] }],
+      results: [{ hits: query ? [{ id: "series-451479", type: "series", name: "らんま½ (2024)", aliases: ["Ranma 1/2 (2024)"], first_air_time: "2024-10-06", status: "Continuing" }] : [] }],
     }), { status: 200, headers: { "Content-Type": "application/json" } }));
   }
   return Promise.resolve(new Response(JSON.stringify({}), { status: 404, headers: { "Content-Type": "application/json" } }));
