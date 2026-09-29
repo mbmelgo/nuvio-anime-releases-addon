@@ -1,11 +1,11 @@
-# Anime Releases for Nuvio — v3.36.2
+# Anime Releases for Nuvio — v3.37.0
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `3.36.2`
+- **Development version:** `3.37.0`
 - **Production release:** `v3.36.0`
 - **Latest production tag:** `v3.36.0`
 - **Next minor release baseline:** `3.37.0`
@@ -21,7 +21,7 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 - **Identity matching:** English, romaji, native/Japanese, aliases, continuation, season, and root-title evidence are considered; season-marked titles contribute conservative root-title variants to the TVDB title-resolution fallback while Kitsu matching remains exact
 - **Provider resilience:** AniList 429 responses honor `Retry-After` and retry with bounded backoff; unresolved canonical identities use bounded negative-cache handling for transient provider misses
 
-## v3.36.0 release
+## v3.37.0 release
 
 - Added true page-bounded seasonal catalog processing for Nuvio `skip` pagination.
 - Reduced seasonal catalog page size to 10 so each Vercel serverless invocation performs bounded AniList and identity-resolution work.
@@ -30,6 +30,11 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 - Prevented the fast catalog identity path from replacing a usable MAL identity with an unsupported `anilist:<id>` click-through identity.
 - AniList-only catalog identities are resolved to supported external identities when a validated mapping exists; otherwise they are omitted instead of exposing an unsupported terminal ID.
 - Added regression coverage for pagination, page size, supported identity fallback, and the Old Country Bumpkin-style failure mode.
+
+## v3.36.0 release
+
+- Added catalog-specific fast identity handling and existing identity validation improvements.
+- Improved catalog search narrowing and external metadata identity handling.
 
 ## v3.35.0 release
 
