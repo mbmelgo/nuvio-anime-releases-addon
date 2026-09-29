@@ -40,7 +40,7 @@ test("catalog AniList queries request only preview and identity fields", async (
   }
 });
 
-test("schedule queries are page-bounded instead of loading the entire rolling window", async () => {
+test("schedule queries are page-bounded and request only fields used by the catalog", async () => {
   const originalFetch = globalThis.fetch;
   let request;
   globalThis.fetch = async (_url, options) => {
@@ -53,6 +53,9 @@ test("schedule queries are page-bounded instead of loading the entire rolling wi
     assert.deepEqual(result, []);
     assert.equal(request.variables.page, 4);
     assert.match(request.query, /airingSchedules/);
+    assert.match(request.query, /episode/);
+    assert.match(request.query, /airingAt/);
+    assert.doesNotMatch(request.query, /nextAiringEpisode/);
   } finally {
     globalThis.fetch = originalFetch;
   }
