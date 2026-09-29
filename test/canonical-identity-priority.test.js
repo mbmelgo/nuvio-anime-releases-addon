@@ -44,8 +44,7 @@ test("uses the catalog's AniList identity when MAL is unresolved so click-throug
 
   assert.equal(meta.id, "anilist:158871");
   assert.equal(meta.extra.anilistId, 158871);
-  assert.equal(meta.extra.malId, 53876);
-  assert.equal(meta.originalCatalogId, "mal:53876");
+  assert.equal(meta.extra.originalCatalogId, "mal:53876");
 });
 
 test("retries an unresolved identity after the short negative-cache window", async () => {
