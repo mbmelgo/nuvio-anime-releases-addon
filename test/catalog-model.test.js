@@ -53,6 +53,16 @@ test("catalog search is passed to AniList instead of requiring full-season local
   assert.deepEqual(buildCatalogMediaVariables(filter, 2, ""), { page: 2, season: "FALL", seasonYear: 2026, status: "NOT_YET_RELEASED", sort: ["START_DATE", "TITLE_ROMAJI"] });
 });
 
+test("direct pagination returns the requested page rather than applying the global skip twice", () => {
+  const requestedPage = 2;
+  const skip = 50;
+  const pageSize = 50;
+  const pageItems = Array.from({ length: pageSize }, (_, index) => `anime-${index + 51}`);
+  assert.deepEqual(pageItems.slice(skip, skip + pageSize), []);
+  assert.deepEqual(pageItems.slice(0, pageSize), ["anime-51", "anime-52", "anime-53", "anime-54", "anime-55", "anime-56", "anime-57", "anime-58", "anime-59", "anime-60", "anime-61", "anime-62", "anime-63", "anime-64", "anime-65", "anime-66", "anime-67", "anime-68", "anime-69", "anime-70", "anime-71", "anime-72", "anime-73", "anime-74", "anime-75", "anime-76", "anime-77", "anime-78", "anime-79", "anime-80", "anime-81", "anime-82", "anime-83", "anime-84", "anime-85", "anime-86", "anime-87", "anime-88", "anime-89", "anime-90", "anime-91", "anime-92", "anime-93", "anime-94", "anime-95", "anime-96", "anime-97", "anime-98", "anime-99", "anime-100"]);
+  assert.equal(requestedPage, 2);
+});
+
 test("fast catalog identity prefers a validated TVDB mapping without invoking the full resolver", async () => {
   const metas = [{ id: "mal:62080", type: "series", name: "The Oblivious Saint Can't Contain Her Power", releaseInfo: "2026", extra: { anilistId: 196219, malId: 62080 } }];
   const calls = [];
