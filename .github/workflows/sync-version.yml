@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      deploy_prod:
+        description: 'Authorize the controlled production deployment'
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -35,7 +41,13 @@ jobs:
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          if [[ "${{ github.event_name }}" == "push" && "$COMMIT_MESSAGE" == *"[deploy-prod]"* ]]; then echo "release=true" >> "$GITHUB_OUTPUT"; else echo "release=false" >> "$GITHUB_OUTPUT"; fi
+          if [[ "${{ github.event_name }}" == "push" && "$COMMIT_MESSAGE" == *"[deploy-prod]"* ]]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.deploy_prod }}" == "true" ]]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Bump patch version and sync metadata
         if: github.event_name == 'push' && steps.gate.outputs.release == 'false' && !contains(github.event.head_commit.message, '[skip-version-automation]') && !contains(github.event.head_commit.message, '[major-release]')
         shell: bash
