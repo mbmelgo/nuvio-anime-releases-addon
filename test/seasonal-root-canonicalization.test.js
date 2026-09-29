@@ -50,7 +50,7 @@ test("promotes a seasonal entry to the root series TVDB identity", async () => {
       },
     },
     { match: (url) => url.includes("arm.haglund.dev") && url.includes("source=anilist") && url.includes("id=1000"), body: { kitsu: 100 } },
-    { match: (url) => url.includes("kitsu.io/api/edge/anime/100/mappings"), body: [{ type: "mappings", id: "tvdb-12345", attributes: { externalSite: "thetvdb/series", externalId: "12345" } }] },
+    { match: (url) => url.includes("kitsu.io/api/edge/anime/100/mappings"), body: { data: [{ type: "mappings", id: "tvdb-12345", attributes: { externalSite: "thetvdb/series", externalId: "12345" } }] } },
     { match: (url) => url.includes("kitsu.io/api/edge/anime/100") && !url.includes("/mappings"), body: { data: { id: "100", attributes: { canonicalTitle: "Example Anime", titles: { en: "Example Anime" } } } } },
   ]);
 
