@@ -87,8 +87,65 @@ jobs:
         run: |
           set -euo pipefail
           target="$GITHUB_SHA"; release_version="$(python -c 'import json;print(json.load(open("ops/release-state.json"))["nextReleaseVersion"])')"; tag="v$release_version"; git fetch --tags --force
-          previous="$(git tag --merged "$target^" --sort=-version:refname --list 'v*' | head -n1 || true)"; [ -n "$previous" ] && summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$previous..$target" | head -n 50 || true)" || summary="$(git log --reverse --no-merges --pretty=format:'- %s (%h)' "$target" | head -n 50 || true)"; [ -n "$summary" ] || summary='- No source commits to summarize.'
-          git config user.name github-actions[bot]; git config user.email 41898282+github-actions[bot]@users.noreply.github.com; git tag -a "$tag" "$target" -m "Release $tag\n\nProduction deployment source commit: $target\nChanges since previous release:\n$summary"; git push origin "refs/tags/$tag"
+          previous="$(git tag --merged "$target^" --sort=-version:refname --list 'v*' | head -n1 || true)"
+          if [ -n "$previous" ]; then
+            range="$previous..$target"
+          else
+            range="$target"
+          fi
+          summary="$(python - "$range" "$tag" <<'PY'
+          import subprocess,sys,re
+          commit_range,tag=sys.argv[1:]
+          subjects=subprocess.check_output(['git','log','--reverse','--no-merges','--pretty=format:%s',commit_range],text=True).splitlines()
+          seen=set(); highlights=[]; categories=[]
+          for subject in subjects:
+              subject=re.sub(r'\s*\[[^]]+\]','',subject).strip()
+              kind,sep,text=subject.partition(': ')
+              kind=kind.lower() if sep else ''
+              text=text.strip() if sep else subject.strip()
+              if kind in {'chore','test','release'}: continue
+              if kind=='fix':
+                  categories.append('reliability'); line=text
+              elif kind in {'feat','feature'}:
+                  categories.append('features'); line=text
+              elif kind=='refactor':
+                  categories.append('maintenance'); line='Improved the internal organization and reliability of the addon.'
+              elif kind=='perf':
+                  categories.append('performance'); line='Improved addon performance and efficiency.'
+              elif kind in {'docs','documentation'}:
+                  categories.append('documentation'); line='Improved documentation and guidance.'
+              else:
+                  continue
+              line=re.sub(r'\bTVDB\b','metadata matching',line,flags=re.I)
+              line=re.sub(r'\bMAL-Sync\b','anime identity matching',line,flags=re.I)
+              line=re.sub(r'\bKitsu-only\b','alternate anime identity',line,flags=re.I)
+              line=re.sub(r'\bKitsu\b','anime identity data',line,flags=re.I)
+              line=re.sub(r'\bcanonical(?:ization|izer)?\b','anime matching',line,flags=re.I)
+              line=re.sub(r'\bresolver\b','matching system',line,flags=re.I)
+              line=re.sub(r'\bprovider adapters?\b','data-source handling',line,flags=re.I)
+              line=re.sub(r'\s+',' ',line).strip().rstrip('.')+'.'
+              key=line.lower()
+              if key not in seen:
+                  seen.add(key); highlights.append(line)
+          overview=[]
+          if 'features' in categories: overview.append('This release adds new user-facing functionality.')
+          if 'reliability' in categories: overview.append('It improves reliability and accuracy when identifying anime across different sources.')
+          if 'maintenance' in categories: overview.append('It also improves the internal structure of the addon to make future fixes safer and more reliable.')
+          if 'performance' in categories: overview.append('It includes performance and efficiency improvements.')
+          if not overview: overview=['This release contains improvements to the addon.']
+          print(f'Release {tag}')
+          print()
+          print('Overview')
+          for sentence in overview: print(sentence)
+          print()
+          print('Highlights')
+          for line in highlights[:12]: print(f'- {line}')
+          if not highlights: print('- General reliability and maintenance improvements.')
+          PY
+          )"
+          git config user.name github-actions[bot]; git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git tag -a "$tag" "$target" -m "$summary"
+          git push origin "refs/tags/$tag"
           python - <<'PY'
           import json
           from pathlib import Path
