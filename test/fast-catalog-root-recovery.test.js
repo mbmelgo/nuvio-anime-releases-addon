@@ -22,4 +22,5 @@ test("fast catalog identity recovers a validated root TVDB identity for a season
   assert.equal(result[0].id, "tvdb:123456");
   assert.equal(result[0].extra.tvdbId, "123456");
   assert.equal(result[0].extra.tvdbSourceAnilistId, "100000");
+  // Regression: unresolved seasonal continuations must not disappear from catalogs.
 });
