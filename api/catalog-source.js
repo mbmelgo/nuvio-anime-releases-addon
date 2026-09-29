@@ -4,12 +4,12 @@ import {
   MAX_CATALOG_ITEMS,
   MAX_ANILIST_PAGES,
   buildCatalogMediaVariables,
-  catalogDefinitions,
+  catalogDefinitions as getCatalogDefinitions,
   getCatalogPageCount,
   getCatalogPagePlan,
   getLast7DaysRangeManila,
   getNext7DaysRangeManila,
-  getSeasonInfo,
+  getSeasonInfo as getSeasonInfoValue,
   parseCatalogExtraPath,
 } from "../lib/catalog-config.js";
 import { filterCatalogMetasBySearch, toMeta } from "../lib/catalog-meta.js";
@@ -21,16 +21,22 @@ export {
   MAX_CATALOG_ITEMS,
   MAX_ANILIST_PAGES,
   buildCatalogMediaVariables,
-  catalogDefinitions,
   getCatalogPageCount,
   getCatalogPagePlan,
   getLast7DaysRangeManila,
   getNext7DaysRangeManila,
-  getSeasonInfo,
   parseCatalogExtraPath,
   filterCatalogMetasBySearch,
   toMeta,
 };
+
+export function catalogDefinitions(info) {
+  return getCatalogDefinitions(info);
+}
+
+export function getSeasonInfo(date) {
+  return getSeasonInfoValue(date);
+}
 
 export default async function handler(req, res) {
   const url = new URL(req.url, `https://${req.headers.host || "localhost"}`);
