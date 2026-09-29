@@ -36,3 +36,10 @@ test("parses the json suffix on the final Stremio catalog extra value", () => {
     search: "Pokémon Horizons",
   });
 });
+
+test("parses multiple Stremio catalog extras when json is attached to the last value", () => {
+  assert.deepEqual(parseCatalogExtraPath("search=Black%20Clover&skip=100.json"), {
+    search: "Black Clover",
+    skip: "100",
+  });
+});
