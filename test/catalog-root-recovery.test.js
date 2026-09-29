@@ -18,6 +18,7 @@ test("catalog canonicalization uses the cheap batched identity path for unresolv
         ["204650", { tmdb: "205493", imdb: null }],
       ]);
     },
+    resolveWithAniBridgeTvdb: async () => null,
   });
 
   assert.deepEqual(calls, [{
@@ -32,6 +33,7 @@ test("catalog canonicalization rejects unresolved identities instead of invoking
 
   const result = await canonicalizeCatalogPage(metas, {
     resolveExternalMetadataIdsByAniListIds: async () => new Map(),
+    resolveWithAniBridgeTvdb: async () => null,
   });
 
   assert.deepEqual(result, []);
