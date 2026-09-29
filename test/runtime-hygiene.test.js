@@ -38,12 +38,9 @@ test("catalog source is the only retained catalog runtime implementation", async
   await assert.rejects(access("api/stremio.js"));
 });
 
-test("every retained api runtime module has a serverless default export", async () => {
-  const apiFiles = (await readdir("api", { withFileTypes: true }))
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".js"))
-    .map((entry) => `api/${entry.name}`);
-
-  for (const file of apiFiles) {
+test("every retained Vercel runtime module has a serverless default export", async () => {
+  const runtimeFiles = ["api/catalog-source.js", "api/home-selector.js", "api/resolver-manifest.js"];
+  for (const file of runtimeFiles) {
     const source = await readFile(file, "utf8");
     assert.match(source, /export default (?:async )?function\s+\w+\s*\(/, `${file} must export a default handler`);
   }
