@@ -52,6 +52,6 @@ test("schedule pages can be filled from multiple AniList event pages without dup
   const page = selectSchedulePage(schedules, false, 0);
   assert.equal(page.length, 10);
   assert.deepEqual(page.map((meta) => meta.name), [
-    "Anime 1", "Anime 1", "Anime 12", "Anime 11", "Anime 10", "Anime 9", "Anime 8", "Anime 7", "Anime 6", "Anime 5",
+    "Anime 1", "Anime 12", "Anime 11", "Anime 10", "Anime 9", "Anime 8", "Anime 7", "Anime 6", "Anime 5", "Anime 4",
   ]);
 });
