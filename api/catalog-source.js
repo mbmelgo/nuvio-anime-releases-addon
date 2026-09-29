@@ -66,9 +66,12 @@ export default async function handler(req, res) {
 }
 
 export function getCatalogFilter(id, info) {
-  if (id === "current_season") return { season: info.ongoing, sort: ["START_DATE", "TITLE_ROMAJI"] };
-  if (id === "previous_season") return { season: info.previous, sort: ["START_DATE", "SCORE_DESC", "TITLE_ROMAJI"] };
-  if (id === "upcoming_season") return { season: info.upcoming, status: "NOT_YET_RELEASED", sort: ["START_DATE", "TITLE_ROMAJI"] };
+  // ID is a deterministic final tie-breaker. Without it, records with the
+  // same primary/secondary sort values can move across AniList page boundaries
+  // between requests, causing apparent catalog omissions during Nuvio paging.
+  if (id === "current_season") return { season: info.ongoing, sort: ["START_DATE", "TITLE_ROMAJI", "ID"] };
+  if (id === "previous_season") return { season: info.previous, sort: ["START_DATE", "SCORE_DESC", "TITLE_ROMAJI", "ID"] };
+  if (id === "upcoming_season") return { season: info.upcoming, status: "NOT_YET_RELEASED", sort: ["START_DATE", "TITLE_ROMAJI", "ID"] };
   return null;
 }
 
@@ -107,6 +110,17 @@ export async function buildCatalog(id, info, now, skip, search) {
     maxPages: MAX_CATALOG_FILL_PAGES,
     fetchPage: (page) => queryAnime(filter, page, search),
     canonicalizePage: (metas) => canonicalizeCatalogPage(metas),
+    onPage: ({ page, rawCount, validCount, accumulatedCount }) => {
+      console.info("[catalog] page", {
+        catalog: id,
+        skip,
+        search: search || undefined,
+        anilistPage: page,
+        rawCount,
+        validCount,
+        accumulatedCount,
+      });
+    },
   });
 }
 

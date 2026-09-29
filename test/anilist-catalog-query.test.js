@@ -22,7 +22,7 @@ test("catalog AniList queries request only preview and identity fields", async (
   };
 
   try {
-    const filter = { season: { season: "FALL", year: 2026 }, status: "NOT_YET_RELEASED", sort: ["START_DATE", "TITLE_ROMAJI"] };
+    const filter = { season: { season: "FALL", year: 2026 }, status: "NOT_YET_RELEASED", sort: ["START_DATE", "TITLE_ROMAJI", "ID"] };
     const result = await queryAnime(filter, 2, "Pokémon Horizons");
     assert.equal(result.length, 1);
     assert.equal(result[0].id, "mal:53876");
@@ -35,6 +35,7 @@ test("catalog AniList queries request only preview and identity fields", async (
     assert.doesNotMatch(request.query, /averageScore/);
     assert.equal(request.variables.page, 2);
     assert.equal(request.variables.search, "Pokémon Horizons");
+    assert.deepEqual(request.variables.sort, ["START_DATE", "TITLE_ROMAJI", "ID"]);
   } finally {
     globalThis.fetch = originalFetch;
   }
