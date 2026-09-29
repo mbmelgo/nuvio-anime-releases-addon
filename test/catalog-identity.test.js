@@ -34,6 +34,7 @@ test("catalog identity resolves multiple AniList candidates with one batched loo
           ["12", { tmdb: null, imdb: "tt222" }],
         ]);
       },
+      resolveWithAniBridgeTvdb: async () => null,
     },
   );
 
@@ -41,4 +42,23 @@ test("catalog identity resolves multiple AniList candidates with one batched loo
   assert.deepEqual(result.map((meta) => meta.id), ["tmdb:111", "imdb:tt222"]);
   assert.equal(result[0].extra.originalCatalogId, "mal:101");
   assert.equal(result[1].extra.originalCatalogId, "anilist:12");
+});
+
+test("catalog identity uses validated AniBridge fallback when the batch lookup has no mapping", async () => {
+  const calls = [];
+  const result = await canonicalizeCatalogMetasFast(
+    [{ id: "anilist:999", name: "Fallback Anime", extra: { anilistId: 999 } }],
+    {
+      resolveExternalMetadataIdsByAniListIds: async () => new Map(),
+      resolveWithAniBridgeTvdb: async (source, id) => {
+        calls.push([source, id]);
+        return "555";
+      },
+      validateTvdbCandidate: async () => ({ status: "validated", tvdbId: "555" }),
+    },
+  );
+
+  assert.deepEqual(calls, [["anilist", "999"]]);
+  assert.deepEqual(result.map((meta) => meta.id), ["tvdb:555"]);
+  assert.equal(result[0].extra.originalCatalogId, "anilist:999");
 });
