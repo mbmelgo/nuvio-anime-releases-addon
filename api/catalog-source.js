@@ -1,4 +1,4 @@
-import { canonicalizeCatalogMetas, canonicalizeCatalogMetasFast } from "../lib/kitsu-canonical.js";
+import { canonicalizeCatalogMetasFast as canonicalizeCatalogIdentity } from "../lib/catalog-identity.js";
 import {
   ANILIST_PAGE_SIZE,
   MAX_CATALOG_FILL_PAGES,
@@ -75,29 +75,17 @@ export function getCatalogFilter(id, info) {
 export async function canonicalizeCatalogPage(metas, options = {}) {
   if (!Array.isArray(metas) || metas.length === 0) return [];
 
-  const fast = options.fastCanonicalize || canonicalizeCatalogMetasFast;
-  const full = options.fullCanonicalize || canonicalizeCatalogMetas;
-  const fastResult = await fast(metas, options);
-  const resolvedIds = new Set(fastResult.map((meta) => String(meta?.extra?.originalCatalogId || meta?.id || "")));
-  const unresolved = metas.filter((meta) => !resolvedIds.has(String(meta?.id || "")));
-
-  if (!unresolved.length) return fastResult;
-
-  // Only unresolved candidates pay the cost of full relationship/provider traversal.
-  let recovered = [];
+  // Catalog requests must stay on the cheap identity path. Direct TMDB/IMDb
+  // links from AniList are accepted immediately; unresolved AniList IDs are
+  // mapped in one batched lookup. The full relationship/provider resolver is
+  // intentionally reserved for detail-oriented identity work, not catalog
+  // pagination, where its multi-provider fan-out makes every page expensive.
   try {
-    const fullResult = await full(unresolved, options);
-    recovered = fullResult.filter((meta) => /^(tvdb|tmdb|imdb):/.test(String(meta?.id || "")));
+    return await canonicalizeCatalogIdentity(metas, options);
   } catch (error) {
-    console.warn("[catalog] full identity recovery failed", error);
+    console.warn("[catalog] cheap identity resolution failed", error);
+    return [];
   }
-
-  const recoveredIds = new Set(recovered.map((meta) => String(meta?.extra?.originalCatalogId || "")));
-  const combined = [...fastResult, ...recovered];
-  return combined.filter((meta) => {
-    const originalId = String(meta?.extra?.originalCatalogId || meta?.id || "");
-    return resolvedIds.has(originalId) || recoveredIds.has(originalId);
-  });
 }
 
 export async function buildCatalog(id, info, now, skip, search) {
