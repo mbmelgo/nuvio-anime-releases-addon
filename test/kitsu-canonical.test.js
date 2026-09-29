@@ -141,6 +141,19 @@ test("title fallback only accepts an exact normalized Kitsu title", async () => 
   assert.equal(meta.extra.kitsuId, "222");
 });
 
+test("uses an exact title match in Wikidata to recover a TVDB series when provider mappings are absent", async () => {
+  const fetchImpl = mockFetch([
+    { match: (url) => url.includes("arm.haglund.dev"), status: 404, body: {} },
+    { match: (url) => url.includes("api.ani.zip"), status: 404, body: {} },
+    { match: (url) => url.includes("api.malsync.moe"), status: 404, body: {} },
+    { match: (url) => url.includes("kitsu.io/api/edge/anime?") || url.includes("kitsu.io/api/edge/anime&"), body: { data: [] } },
+    { match: (url) => url.includes("query.wikidata.org") && url.includes("P4835") && url.includes("Sazae-san"), body: { results: { bindings: [{ tvdb: { value: "359424" } }] } } },
+  ]);
+  const [meta] = await canonicalizeCatalogMetas([{ id: "mal:2406", name: "Sazae-san", type: "series" }], { fetchImpl, now: 1000 });
+  assert.equal(meta.id, "tvdb:359424");
+  assert.equal(meta.extra.tvdbId, "359424");
+});
+
 test("preserves the original identity when every canonicalization source fails", async () => {
   const fetchImpl = async () => new Response(JSON.stringify({}), { status: 503 });
   const metas = [
