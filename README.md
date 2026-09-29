@@ -1,21 +1,22 @@
-# Anime Releases for Nuvio — v3.3.2
+# Anime Releases for Nuvio — v3.4.0
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `3.3.2`
-- **Production release:** `v3.2.0`
-- **Next minor release baseline:** `3.3.0`
-- **Latest production tag:** `v3.2.0`
+- **Development version:** `3.4.0`
+- **Production release:** `v3.4.0`
+- **Next minor release baseline:** `3.5.0`
+- **Latest production tag:** `v3.4.0`
 - **Architecture:** **catalog-only**
 - **Catalog source:** AniList release/airing data
 - **Canonical identity:** multi-source MAL/AniList → Kitsu resolution with TVDB mapping when verified
 - **Nuvio-facing identity:** verified `tvdb:<seriesId>` when a canonical TVDB mapping is available; seasonal entries can traverse AniList PREQUEL/PARENT relationships to locate a verified root/franchise TVDB series; English, romaji, and native/Japanese title variants are compared during canonicalization; otherwise the original `mal:` / `anilist:` identity is preserved
 - **Metadata:** delegated to **BingeCat / the configured metadata addon**
-- **Catalog search:** all five catalogs advertise optional search and match English, romaji, and native/Japanese titles; Stremio catalog extra parameters are parsed from the protocol path as required by the addon protocol
-- **Deployment checkpoint:** **4/5** before the v3.3.0 production deployment
+- **Catalog search:** all five catalogs advertise optional search and match English, romaji, and native/Japanese titles; Stremio catalog extra parameters are parsed from the protocol path, including `.json` on the final extra value
+- **Latest production fix:** generalized Vercel routing now accepts Stremio catalog extra path segments, resolving the previous Upcoming Season Search/Discover HTTP 404
+- **Deployment checkpoint:** **1/5** for the current deployment cycle
 
 The addon remains responsible for anime release, airing, and upcoming catalogs. AniList remains authoritative for airing dates, seasons, and upcoming episodes. Kitsu is used as the canonical anime identity layer. When a verified TVDB series mapping exists, the catalog exposes that TVDB identity because the current BingeCat integration can consume TVDB-based anime metadata. Seasonal entries that only have season-specific identities can fall back to a root series through AniList relations, preventing season IDs from being sent to BingeCat when only the franchise-level TVDB series is resolvable. Missing mappings never cause an item to be deleted: the original MAL/AniList identity is preserved.
 
