@@ -2,16 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   ANILIST_PAGE_SIZE,
+  MAX_CATALOG_FILL_PAGES,
   buildCatalogMediaVariables,
   catalogDefinitions,
-  getCatalogPageCount,
-  getCatalogPagePlan,
   getLast7DaysRangeManila,
   getNext7DaysRangeManila,
-  MAX_CATALOG_ITEMS,
 } from "../api/catalog-source.js";
 import { canonicalizeCatalogMetasFast } from "../lib/kitsu-canonical.js";
-import { selectUniqueWikidataMappings } from "../api/catalog-delegation.js";
+import { extractSupportedExternalIds, toMeta } from "../lib/catalog-meta.js";
 
 test("catalog model exposes exactly the five requested catalogs", () => {
   const catalogs = catalogDefinitions({ previous: { season: "SPRING", year: 2026 }, ongoing: { season: "SUMMER", year: 2026 }, upcoming: { season: "FALL", year: 2026 } });
@@ -24,38 +22,9 @@ test("catalog model exposes exactly the five requested catalogs", () => {
   assert.deepEqual(catalogs.map((catalog) => catalog.pageSize), [10, 10, 10, 10, 10]);
 });
 
-test("catalog pages are intentionally small for serverless latency", () => {
+test("catalog pages are intentionally small and bounded for serverless latency", () => {
   assert.equal(ANILIST_PAGE_SIZE, 10);
-  assert.equal(MAX_CATALOG_ITEMS, 1000);
-  assert.equal(getCatalogPageCount(0), 0);
-  assert.equal(getCatalogPageCount(1), 1);
-  assert.equal(getCatalogPageCount(10), 1);
-  assert.equal(getCatalogPageCount(11), 2);
-  assert.equal(getCatalogPageCount(1000), 100);
-  assert.equal(getCatalogPageCount(1001), 100);
-});
-
-test("catalog pagination maps Nuvio skip directly to one AniList page", () => {
-  assert.deepEqual(getCatalogPagePlan(0), { page: 1, offset: 0, limit: 10 });
-  assert.deepEqual(getCatalogPagePlan(9), { page: 1, offset: 9, limit: 10 });
-  assert.deepEqual(getCatalogPagePlan(10), { page: 2, offset: 0, limit: 10 });
-  assert.deepEqual(getCatalogPagePlan(20), { page: 3, offset: 0, limit: 10 });
-  assert.deepEqual(getCatalogPagePlan(990), { page: 100, offset: 0, limit: 10 });
-  assert.deepEqual(getCatalogPagePlan(1000), { page: 101, offset: 0, limit: 0 });
-});
-
-test("catalog pagination does not require a second local skip", () => {
-  const firstPage = getCatalogPagePlan(0);
-  const secondPage = getCatalogPagePlan(10);
-  assert.equal(firstPage.offset, 0);
-  assert.equal(secondPage.offset, 0);
-  assert.notEqual(firstPage.page, secondPage.page);
-});
-
-test("catalog pagination is identical for search because AniList receives the search term", () => {
-  assert.deepEqual(getCatalogPagePlan(0, "bleach"), { page: 1, offset: 0, limit: 10 });
-  assert.deepEqual(getCatalogPagePlan(10, "bleach"), { page: 2, offset: 0, limit: 10 });
-  assert.deepEqual(getCatalogPagePlan(990, "bleach"), { page: 100, offset: 0, limit: 10 });
+  assert.equal(MAX_CATALOG_FILL_PAGES, 5);
 });
 
 test("catalog search is passed to AniList instead of requiring full-season local filtering", () => {
@@ -101,6 +70,30 @@ test("fast catalog identity recovers the franchise TVDB identity for a roman-num
   assert.equal(result[0].extra.tvdbId, "452710");
 });
 
+test("AniList external links are converted to direct supported catalog identities", () => {
+  const media = {
+    id: 166254,
+    idMal: 53876,
+    title: { english: "Pokémon Horizons", romaji: "Pokemon (2023)", native: "ポケットモンスター" },
+    externalLinks: [
+      { site: "MyAnimeList", url: "https://myanimelist.net/anime/53876" },
+      { site: "IMDb", url: "https://www.imdb.com/title/tt26692417/" },
+      { site: "The Movie Database", url: "https://www.themoviedb.org/tv/220150" },
+    ],
+  };
+  const meta = toMeta(media);
+  assert.equal(meta.id, "tmdb:220150");
+  assert.equal(meta.extra.tmdbId, "220150");
+  assert.equal(meta.extra.imdbId, "tt26692417");
+});
+
+test("external link parsing ignores unsupported TMDB movie links for TV catalog entries", () => {
+  assert.deepEqual(extractSupportedExternalIds([
+    { site: "The Movie Database", url: "https://www.themoviedb.org/movie/12345" },
+    { site: "IMDb", url: "https://www.imdb.com/title/tt1234567/" },
+  ]), { imdb: "tt1234567" });
+});
+
 test("rolling catalog windows are exactly seven days wide", () => {
   const now = new Date("2026-09-28T06:00:00.000Z");
   const latest = getLast7DaysRangeManila(now);
@@ -110,14 +103,4 @@ test("rolling catalog windows are exactly seven days wide", () => {
   assert.equal(upcoming.end - upcoming.start, sevenDays);
   assert.ok(latest.end <= now.getTime());
   assert.ok(upcoming.start >= now.getTime());
-});
-
-test("Wikidata title-only fallback does not map ambiguous or unique titles", () => {
-  const result = selectUniqueWikidataMappings([
-    { label: { value: "One Piece" }, imdb: { value: "tt0388629" } },
-    { label: { value: "One Piece" }, imdb: { value: "tt9999999" } },
-    { label: { value: "Bleach" }, imdb: { value: "tt0434661" } },
-  ], new Map([["one piece", ["mal:21"]], ["bleach", ["mal:269"]]]));
-  assert.equal(result.has("mal:21"), false);
-  assert.equal(result.has("mal:269"), false);
 });

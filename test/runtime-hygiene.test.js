@@ -26,7 +26,7 @@ test("runtime source does not use deprecated url.parse API", async () => {
 });
 
 test("retired runtime entrypoints and helpers stay removed", async () => {
-  const retired = ["api/home.js", "lib/http.js"];
+  const retired = ["api/home.js", "api/stremio.js", "api/catalog-delegation.js", "lib/http.js"];
   for (const file of retired) {
     await assert.rejects(access(file), undefined, `${file} should remain removed`);
   }
@@ -34,13 +34,16 @@ test("retired runtime entrypoints and helpers stay removed", async () => {
 
 test("catalog source is the only retained catalog runtime implementation", async () => {
   await access("api/catalog-source.js");
-  await access("api/catalog-delegation.js");
+  await assert.rejects(access("api/catalog-delegation.js"));
   await assert.rejects(access("api/stremio.js"));
 });
 
-test("every api runtime module retains a valid serverless default export", async () => {
-  const source = await readFile("api/catalog-delegation.js", "utf8");
-  assert.match(source, /export default function handler\s*\(/);
+test("every retained Vercel runtime module has a serverless default export", async () => {
+  const runtimeFiles = ["api/catalog-source.js", "api/home-selector.js", "api/resolver-manifest.js"];
+  for (const file of runtimeFiles) {
+    const source = await readFile(file, "utf8");
+    assert.match(source, /export default (?:async )?function\s+\w+\s*\(/, `${file} must export a default handler`);
+  }
 });
 
 test("home page uses only canonical unversioned catalog URLs", async () => {
