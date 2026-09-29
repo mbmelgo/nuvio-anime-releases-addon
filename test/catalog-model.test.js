@@ -75,12 +75,12 @@ test("fast catalog identity prefers a validated TVDB mapping without invoking th
   assert.equal(result[0].extra.tvdbId, "465988");
 });
 
-test("fast catalog identity falls back to AniList instead of running expensive title searches", async () => {
+test("fast catalog identity preserves MAL instead of falling back to unsupported AniList", async () => {
   const metas = [{ id: "mal:53876", type: "series", name: "Pokémon Horizons", releaseInfo: "2023-", extra: { anilistId: 166254, malId: 53876 } }];
   let called = false;
   const result = await canonicalizeCatalogMetasFast(metas, { resolveTvdb: async () => { called = true; return null; } });
   assert.equal(called, true);
-  assert.equal(result[0].id, "anilist:166254");
+  assert.equal(result[0].id, "mal:53876");
   assert.equal(result[0].extra.originalCatalogId, "mal:53876");
 });
 
