@@ -5,22 +5,21 @@ import { canonicalizeCatalogMetas, clearCanonicalizationCache } from "../lib/kit
 test.beforeEach(() => clearCanonicalizationCache());
 
 test("prefers the AniList TVDB mapping when MAL points to a franchise-level identity", async () => {
-  const fetchImpl = async (url, options = {}) => {
-    const target = String(url);
-    if (target.includes("api4.thetvdb.com/web/search/queries")) {
+  const fetchImpl = async (url) => {
+    const target = new URL(String(url));
+    if (target.hostname === "api4.thetvdb.com") {
       return new Response(JSON.stringify({ results: [{ hits: [] }] }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
-    if (target.includes("query.wikidata.org")) {
-      const body = String(options.body || "");
-      if (body.includes('P8729') && body.includes('158871')) {
+    if (target.hostname === "query.wikidata.org") {
+      const query = target.searchParams.get("query") || "";
+      if (query.includes("P8729") && query.includes("158871")) {
         return new Response(JSON.stringify({ results: { bindings: [{ tvdb: { value: "433862" } }] } }), { status: 200, headers: { "Content-Type": "application/sparql-results+json" } });
       }
-      if (body.includes('P4086') && body.includes('53876')) {
+      if (query.includes("P4086") && query.includes("53876")) {
         return new Response(JSON.stringify({ results: { bindings: [{ tvdb: { value: "76703" } }] } }), { status: 200, headers: { "Content-Type": "application/sparql-results+json" } });
       }
       return new Response(JSON.stringify({ results: { bindings: [] } }), { status: 200, headers: { "Content-Type": "application/sparql-results+json" } });
     }
-    if (target.includes("arm")) return new Response(JSON.stringify({}), { status: 200 });
     return new Response(JSON.stringify({}), { status: 404 });
   };
 
