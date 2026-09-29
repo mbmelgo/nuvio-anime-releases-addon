@@ -31,6 +31,6 @@ test("uses continuation recovery before falling back to an incomplete canonical 
     name: "Ranma1/2 (2024) Season 3",
     released: "2026-10-04T00:00:00.000Z",
     extra: { anilistId: "209872", titleEnglish: "Ranma1/2 (2024) Season 3", titleRomaji: "Ranma 1/2 (2024) 3rd Season", titleNative: "らんま1/2 (2024) 第3期" },
-  }], { fetchImpl: tvdbFetch });
+  }], { fetchImpl: tvdbFetch, now: 1000 });
   assert.equal(meta.id, "tvdb:451479");
 });
