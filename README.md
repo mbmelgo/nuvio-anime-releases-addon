@@ -1,11 +1,11 @@
-# Anime Releases for Nuvio — v3.31.1
+# Anime Releases for Nuvio — v3.31.0
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `3.31.1`
+- **Development version:** `3.31.0`
 - **Production release:** `v3.31.0`
 - **Latest production tag:** `v3.31.0`
 - **Next minor release baseline:** `3.32.0`
