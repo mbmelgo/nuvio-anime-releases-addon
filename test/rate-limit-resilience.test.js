@@ -20,6 +20,6 @@ test("surfaces a non-rate-limit HTTP failure without retrying", async () => {
     calls += 1;
     return new Response(JSON.stringify({ errors: [{ message: "Bad Request." }] }), { status: 400 });
   };
-  await assert.rejects(() => requestJsonWithRetry("https://example.test", { method: "POST" }, fetchImpl, { maxAttempts: 3, baseDelayMs: 0 }), /HTTP 400/);
+  await assert.rejects(() => requestJsonWithRetry("https://example.test", { method: "POST" }, fetchImpl, { maxAttempts: 3, baseDelayMs: 0 }), /Bad Request/);
   assert.equal(calls, 1);
 });
