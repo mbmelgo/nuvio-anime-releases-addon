@@ -1,0 +1,1 @@
+Temporary marker; canonical resolver restored from current main after CI regression. Remove after verification.
