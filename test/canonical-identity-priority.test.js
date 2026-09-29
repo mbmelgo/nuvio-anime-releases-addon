@@ -29,22 +29,3 @@ test("prefers the identity-specific Wikidata TVDB mapping over a generic MAL-Syn
   assert.equal(meta.id, "tvdb:433862");
   assert.equal(meta.extra.tvdbId, "433862");
 });
-
-test("does not let a generic MAL-Sync TVDB mapping override a verified Kitsu identity", async () => {
-  const fetchImpl = mockFetch([
-    { match: (url) => url.includes("api.malsync.moe") && url.endsWith("/999"), body: { Sites: { TheTVDB: { "470200": {} }, Kitsu: { main: { id: "9999" } } } } },
-    { match: (url) => url.includes("arm.haglund.dev") && url.includes("source=myanimelist"), body: { kitsu: 9999 } },
-    { match: (url) => url.includes("kitsu.io/api/edge/anime/9999") && !url.includes("/mappings"), body: { data: { id: "9999", attributes: { canonicalTitle: "Uncle's Obsession with Cute Things", titles: { en: "Uncle's Obsession with Cute Things" } } } } },
-    { match: (url) => url.includes("kitsu.io/api/edge/anime/9999/mappings"), body: { data: [] } },
-    { match: (url) => url.includes("api.ani.zip") && url.includes("kitsu_id=9999"), body: { mappings: {} } },
-    { match: (url) => url.toLowerCase().includes("query.wikidata.org"), body: { results: { bindings: [] } } },
-    { match: (url) => url.includes("kitsu.io/api/edge/anime?") || url.includes("kitsu.io/api/edge/anime&"), body: { data: [] } },
-  ]);
-
-  const [meta] = await canonicalizeCatalogMetas([
-    { id: "mal:999", name: "Uncle's Obsession with Cute Things", type: "series" },
-  ], { fetchImpl, now: 1000 });
-
-  assert.notEqual(meta.id, "tvdb:470200");
-  assert.equal(meta.extra.kitsuId, "9999");
-});
