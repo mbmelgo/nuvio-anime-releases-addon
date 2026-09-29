@@ -1,4 +1,4 @@
-import { canonicalizeCatalogMetasFast } from "../lib/kitsu-canonical.js";
+import { canonicalizeCatalogMetas, canonicalizeCatalogMetasFast } from "../lib/kitsu-canonical.js";
 import {
   ANILIST_PAGE_SIZE,
   MAX_CATALOG_FILL_PAGES,
@@ -72,6 +72,36 @@ export function getCatalogFilter(id, info) {
   return null;
 }
 
+export async function canonicalizeCatalogPage(metas, options = {}) {
+  if (!Array.isArray(metas) || metas.length === 0) return [];
+
+  const fast = options.fastCanonicalize || canonicalizeCatalogMetasFast;
+  const full = options.fullCanonicalize || canonicalizeCatalogMetas;
+  const fastResult = await fast(metas, options);
+  const resolvedIds = new Set(fastResult.map((meta) => String(meta?.extra?.originalCatalogId || meta?.id || "")));
+  const unresolved = metas.filter((meta) => !resolvedIds.has(String(meta?.id || "")));
+
+  if (!unresolved.length) return fastResult;
+
+  // The fast resolver deliberately avoids expensive relationship/provider
+  // traversal. Only candidates that remain unresolved are sent through the
+  // complete canonical resolver, which already contains bounded root/season
+  // recovery logic. Never expose a fallback identity that the fast path would
+  // reject as unsupported.
+  let recovered = [];
+  try {
+    const fullResult = await full(unresolved, options);
+    recovered = fullResult.filter((meta) => /^(tvdb|tmdb|imdb):/.test(String(meta?.id || "")));
+  } catch {}
+
+  const recoveredIds = new Set(recovered.map((meta) => String(meta?.extra?.originalCatalogId || "")));
+  const combined = [...fastResult, ...recovered];
+  return combined.filter((meta) => {
+    const originalId = String(meta?.extra?.originalCatalogId || meta?.id || "");
+    return resolvedIds.has(originalId) || recoveredIds.has(originalId);
+  });
+}
+
 export async function buildCatalog(id, info, now, skip, search) {
   if (id === "new_episodes") {
     const range = getLast7DaysRangeManila(now);
@@ -90,7 +120,7 @@ export async function buildCatalog(id, info, now, skip, search) {
     pageSize: ANILIST_PAGE_SIZE,
     maxPages: MAX_CATALOG_FILL_PAGES,
     fetchPage: (page) => queryAnime(filter, page, search),
-    canonicalizePage: (metas) => canonicalizeCatalogMetasFast(metas),
+    canonicalizePage: (metas) => canonicalizeCatalogPage(metas),
   });
 }
 
