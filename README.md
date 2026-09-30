@@ -1,18 +1,19 @@
-# Anime Releases for Nuvio — v3.54.2
+# Anime Releases for Nuvio — v3.55.0
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `3.54.2`
-- **Production release:** `v3.54.2`
-- **Autonomous deployment checkpoint:** `1/10` for this iteration only
+- **Development version:** `3.55.0`
+- **Production release:** `v3.55.0`
+- **Autonomous deployment checkpoint:** `2/10` for this iteration only
 
-## v3.54.2 changes
+## v3.55.0 changes
 
 - Uses AniList as the canonical anime identity source.
 - Uses `anilist:<id>` identities directly; no AniBridge mapping is required.
+- Removes the obsolete AniBridge compatibility resolver and routes.
 - Keeps Nuvio pagination aligned with AniList's 50-item pages.
 - Preserves Nuvio catalog metadata such as title, poster, genres, and release information.
 - Delegates detailed anime metadata to the user's preferred metadata addon.
