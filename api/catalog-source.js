@@ -67,9 +67,6 @@ export default async function handler(req, res) {
 }
 
 export function getCatalogFilter(id, info) {
-  // ID is a deterministic final tie-breaker. Without it, records with the
-  // same primary/secondary sort values can move across AniList page boundaries
-  // between requests, causing apparent catalog omissions during Nuvio paging.
   if (id === "current_season") return { season: info.ongoing, sort: ["START_DATE", "TITLE_ROMAJI", "ID"] };
   if (id === "previous_season") return { season: info.previous, sort: ["START_DATE", "SCORE_DESC", "TITLE_ROMAJI", "ID"] };
   if (id === "upcoming_season") return { season: info.upcoming, status: "NOT_YET_RELEASED", sort: ["START_DATE", "TITLE_ROMAJI", "ID"] };
@@ -87,6 +84,21 @@ export async function canonicalizeCatalogPage(metas, options = {}) {
   }
 }
 
+export async function fetchValidatedSeasonCatalogPage({
+  filter,
+  skip = 0,
+  search = "",
+  fetchPage = queryAnime,
+  canonicalizePage = canonicalizeCatalogPage,
+}) {
+  const normalizedSkip = Math.max(0, Number(skip) || 0);
+  const anilistPage = Math.floor(normalizedSkip / NUVIO_PAGE_SIZE) + 1;
+  const pageOffset = normalizedSkip % NUVIO_PAGE_SIZE;
+  const rows = await fetchPage(filter, anilistPage, search);
+  const canonical = await canonicalizePage(rows);
+  return canonical.slice(pageOffset, pageOffset + NUVIO_PAGE_SIZE);
+}
+
 export async function buildCatalog(id, info, now, skip, search) {
   if (id === "new_episodes") {
     const range = getLast7DaysRangeManila(now);
@@ -99,16 +111,7 @@ export async function buildCatalog(id, info, now, skip, search) {
 
   const filter = getCatalogFilter(id, info);
   if (!filter) return [];
-
-  // One Nuvio page maps to one AniList page. If validation leaves fewer than
-  // 50 results, return fewer than 50 instead of fetching another AniList page
-  // solely to fill the page. This keeps request volume predictable and avoids
-  // pagination amplification caused by rejected identities.
-  const anilistPage = Math.floor(Math.max(0, Number(skip) || 0) / NUVIO_PAGE_SIZE) + 1;
-  const pageOffset = Math.max(0, Number(skip) || 0) % NUVIO_PAGE_SIZE;
-  const rows = await queryAnime(filter, anilistPage, search);
-  const canonical = await canonicalizeCatalogPage(rows);
-  return canonical.slice(pageOffset, pageOffset + NUVIO_PAGE_SIZE);
+  return fetchValidatedSeasonCatalogPage({ filter, skip, search });
 }
 
 function send(res, body, status = 200) {
