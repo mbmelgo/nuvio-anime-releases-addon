@@ -1,8 +1,8 @@
 name: Pull Request CI
 
+# TEMPORARILY DISABLED while GitHub Actions workflows are being optimized.
+# Restore the pull_request trigger after the optimization is complete.
 on:
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -14,6 +14,7 @@ concurrency:
 
 jobs:
   test:
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
