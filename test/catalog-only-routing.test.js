@@ -21,12 +21,11 @@ test("catalog-only architecture does not expose versioned or legacy metadata rou
   assert.equal(sources.some((source) => /^\/api\/meta\//.test(source)), false);
 });
 
-test("catalog-only architecture uses the canonical unversioned production routes", () => {
+test("catalog-only architecture uses only the canonical unversioned production routes", () => {
   const sources = routeSources();
   assert.equal(sources.includes("/manifest.json"), true);
   assert.equal(sources.includes("/catalog/:type/:id.json"), true);
-  assert.equal(sources.includes("/anibridge/manifest.json"), true);
-  assert.equal(sources.includes("/anibridge/catalog/:type/:id.json"), true);
+  assert.equal(sources.some((source) => source.startsWith("/anibridge/")), false);
   assert.equal(sources.includes("/v5/manifest.json"), false);
   assert.equal(sources.includes("/v5/catalog/:type/:id.json"), false);
 });
@@ -38,16 +37,11 @@ test("catalog requests are routed to the canonical catalog source", () => {
   assert.equal(route.destination.includes("catalog-delegation"), false);
 });
 
-test("AniBridge catalog requests share the canonical catalog source with an explicit mode flag", () => {
-  const route = routeFor("/anibridge/catalog/:type/:id.json");
-  assert.ok(route);
-  assert.equal(route.destination, "/api/catalog-source?resource=catalog&type=:type&id=:id&withAniBridge=true");
-});
-
 test("catalog source implements catalog resources without local metadata resolution", () => {
   assert.equal(catalogSource.includes('resource === "meta"'), false);
   assert.equal(catalogSource.includes("buildDetailedMeta"), false);
   assert.equal(catalogSource.includes("JIKAN_URL"), false);
+  assert.equal(catalogSource.includes("withAniBridge"), false);
 });
 
 test("manifest implementation reuses the canonical catalog definitions", () => {
@@ -59,8 +53,9 @@ test("manifest implementation reuses the canonical catalog definitions", () => {
 });
 
 test("manifest uses the canonical addon identity without a legacy version suffix", () => {
-  assert.equal(manifestSource.includes('const baseId = "com.marki.nuvio.anime-releases";'), true);
+  assert.equal(manifestSource.includes('id: "com.marki.nuvio.anime-releases"'), true);
   assert.equal(manifestSource.includes('com.marki.nuvio.anime-releases.v5'), false);
+  assert.equal(manifestSource.includes("anibridge"), false);
 });
 
 test("manifest cache is short enough to pick up seasonal catalog changes promptly", () => {

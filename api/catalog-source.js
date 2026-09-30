@@ -1,4 +1,3 @@
-import { resolveAniListMappings as defaultResolveAniListMappings } from "../lib/anibridge-resolver.js";
 import {
   ANILIST_PAGE_SIZE,
   NUVIO_PAGE_SIZE,
@@ -9,7 +8,7 @@ import {
   getSeasonInfo as getSeasonInfoValue,
   parseCatalogExtraPath,
 } from "../lib/catalog-config.js";
-import { filterCatalogMetasBySearch, toMetaFromAniBridgeMapping, toMetaFromAniList } from "../lib/catalog-meta.js";
+import { filterCatalogMetasBySearch, toMetaFromAniList } from "../lib/catalog-meta.js";
 import { queryAnime } from "../lib/catalog-anilist.js";
 
 export {
@@ -20,7 +19,6 @@ export {
   getNext7DaysRangeManila,
   parseCatalogExtraPath,
   filterCatalogMetasBySearch,
-  toMetaFromAniBridgeMapping,
   toMetaFromAniList,
 };
 
@@ -42,7 +40,6 @@ export default async function handler(req, res) {
   const type = query.type || parts[1];
   const rawId = query.id || parts[2]?.replace(/\.json$/, "");
   const id = rawId ? decodeURIComponent(String(rawId).replace(/\.json$/, "")) : "";
-  const withAniBridge = query.withAniBridge === true || String(query.withAniBridge || "").toLowerCase() === "true";
   const now = new Date();
   const seasonInfo = getSeasonInfo(now);
 
@@ -55,9 +52,9 @@ export default async function handler(req, res) {
     try {
       const skip = Math.max(0, Number(query.skip || 0) || 0);
       const search = String(query.search || "").trim();
-      return send(res, { metas: await buildCatalog(id, seasonInfo, skip, search, { withAniBridge }) });
+      return send(res, { metas: await buildCatalog(id, seasonInfo, skip, search) });
     } catch (error) {
-      console.error("[catalog] request failed", { id, skip: query.skip, search: query.search, withAniBridge, error });
+      console.error("[catalog] request failed", { id, skip: query.skip, search: query.search, error });
       return send(res, { metas: [] }, 500);
     }
   }
@@ -76,7 +73,7 @@ export function normalizeSeasonalCatalogMetaTypes(metas) {
   return metas.map((meta) => ({ ...meta, type: "series" }));
 }
 
-export async function canonicalizeCatalogPage(mediaRows, options = {}) {
+export function canonicalizeCatalogPage(mediaRows) {
   if (!Array.isArray(mediaRows) || mediaRows.length === 0) return [];
 
   const normalizedRows = mediaRows
@@ -84,38 +81,15 @@ export async function canonicalizeCatalogPage(mediaRows, options = {}) {
     .filter((row) => /^\d+$/.test(String(row.id ?? "").trim()));
   if (normalizedRows.length === 0) return [];
 
-  const withAniBridge = options.withAniBridge === true;
-  if (!withAniBridge) {
-    return normalizeSeasonalCatalogMetaTypes(
-      normalizedRows.map((row) => toMetaFromAniList(row.id, row)).filter(Boolean),
-    );
-  }
-
-  try {
-    const resolveAniListMappings = options.resolveAniListMappings || defaultResolveAniListMappings;
-    const mappings = await resolveAniListMappings(normalizedRows.map((row) => row.id), options.fetchImpl || fetch);
-    const metas = [];
-
-    for (const row of normalizedRows) {
-      const anilistId = String(row.id).trim();
-      const mapped = toMetaFromAniBridgeMapping(anilistId, mappings.get(anilistId), row);
-      metas.push(mapped || toMetaFromAniList(anilistId, row));
-    }
-
-    return normalizeSeasonalCatalogMetaTypes(metas.filter(Boolean));
-  } catch (error) {
-    console.warn("[catalog] AniBridge identity resolution failed; falling back to AniList IDs", error);
-    return normalizeSeasonalCatalogMetaTypes(
-      normalizedRows.map((row) => toMetaFromAniList(row.id, row)).filter(Boolean),
-    );
-  }
+  return normalizeSeasonalCatalogMetaTypes(
+    normalizedRows.map((row) => toMetaFromAniList(row.id, row)).filter(Boolean),
+  );
 }
 
 export async function fetchValidatedSeasonCatalogPage({
   filter,
   skip = 0,
   search = "",
-  withAniBridge = false,
   fetchPage = queryAnime,
   canonicalizePage = canonicalizeCatalogPage,
 }) {
@@ -123,14 +97,14 @@ export async function fetchValidatedSeasonCatalogPage({
   const anilistPage = Math.floor(normalizedSkip / NUVIO_PAGE_SIZE) + 1;
   const pageOffset = normalizedSkip % NUVIO_PAGE_SIZE;
   const rows = await fetchPage(filter, anilistPage, search);
-  const canonical = await canonicalizePage(rows, { withAniBridge });
+  const canonical = await canonicalizePage(rows);
   return canonical.slice(pageOffset, pageOffset + NUVIO_PAGE_SIZE);
 }
 
-export async function buildCatalog(id, info, skip, search, options = {}) {
+export async function buildCatalog(id, info, skip, search) {
   const filter = getCatalogFilter(id, info);
   if (!filter) return [];
-  return fetchValidatedSeasonCatalogPage({ filter, skip, search, ...options });
+  return fetchValidatedSeasonCatalogPage({ filter, skip, search });
 }
 
 function send(res, body, status = 200) {
