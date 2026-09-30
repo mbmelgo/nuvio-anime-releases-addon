@@ -62,9 +62,9 @@ The addon determines the current, previous, and upcoming seasons dynamically fro
 
 ---
 
-## 🖼️ What It Looks Like in Nuvio
+## 🖼️ What It Looks Like
 
-The following are **representative showcase mockups**, generated to illustrate the intended catalog flow. They are not screenshots of the Nuvio application and are not intended to document exact Nuvio UI styling.
+These are **representative showcase mockups**, not screenshots of the Nuvio application. They illustrate the catalog flow using real promotional artwork from anime represented in the 2026 seasonal data.
 
 ### Seasonal Catalogs
 
@@ -78,7 +78,7 @@ The following are **representative showcase mockups**, generated to illustrate t
 
 ![Representative Nuvio anime detail flow](docs/images/nuvio-detail.svg)
 
-The important behavior illustrated here is the addon flow rather than the exact visual appearance:
+The important behavior illustrated here is the addon flow rather than exact Nuvio UI styling:
 
 ```text
 AniList seasonal catalog
