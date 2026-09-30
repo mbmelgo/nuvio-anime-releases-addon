@@ -25,7 +25,8 @@ test("catalog AniList queries request only preview and identity fields", async (
     const filter = { season: { season: "FALL", year: 2026 }, status: "NOT_YET_RELEASED", sort: ["START_DATE", "TITLE_ROMAJI", "ID"] };
     const result = await queryAnime(filter, 2, "Pokémon Horizons");
     assert.equal(result.length, 1);
-    assert.equal(result[0].id, "mal:53876");
+    assert.equal(result[0].id, "anilist:166254");
+    assert.equal(result[0].type, "anime");
     assert.equal(result[0].extra.anilistId, 166254);
     assert.match(request.query, /idMal/);
     assert.match(request.query, /coverImage/);
