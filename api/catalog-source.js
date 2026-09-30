@@ -1,6 +1,7 @@
 import { canonicalizeCatalogMetasFast as canonicalizeCatalogIdentity } from "../lib/catalog-identity.js";
 import {
   ANILIST_PAGE_SIZE,
+  NUVIO_PAGE_SIZE,
   MAX_CATALOG_FILL_PAGES,
   buildCatalogMediaVariables,
   catalogDefinitions as getCatalogDefinitions,
@@ -16,6 +17,7 @@ import { collectValidatedCatalogPage } from "../lib/catalog-pagination.js";
 
 export {
   ANILIST_PAGE_SIZE,
+  NUVIO_PAGE_SIZE,
   MAX_CATALOG_FILL_PAGES,
   buildCatalogMediaVariables,
   getLast7DaysRangeManila,
@@ -106,7 +108,7 @@ export async function buildCatalog(id, info, now, skip, search) {
 
   return collectValidatedCatalogPage({
     skip,
-    pageSize: ANILIST_PAGE_SIZE,
+    pageSize: NUVIO_PAGE_SIZE,
     maxPages: MAX_CATALOG_FILL_PAGES,
     fetchPage: (page) => queryAnime(filter, page, search),
     canonicalizePage: (metas) => canonicalizeCatalogPage(metas),
