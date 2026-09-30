@@ -25,13 +25,21 @@ test("catalog canonicalization uses the batched AniBridge identity path for unre
   });
 
   assert.deepEqual(calls, [[185874, 204650, 199068]]);
-  assert.deepEqual(result.map((meta) => meta.id), ["tmdb:443384", "tmdb:205493"]);
+  assert.deepEqual(result.map((meta) => meta.id), ["tmdb:443384", "tmdb:205493", "anilist:199068"]);
 });
 
-test("catalog canonicalization rejects unresolved AniList identities", async () => {
+test("catalog canonicalization preserves unresolved AniList identities", async () => {
   const result = await canonicalizeCatalogPage([999], {
     resolveAniListMappings: async () => new Map(),
   });
 
-  assert.deepEqual(result, []);
+  assert.deepEqual(result, [
+    {
+      id: "anilist:999",
+      type: "series",
+      name: "Anime 999",
+      posterShape: "poster",
+      extra: { anilistId: 999 },
+    },
+  ]);
 });
