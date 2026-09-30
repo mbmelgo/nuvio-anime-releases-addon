@@ -1,22 +1,36 @@
-# Anime Releases for Nuvio — v3.58.0
+# Anime Releases for Nuvio — v4.0.0
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
-- **Production release:** `v3.58.0`
+- **Production release:** `v4.0.0` (major release)
 - **Identity:** AniList-only, using `anilist:<id>` as the canonical catalog identity
 - **Catalogs:** Upcoming, Current, and Previous Season
 - **Seasonal query:** AniList `ANIME` entries in `TV`, `TV_SHORT`, `ONA`, `OVA`, `SPECIAL`, and `MOVIE` formats, with no status restriction
 - **Pagination:** 50 AniList items per page, aligned with Nuvio pagination
 - **Metadata:** delegated to the configured metadata addon
-- **Deployment checkpoint:** `4/10` before this release; this deployment will be `5/10`
+- **Deployment checkpoint:** tracked in `ops/release-state.json`
 - **CI:** PR CI plus the main release pipeline; redundant post-release verification workflow removed
+
+## v4.0.0 major release
+
+This release establishes the current AniList-only catalog architecture as the **4.0.0 major baseline**.
+
+- Seasonal catalogs use the canonical AniList identity `anilist:<id>`.
+- Seasonal discovery covers `TV`, `TV_SHORT`, `ONA`, `OVA`, `SPECIAL`, and `MOVIE` formats.
+- Seasonal catalogs have no status restriction, so anime remain present as they transition from upcoming to airing and finished.
+- Nuvio pagination follows AniList's 50-item page size.
+- Detailed metadata/provider mapping remains delegated to IOMetadata/AIOMetadata rather than duplicated in this addon.
+- Spring 2026 production baseline: **99** anime.
+- Summer 2026 production baseline: **105** anime.
+- Fall 2026 production baseline: **94** anime.
+- The previous AniBridge compatibility path remains removed.
 
 ## v3.58.0 changes
 
 - Updated the Vercel landing page with the current AniList-only architecture and seasonal catalog baselines.
-- Production landing page now reports Spring 2026: **99**, Summer 2026: **105**, Fall 2026: **94**.
+- Production landing page reports Spring 2026: **99**, Summer 2026: **105**, Fall 2026: **94**.
 - The seasonal query includes `TV`, `TV_SHORT`, `ONA`, `OVA`, `SPECIAL`, and `MOVIE` formats with no status restriction.
 
 ## v3.57.0 changes
@@ -54,4 +68,4 @@ Some individual metadata lookups can still fail when the upstream metadata provi
 
 ## Release workflow
 
-Production releases require passing CI, then a controlled Vercel deployment and production smoke test. Release tags use `vMAJOR.MINOR.PATCH`; production deployments increment the minor version and ordinary meaningful changes increment the patch version.
+Production releases require passing CI, then a controlled Vercel deployment and production smoke test. Release tags use `vMAJOR.MINOR.PATCH`; production deployments increment the minor version and ordinary meaningful changes increment the patch version. A deliberate major release establishes a new MAJOR baseline.
