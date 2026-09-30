@@ -6,7 +6,7 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 
 - **Branch:** `main`
 - **Development version:** `3.44.0`
-- **Production release:** `v3.43.0`
-- **Latest production tag:** `v3.43.0`
-- **Next minor release baseline:** `3.44.0`
-- **Autonomous deployment checkpoint:** `0/5` after explicit resume
+- **Production release:** `v3.44.0`
+- **Latest production tag:** `v3.44.0`
+- **Next minor release baseline:** `3.45.0`
+- **Autonomous deployment checkpoint:** `1/5` after explicit resume
