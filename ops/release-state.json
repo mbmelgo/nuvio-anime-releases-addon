@@ -1,11 +1,11 @@
 {
   "deploymentLimit": 5,
-  "deploymentsSincePause": 1,
-  "totalDeployments": 96,
+  "deploymentsSincePause": 2,
+  "totalDeployments": 97,
   "paused": false,
-  "lastDeploymentSha": "9068f336014c8270231e394b936c3786553229a3",
+  "lastDeploymentSha": "61a64e4630bfaa6a821413f7c7ddc5b6f58d59d2",
   "lastDeploymentId": "",
-  "lastDeploymentVersion": "3.49.2",
-  "nextReleaseVersion": "3.50.0",
-  "lastDeploymentTag": "v3.49.2"
+  "lastDeploymentVersion": "3.50.0",
+  "nextReleaseVersion": "3.51.0",
+  "lastDeploymentTag": "v3.50.0"
 }
