@@ -52,9 +52,6 @@ jobs:
             echo "release=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # Every meaningful main-branch commit gets a PATCH bump. The generated
-      # bookkeeping commit is explicitly excluded from this workflow so it
-      # does not consume another Actions runner.
       - name: Bump patch version and sync metadata
         if: github.event_name == 'push' && steps.gate.outputs.release == 'false' && !contains(github.event.head_commit.message, '[skip-version-automation]') && !contains(github.event.head_commit.message, '[major-release]')
         shell: bash
@@ -139,9 +136,11 @@ jobs:
           done
           exit 1
 
-      - name: Create annotated release tag and update release state
+      - name: Create annotated release tag, GitHub Release, and update release state
         if: steps.gate.outputs.release == 'true'
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           target="$GITHUB_SHA"
@@ -184,9 +183,10 @@ jobs:
           PY
           )"
           git config user.name github-actions[bot]
-          git config user.email 41898282+users.noreply.github.com
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git tag -a "$tag" "$target" -m "$summary"
           git push origin "refs/tags/$tag"
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$tag" --notes "$summary" --target "$target"
           git pull --rebase origin main
           python - <<'PY'
           import json
