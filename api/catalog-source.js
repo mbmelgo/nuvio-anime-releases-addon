@@ -1,4 +1,4 @@
-import { canonicalizeCatalogMetasFast as canonicalizeCatalogIdentity } from "../lib/catalog-identity.js";
+import { resolveAniListMappings as defaultResolveAniListMappings } from "../lib/anibridge-resolver.js";
 import {
   ANILIST_PAGE_SIZE,
   NUVIO_PAGE_SIZE,
@@ -9,7 +9,7 @@ import {
   getSeasonInfo as getSeasonInfoValue,
   parseCatalogExtraPath,
 } from "../lib/catalog-config.js";
-import { filterCatalogMetasBySearch, toMeta } from "../lib/catalog-meta.js";
+import { filterCatalogMetasBySearch, toMetaFromAniBridgeMapping } from "../lib/catalog-meta.js";
 import { queryAnime } from "../lib/catalog-anilist.js";
 
 export {
@@ -20,7 +20,7 @@ export {
   getNext7DaysRangeManila,
   parseCatalogExtraPath,
   filterCatalogMetasBySearch,
-  toMeta,
+  toMetaFromAniBridgeMapping,
 };
 
 export function catalogDefinitions(info) {
@@ -74,22 +74,24 @@ export function normalizeSeasonalCatalogMetaTypes(metas) {
   return metas.map((meta) => ({ ...meta, type: "series" }));
 }
 
-export async function canonicalizeCatalogPage(metas, options = {}) {
-  if (!Array.isArray(metas) || metas.length === 0) return [];
+export async function canonicalizeCatalogPage(anilistIds, options = {}) {
+  if (!Array.isArray(anilistIds) || anilistIds.length === 0) return [];
 
   try {
-    const canonical = await canonicalizeCatalogIdentity(metas, {
-      ...options,
-      // Seasonal catalogs are the current production critical path. Resolve
-      // supported IDs through the single batched mapping request only. The
-      // legacy AniBridge/TVDB per-title fallback remains available to other
-      // callers through canonicalizeCatalogMetasFast, but must not turn one
-      // 50-item catalog request into dozens of provider requests.
-      allowProviderFallback: false,
-    });
-    return normalizeSeasonalCatalogMetaTypes(canonical);
+    const resolveAniListMappings = options.resolveAniListMappings || defaultResolveAniListMappings;
+    const mappings = await resolveAniListMappings(anilistIds, options.fetchImpl || fetch);
+    const metas = [];
+
+    for (const rawId of anilistIds) {
+      const anilistId = String(rawId ?? "").trim();
+      if (!/^\d+$/.test(anilistId)) continue;
+      const meta = toMetaFromAniBridgeMapping(anilistId, mappings.get(anilistId));
+      if (meta) metas.push(meta);
+    }
+
+    return normalizeSeasonalCatalogMetaTypes(metas);
   } catch (error) {
-    console.warn("[catalog] identity resolution failed", error);
+    console.warn("[catalog] AniBridge identity resolution failed", error);
     return [];
   }
 }
