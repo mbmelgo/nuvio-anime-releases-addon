@@ -2,25 +2,18 @@ import { canonicalizeCatalogMetasFast as canonicalizeCatalogIdentity } from "../
 import {
   ANILIST_PAGE_SIZE,
   NUVIO_PAGE_SIZE,
-  MAX_CATALOG_FILL_PAGES,
   buildCatalogMediaVariables,
   catalogDefinitions as getCatalogDefinitions,
-  getLast7DaysRangeManila,
-  getNext7DaysRangeManila,
   getSeasonInfo as getSeasonInfoValue,
   parseCatalogExtraPath,
 } from "../lib/catalog-config.js";
 import { filterCatalogMetasBySearch, toMeta } from "../lib/catalog-meta.js";
 import { queryAnime } from "../lib/catalog-anilist.js";
-import { scheduleCatalog } from "../lib/catalog-schedule.js";
 
 export {
   ANILIST_PAGE_SIZE,
   NUVIO_PAGE_SIZE,
-  MAX_CATALOG_FILL_PAGES,
   buildCatalogMediaVariables,
-  getLast7DaysRangeManila,
-  getNext7DaysRangeManila,
   parseCatalogExtraPath,
   filterCatalogMetasBySearch,
   toMeta,
@@ -56,7 +49,7 @@ export default async function handler(req, res) {
     try {
       const skip = Math.max(0, Number(query.skip || 0) || 0);
       const search = String(query.search || "").trim();
-      return send(res, { metas: await buildCatalog(id, seasonInfo, now, skip, search) });
+      return send(res, { metas: await buildCatalog(id, seasonInfo, skip, search) });
     } catch (error) {
       console.error("[catalog] request failed", { id, skip: query.skip, search: query.search, error });
       return send(res, { metas: [] }, 500);
@@ -77,7 +70,7 @@ export async function canonicalizeCatalogPage(metas, options = {}) {
   if (!Array.isArray(metas) || metas.length === 0) return [];
 
   try {
-    return await canonicalizeCatalogIdentity(metas, options);
+    return await canonicalizeCatalogIdentity(metas, { ...options, allowProviderFallback: false });
   } catch (error) {
     console.warn("[catalog] cheap identity resolution failed", error);
     return [];
@@ -99,16 +92,7 @@ export async function fetchValidatedSeasonCatalogPage({
   return canonical.slice(pageOffset, pageOffset + NUVIO_PAGE_SIZE);
 }
 
-export async function buildCatalog(id, info, now, skip, search) {
-  if (id === "new_episodes") {
-    const range = getLast7DaysRangeManila(now);
-    return scheduleCatalog(range.start, range.end, false, skip, search);
-  }
-  if (id === "upcoming_episodes") {
-    const range = getNext7DaysRangeManila(now);
-    return scheduleCatalog(range.start, range.end, true, skip, search);
-  }
-
+export async function buildCatalog(id, info, skip, search) {
   const filter = getCatalogFilter(id, info);
   if (!filter) return [];
   return fetchValidatedSeasonCatalogPage({ filter, skip, search });
