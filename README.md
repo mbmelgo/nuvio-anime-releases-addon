@@ -1,37 +1,33 @@
-# Anime Releases for Nuvio — v3.49.1
+# Anime Releases for Nuvio — v3.49.0
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `3.49.1`
+- **Development version:** `3.49.0`
 - **Production release:** `v3.47.0`
-- **Previous production release:** `v3.46.0`
-- **Release candidate:** `v3.48.1`
-- **Autonomous deployment checkpoint:** `4/5` before this release
+- **Release candidate:** `v3.49.0`
+- **Autonomous deployment checkpoint:** `1/5`
 
-## v3.48.1 changes
+## v3.49.0 changes
 
-- Temporarily exposes only the three seasonal anime catalogs: Upcoming Season, Current Season, and Previous Season.
-- Hides Latest Anime and Upcoming Anime from Nuvio to eliminate schedule-catalog startup requests while the seasonal pipeline is optimized.
-- Keeps Nuvio and AniList seasonal catalog pages aligned at 50 items.
-- Seasonal pages use one AniList 50-item batch and return fewer than 50 when validation/deduplication leaves fewer results; they do not fetch additional AniList pages merely to fill the page.
-- Uses the batched supported-ID lookup first, then recovers only unresolved seasonal entries through the existing validated TVDB fallback with bounded concurrency.
-- Limits unresolved identity fallback concurrency to four to avoid recreating the previous per-title request burst.
-- Preserves exact-series validation before accepting recovered TVDB identities.
-- Adds regression coverage for seasonal-only catalog exposure, bounded pagination, supported identity recovery, and fallback concurrency.
+- Keeps only the three seasonal anime catalogs exposed to Nuvio while the release/airing catalogs remain disabled.
+- Keeps seasonal catalog pagination aligned with the 50-item AniList batch model.
+- Removes the per-title AniBridge/TVDB fallback from the seasonal catalog critical path.
+- Seasonal identity resolution now uses the batched supported external-ID lookup without creating dozens of provider requests for one catalog request.
+- Preserves lower-level identity fallback code for non-seasonal/internal uses rather than deleting it prematurely.
+- Adds regression coverage ensuring seasonal catalog generation does not invoke the legacy per-title fallback.
+- Reduces provider request amplification and targets the remaining seasonal initial-load latency.
 
 ## Production release request
 
-v3.48.1 is ready for the controlled production deployment after CI verification.
+v3.49.0 is ready for the controlled production deployment after CI verification.
 
-## Previous release
+## Previous production direction
 
-### v3.47.0
+### v3.48.1
 
-- Aligned Nuvio catalog pages with AniList at up to 50 items.
-- Prevented seasonal catalogs from fetching additional AniList pages merely to fill a page after filtering or identity validation.
-- Deduplicated Latest/Upcoming airing events within a single 50-event AniList batch without fill pagination.
-- Reduced AniList request amplification and associated rate-limit pressure.
-- Used validated BingeCat-compatible external identities with TMDB/IMDb preferred when multiple supported identities are available, while retaining validated TVDB fallback behavior.
+- Temporarily exposed only the three seasonal anime catalogs.
+- Used one AniList 50-item batch for seasonal pages without requesting additional AniList pages merely to fill the page.
+- Used the batched supported-ID lookup first, then a bounded legacy TVDB fallback for unresolved titles.
