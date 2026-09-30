@@ -64,9 +64,9 @@ export default async function handler(req, res) {
 }
 
 export function getCatalogFilter(id, info) {
-  if (id === "current_season") return { season: info.ongoing, sort: ["START_DATE", "TITLE_ROMAJI", "ID"] };
-  if (id === "previous_season") return { season: info.previous, sort: ["START_DATE", "SCORE_DESC", "TITLE_ROMAJI", "ID"] };
-  if (id === "upcoming_season") return { season: info.upcoming, status: "NOT_YET_RELEASED", sort: ["START_DATE", "TITLE_ROMAJI", "ID"] };
+  if (id === "current_season") return { season: info.ongoing, sort: ["ID"] };
+  if (id === "previous_season") return { season: info.previous, sort: ["ID"] };
+  if (id === "upcoming_season") return { season: info.upcoming, status: "NOT_YET_RELEASED", sort: ["ID"] };
   return null;
 }
 
