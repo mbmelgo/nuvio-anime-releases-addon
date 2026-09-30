@@ -35,14 +35,57 @@ test("seasonal catalog converts AniBridge mappings plus AniList preview data to 
   });
 
   assert.deepEqual(calls, [[185874, 166254, 123456]]);
-  assert.deepEqual(result.map((meta) => meta.id), ["tmdb:30984", "tt28399462"]);
-  assert.deepEqual(result.map((meta) => meta.type), ["series", "series"]);
+  assert.deepEqual(result.map((meta) => meta.id), ["tmdb:30984", "tt28399462", "anilist:123456"]);
+  assert.deepEqual(result.map((meta) => meta.type), ["series", "series", "series"]);
   assert.equal(result[0].name, "Bleach: Thousand-Year Blood War");
   assert.equal(result[0].poster, "https://example.test/bleach.jpg");
   assert.equal(result[0].releaseInfo, "2022-");
   assert.deepEqual(result[0].genres, ["Action", "Adventure"]);
   assert.equal(result[0].extra.anilistId, 185874);
   assert.equal(result[0].extra.tvdbId, "74796");
+  assert.equal(result[2].name, "Unmapped Anime");
+  assert.equal(result[2].poster, "https://example.test/unmapped.jpg");
+});
+
+test("seasonal catalog uses AniList identity when AniBridge has no supported provider mapping", async () => {
+  const result = await canonicalizeCatalogPage([
+    {
+      id: 195604,
+      title: { english: "Anime Without TVDB" },
+      coverImage: { large: "https://example.test/195604.jpg" },
+      status: "NOT_YET_RELEASED",
+      startDate: { year: 2026, month: 10, day: 1 },
+      genres: ["Drama"],
+    },
+  ], {
+    resolveAniListMappings: async () => new Map([
+      ["195604", { tmdb: null, imdb: null, tvdb: null }],
+    ]),
+  });
+
+  assert.equal(result.length, 1);
+  assert.equal(result[0].id, "anilist:195604");
+  assert.equal(result[0].name, "Anime Without TVDB");
+  assert.equal(result[0].poster, "https://example.test/195604.jpg");
+});
+
+test("seasonal catalog preserves AniBridge TVDB mapping when it is the only supported provider", async () => {
+  const result = await canonicalizeCatalogPage([
+    {
+      id: 202079,
+      title: { english: "Uncle's Obsession with Cute Things" },
+      coverImage: { large: "https://example.test/202079.jpg" },
+      status: "NOT_YET_RELEASED",
+      startDate: { year: 2026, month: 10, day: 4 },
+    },
+  ], {
+    resolveAniListMappings: async () => new Map([
+      ["202079", { tmdb: null, imdb: null, tvdb: "470200" }],
+    ]),
+  });
+
+  assert.equal(result[0].id, "tvdb:470200");
+  assert.equal(result[0].extra.tvdbId, "470200");
 });
 
 test("seasonal catalog can still build a minimal Nuvio meta from AniBridge IDs when AniList preview data is unavailable", async () => {
