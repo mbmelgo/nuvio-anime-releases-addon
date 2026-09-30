@@ -45,7 +45,7 @@ test("AniBridge v3 resolves each AniList ID through the v3 mapping endpoint", as
 
 test("AniBridge v3 ignores missing mappings and invalid IDs without failing the page", async () => {
   const requests = [];
-  const result = await resolveAniListMappings(["185874", "missing", 185874, "not-an-id"], async (url) => {
+  const result = await resolveAniListMappings(["185874", "999999", 185874, "not-an-id"], async (url) => {
     const parsed = new URL(url);
     requests.push(parsed.searchParams.get("id"));
     return new Response(JSON.stringify({
@@ -54,7 +54,7 @@ test("AniBridge v3 ignores missing mappings and invalid IDs without failing the 
     }), { status: 200 });
   });
 
-  assert.deepEqual(requests.sort(), ["185874", "missing"]);
+  assert.deepEqual(requests.sort(), ["185874", "999999"]);
   assert.equal(result.size, 0);
 });
 
