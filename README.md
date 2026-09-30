@@ -1,23 +1,23 @@
-# Anime Releases for Nuvio — v3.52.5
+# Anime Releases for Nuvio — v3.53.0
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `3.52.5`
-- **Production release:** `v3.51.0`
-- **Release candidate:** `v3.52.3`
-- **Autonomous deployment checkpoint:** `4/5`
+- **Development version:** `3.53.0`
+- **Production release:** `v3.52.4`
+- **Release candidate:** `v3.53.0`
+- **Autonomous deployment checkpoint:** `0/5` (cycle resumed)
 
-## v3.52.3 changes
+## v3.53.0 changes
 
-- Keeps seasonal AniList discovery ID-only and AniBridge v3 identity resolution.
-- Corrects regression coverage for numeric IDs with no AniBridge mapping while continuing to ignore invalid IDs.
-- Preserves the bounded per-ID AniBridge lookup and partial-failure behavior.
+- Restores the minimal AniList preview metadata required for correct Nuvio catalog cards.
+- Keeps seasonal AniList discovery at 50-item pagination and AniBridge v3 identity resolution.
+- Preserves bounded per-ID AniBridge lookup and partial-failure behavior.
+- Provides Nuvio-facing title and poster fields instead of ID-only catalog previews.
 
 ## Known investigation
 
 - Latest Anime and Upcoming Anime remain hidden while the seasonal pipeline is being stabilized.
 - BingeCat delegation remains dependent on validating the complete Nuvio click-through in production.
-- The previous v3.52.1 production smoke test failed because the addon was using the wrong AniBridge API contract. The correct v3 endpoint has now been verified manually against AniList ID 185874.
