@@ -1,6 +1,7 @@
 import { canonicalizeCatalogMetasFast as canonicalizeCatalogIdentity } from "../lib/catalog-identity.js";
 import {
   ANILIST_PAGE_SIZE,
+  NUVIO_PAGE_SIZE,
   MAX_CATALOG_FILL_PAGES,
   buildCatalogMediaVariables,
   catalogDefinitions as getCatalogDefinitions,
@@ -12,10 +13,10 @@ import {
 import { filterCatalogMetasBySearch, toMeta } from "../lib/catalog-meta.js";
 import { queryAnime } from "../lib/catalog-anilist.js";
 import { scheduleCatalog } from "../lib/catalog-schedule.js";
-import { collectValidatedCatalogPage } from "../lib/catalog-pagination.js";
 
 export {
   ANILIST_PAGE_SIZE,
+  NUVIO_PAGE_SIZE,
   MAX_CATALOG_FILL_PAGES,
   buildCatalogMediaVariables,
   getLast7DaysRangeManila,
@@ -66,9 +67,6 @@ export default async function handler(req, res) {
 }
 
 export function getCatalogFilter(id, info) {
-  // ID is a deterministic final tie-breaker. Without it, records with the
-  // same primary/secondary sort values can move across AniList page boundaries
-  // between requests, causing apparent catalog omissions during Nuvio paging.
   if (id === "current_season") return { season: info.ongoing, sort: ["START_DATE", "TITLE_ROMAJI", "ID"] };
   if (id === "previous_season") return { season: info.previous, sort: ["START_DATE", "SCORE_DESC", "TITLE_ROMAJI", "ID"] };
   if (id === "upcoming_season") return { season: info.upcoming, status: "NOT_YET_RELEASED", sort: ["START_DATE", "TITLE_ROMAJI", "ID"] };
@@ -78,17 +76,27 @@ export function getCatalogFilter(id, info) {
 export async function canonicalizeCatalogPage(metas, options = {}) {
   if (!Array.isArray(metas) || metas.length === 0) return [];
 
-  // Catalog requests must stay on the cheap identity path. Direct TVDB/TMDB/
-  // IMDb links from AniList are accepted immediately; unresolved AniList IDs
-  // are mapped in one batched lookup. The full relationship/provider resolver
-  // is intentionally reserved for detail-oriented identity work, not catalog
-  // pagination, where its multi-provider fan-out makes every page expensive.
   try {
     return await canonicalizeCatalogIdentity(metas, options);
   } catch (error) {
     console.warn("[catalog] cheap identity resolution failed", error);
     return [];
   }
+}
+
+export async function fetchValidatedSeasonCatalogPage({
+  filter,
+  skip = 0,
+  search = "",
+  fetchPage = queryAnime,
+  canonicalizePage = canonicalizeCatalogPage,
+}) {
+  const normalizedSkip = Math.max(0, Number(skip) || 0);
+  const anilistPage = Math.floor(normalizedSkip / NUVIO_PAGE_SIZE) + 1;
+  const pageOffset = normalizedSkip % NUVIO_PAGE_SIZE;
+  const rows = await fetchPage(filter, anilistPage, search);
+  const canonical = await canonicalizePage(rows);
+  return canonical.slice(pageOffset, pageOffset + NUVIO_PAGE_SIZE);
 }
 
 export async function buildCatalog(id, info, now, skip, search) {
@@ -103,25 +111,7 @@ export async function buildCatalog(id, info, now, skip, search) {
 
   const filter = getCatalogFilter(id, info);
   if (!filter) return [];
-
-  return collectValidatedCatalogPage({
-    skip,
-    pageSize: ANILIST_PAGE_SIZE,
-    maxPages: MAX_CATALOG_FILL_PAGES,
-    fetchPage: (page) => queryAnime(filter, page, search),
-    canonicalizePage: (metas) => canonicalizeCatalogPage(metas),
-    onPage: ({ page, rawCount, validCount, accumulatedCount }) => {
-      console.info("[catalog] page", {
-        catalog: id,
-        skip,
-        search: search || undefined,
-        anilistPage: page,
-        rawCount,
-        validCount,
-        accumulatedCount,
-      });
-    },
-  });
+  return fetchValidatedSeasonCatalogPage({ filter, skip, search });
 }
 
 function send(res, body, status = 200) {

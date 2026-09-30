@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   ANILIST_PAGE_SIZE,
+  NUVIO_PAGE_SIZE,
   MAX_CATALOG_FILL_PAGES,
   buildCatalogMediaVariables,
   catalogDefinitions,
@@ -11,7 +12,7 @@ import {
 import { canonicalizeCatalogMetasFast } from "../lib/kitsu-canonical.js";
 import { extractSupportedExternalIds, toMeta } from "../lib/catalog-meta.js";
 
-test("catalog model exposes exactly the five requested catalogs", () => {
+test("catalog model exposes exactly the five requested catalogs with 50-item Nuvio pages", () => {
   const catalogs = catalogDefinitions({ previous: { season: "SPRING", year: 2026 }, ongoing: { season: "SUMMER", year: 2026 }, upcoming: { season: "FALL", year: 2026 } });
   assert.deepEqual(catalogs.map((catalog) => catalog.id), ["upcoming_season", "current_season", "previous_season", "new_episodes", "upcoming_episodes"]);
   assert.equal(catalogs[0].name, "Upcoming Season — Fall 2026");
@@ -19,11 +20,12 @@ test("catalog model exposes exactly the five requested catalogs", () => {
   assert.equal(catalogs[2].name, "Previous Season — Spring 2026");
   assert.equal(catalogs[3].name, "Latest Anime — Last 7 Days");
   assert.equal(catalogs[4].name, "Upcoming Anime — Next 7 Days");
-  assert.deepEqual(catalogs.map((catalog) => catalog.pageSize), [10, 10, 10, 10, 10]);
+  assert.deepEqual(catalogs.map((catalog) => catalog.pageSize), [50, 50, 50, 50, 50]);
 });
 
-test("catalog pages are intentionally small and bounded for serverless latency", () => {
-  assert.equal(ANILIST_PAGE_SIZE, 10);
+test("Nuvio and AniList catalog pages are both 50 while validation remains bounded", () => {
+  assert.equal(NUVIO_PAGE_SIZE, 50);
+  assert.equal(ANILIST_PAGE_SIZE, 50);
   assert.equal(MAX_CATALOG_FILL_PAGES, 5);
 });
 
@@ -83,7 +85,7 @@ test("AniList external links are converted to direct supported catalog identitie
     ],
   };
   const meta = toMeta(media);
-  assert.equal(meta.id, "tvdb:433862");
+  assert.equal(meta.id, "tmdb:220150");
   assert.equal(meta.type, "anime");
   assert.equal(meta.extra.tvdbId, "433862");
   assert.equal(meta.extra.tmdbId, "220150");
