@@ -45,7 +45,7 @@ test("seasonal page 2 maps directly to AniList page 2 without fill pagination", 
   assert.deepEqual(calls, [2]);
 });
 
-test("seasonal identity path does not invoke per-title provider fallback", async () => {
+test("seasonal identity path does not invoke per-title provider fallback when explicitly disabled", async () => {
   let providerCalls = 0;
   const result = await canonicalizeCatalogMetasFast(
     [{ id: "anilist:999", name: "Unresolved", extra: { anilistId: 999 } }],
@@ -62,4 +62,28 @@ test("seasonal identity path does not invoke per-title provider fallback", async
 
   assert.deepEqual(result, []);
   assert.equal(providerCalls, 0);
+});
+
+test("seasonal identity path recovers an unresolved entry with bounded provider fallback", async () => {
+  let active = 0;
+  let maxActive = 0;
+  const result = await canonicalizeCatalogMetasFast(
+    Array.from({ length: 9 }, (_, index) => ({ id: `anilist:${index}`, name: `Anime ${index}`, extra: { anilistId: index } })),
+    {
+      resolveExternalMetadataIdsByAniListIds: async () => new Map(),
+      resolveWithAniBridgeTvdb: async (_source, id) => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        active -= 1;
+        return String(5000 + Number(id));
+      },
+      validateTvdbCandidate: async (_titles, tvdbId) => ({ status: "validated", tvdbId }),
+      fallbackConcurrency: 4,
+    },
+  );
+
+  assert.equal(result.length, 9);
+  assert.equal(maxActive, 4);
+  assert.ok(result.every((meta) => /^tvdb:\d+$/.test(meta.id)));
 });
