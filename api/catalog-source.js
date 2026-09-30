@@ -76,8 +76,12 @@ export async function canonicalizeCatalogPage(metas, options = {}) {
   try {
     return await canonicalizeCatalogIdentity(metas, {
       ...options,
-      allowProviderFallback: true,
-      fallbackConcurrency: 4,
+      // Seasonal catalogs are the current production critical path. Resolve
+      // supported IDs through the single batched mapping request only. The
+      // legacy AniBridge/TVDB per-title fallback remains available to other
+      // callers through canonicalizeCatalogMetasFast, but must not turn one
+      // 50-item catalog request into dozens of provider requests.
+      allowProviderFallback: false,
     });
   } catch (error) {
     console.warn("[catalog] identity resolution failed", error);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { catalogDefinitions, fetchValidatedSeasonCatalogPage } from "../api/catalog-source.js";
+import { catalogDefinitions, canonicalizeCatalogPage, fetchValidatedSeasonCatalogPage } from "../api/catalog-source.js";
 import { canonicalizeCatalogMetasFast } from "../lib/catalog-identity.js";
 
 test("catalog manifest exposes only seasonal catalogs", () => {
@@ -45,9 +45,9 @@ test("seasonal page 2 maps directly to AniList page 2 without fill pagination", 
   assert.deepEqual(calls, [2]);
 });
 
-test("seasonal identity path does not invoke per-title provider fallback when explicitly disabled", async () => {
+test("seasonal catalog canonicalization does not invoke per-title provider fallback by default", async () => {
   let providerCalls = 0;
-  const result = await canonicalizeCatalogMetasFast(
+  const result = await canonicalizeCatalogPage(
     [{ id: "anilist:999", name: "Unresolved", extra: { anilistId: 999 } }],
     {
       resolveExternalMetadataIdsByAniListIds: async () => new Map(),
@@ -56,7 +56,6 @@ test("seasonal identity path does not invoke per-title provider fallback when ex
         return "555";
       },
       validateTvdbCandidate: async () => ({ status: "validated", tvdbId: "555" }),
-      allowProviderFallback: false,
     },
   );
 
@@ -64,7 +63,7 @@ test("seasonal identity path does not invoke per-title provider fallback when ex
   assert.equal(providerCalls, 0);
 });
 
-test("seasonal identity path recovers an unresolved entry with bounded provider fallback", async () => {
+test("identity helper can still recover an unresolved entry when fallback is explicitly enabled", async () => {
   let active = 0;
   let maxActive = 0;
   const result = await canonicalizeCatalogMetasFast(
@@ -80,10 +79,29 @@ test("seasonal identity path recovers an unresolved entry with bounded provider 
       },
       validateTvdbCandidate: async (_titles, tvdbId) => ({ status: "validated", tvdbId }),
       fallbackConcurrency: 4,
+      allowProviderFallback: true,
     },
   );
 
   assert.equal(result.length, 9);
   assert.equal(maxActive, 4);
   assert.ok(result.every((meta) => /^tvdb:\d+$/.test(meta.id)));
+});
+
+test("explicitly disabled provider fallback remains disabled", async () => {
+  let providerCalls = 0;
+  const result = await canonicalizeCatalogMetasFast(
+    [{ id: "anilist:999", name: "Unresolved", extra: { anilistId: 999 } }],
+    {
+      resolveExternalMetadataIdsByAniListIds: async () => new Map(),
+      resolveWithAniBridgeTvdb: async () => {
+        providerCalls += 1;
+        return "555";
+      },
+      allowProviderFallback: false,
+    },
+  );
+
+  assert.deepEqual(result, []);
+  assert.equal(providerCalls, 0);
 });
