@@ -3,7 +3,6 @@ import test from "node:test";
 import {
   ANILIST_PAGE_SIZE,
   NUVIO_PAGE_SIZE,
-  MAX_CATALOG_FILL_PAGES,
   buildCatalogMediaVariables,
   catalogDefinitions,
   getLast7DaysRangeManila,
@@ -12,21 +11,18 @@ import {
 import { canonicalizeCatalogMetasFast } from "../lib/kitsu-canonical.js";
 import { extractSupportedExternalIds, toMeta } from "../lib/catalog-meta.js";
 
-test("catalog model exposes exactly the five requested catalogs with 50-item Nuvio pages", () => {
+test("catalog model exposes only the three seasonal catalogs with 50-item Nuvio pages", () => {
   const catalogs = catalogDefinitions({ previous: { season: "SPRING", year: 2026 }, ongoing: { season: "SUMMER", year: 2026 }, upcoming: { season: "FALL", year: 2026 } });
-  assert.deepEqual(catalogs.map((catalog) => catalog.id), ["upcoming_season", "current_season", "previous_season", "new_episodes", "upcoming_episodes"]);
+  assert.deepEqual(catalogs.map((catalog) => catalog.id), ["upcoming_season", "current_season", "previous_season"]);
   assert.equal(catalogs[0].name, "Upcoming Season — Fall 2026");
   assert.equal(catalogs[1].name, "Current Season — Summer 2026");
   assert.equal(catalogs[2].name, "Previous Season — Spring 2026");
-  assert.equal(catalogs[3].name, "Latest Anime — Last 7 Days");
-  assert.equal(catalogs[4].name, "Upcoming Anime — Next 7 Days");
-  assert.deepEqual(catalogs.map((catalog) => catalog.pageSize), [50, 50, 50, 50, 50]);
+  assert.deepEqual(catalogs.map((catalog) => catalog.pageSize), [50, 50, 50]);
 });
 
-test("Nuvio and AniList catalog pages are both 50 while validation remains bounded", () => {
+test("Nuvio and AniList seasonal pages are both 50", () => {
   assert.equal(NUVIO_PAGE_SIZE, 50);
   assert.equal(ANILIST_PAGE_SIZE, 50);
-  assert.equal(MAX_CATALOG_FILL_PAGES, 5);
 });
 
 test("catalog search is passed to AniList instead of requiring full-season local filtering", () => {
