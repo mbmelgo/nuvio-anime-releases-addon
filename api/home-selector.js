@@ -9,11 +9,6 @@ const CATALOGS = [
   ["Previous Season", "previous_season", "Anime from the immediately preceding season"],
 ];
 
-const MANIFESTS = [
-  ["AniList-only (default)", `${BASE_URL}/manifest.json`, "Uses anilist:<id> directly; recommended for authoritative AniList identity."],
-  ["AniBridge compatibility", `${BASE_URL}/anibridge/manifest.json`, "Uses AniBridge when a mapping exists, then falls back to anilist:<id>."],
-];
-
 export default function handler(req, res) {
   const manifest = `${BASE_URL}/manifest.json`;
   const html = `<!doctype html>
@@ -31,24 +26,20 @@ export default function handler(req, res) {
   <header class="wrap">
     <div class="eyebrow">Nuvio / BingeCat / Stremio catalog addon · v${ADDON_VERSION}</div>
     <h1>Anime Releases for Nuvio</h1>
-    <p class="lead">Season-aware anime release catalogs with rolling seven-day release windows. Detailed metadata is delegated to BingeCat.</p>
+    <p class="lead">Season-aware anime release catalogs with rolling seven-day release windows. Detailed metadata is delegated to the configured metadata addon.</p>
   </header>
   <main class="wrap">
     <section class="panel">
       <h2>Install the addon</h2>
-      <p>The addon provides release catalogs only. Choose the identity strategy that matches your Nuvio setup.</p>
-      ${MANIFESTS.map(([name, url, description], index) => `
-      <div class="catalog">
-        <div><h3>${name}</h3><p>${description}</p></div>
-        <a class="button${index ? " secondary" : ""}" href="${url}">${index ? "Install compatibility" : "Install default"}</a>
-      </div>
-      <div class="url"><code>${url}</code></div>`).join("")}
+      <p>The production addon is AniList-only. It uses <code>anilist:&lt;id&gt;</code> as the canonical identity and leaves detailed metadata resolution to the configured metadata addon.</p>
+      <div class="url"><code>${manifest}</code></div>
+      <a class="button" href="${manifest}">Install addon</a>
       <a class="button secondary" href="${GITHUB_URL}">GitHub</a>
     </section>
 
     <section class="panel">
       <h2>Supported catalogs</h2>
-      <p class="note">Only the three seasonal catalogs are currently exposed. Results are generated dynamically from the current date.</p>
+      <p class="note">Only the three seasonal catalogs are currently exposed. Results are generated dynamically from the current date and use AniList's 50-item page size.</p>
       ${CATALOGS.map(([name, id, description]) => `
       <div class="catalog">
         <div><h3>${name}</h3><p>${description}</p></div>
@@ -57,8 +48,14 @@ export default function handler(req, res) {
     </section>
 
     <section class="panel">
-      <h2>Production architecture</h2>
-      <p class="note">The addon is catalog-only. Nuvio receives release identities here, while BingeCat provides detailed metadata. The default manifest uses AniList IDs directly; the compatibility manifest preserves AniBridge identity resolution with an AniList fallback.</p>
+      <h2>Production status</h2>
+      <p class="note">v${ADDON_VERSION} is the current production release. Nuvio validation confirmed Spring 2026 (54), Summer 2026 (52), and Fall 2026 (57) anime, with fast pagination and canonical AniList identities.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Architecture</h2>
+      <p class="note"><code>AniList → anilist:&lt;id&gt; → Nuvio → metadata addon</code></p>
+      <p class="note">The addon is catalog-only. Provider-mapping compatibility code is no longer part of the production architecture.</p>
     </section>
   </main>
   <footer class="wrap">Anime Releases for Nuvio · v${ADDON_VERSION}</footer>
