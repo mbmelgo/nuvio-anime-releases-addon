@@ -1,3 +1,5 @@
+<!-- CI verification for v4.0.6 sample artwork -->
+
 # Anime Releases for Nuvio
 
 [![Nuvio](https://img.shields.io/badge/Nuvio-addon-ff6f61.svg)](https://nuvio.tv)
