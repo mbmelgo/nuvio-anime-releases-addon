@@ -62,6 +62,36 @@ The addon determines the current, previous, and upcoming seasons dynamically fro
 
 ---
 
+## 🖼️ What It Looks Like in Nuvio
+
+The following are **representative showcase mockups**, generated to illustrate the intended catalog flow. They are not screenshots of the Nuvio application and are not intended to document exact Nuvio UI styling.
+
+### Seasonal Catalogs
+
+![Representative Nuvio seasonal catalog](docs/images/nuvio-home.svg)
+
+### Season Listing
+
+![Representative Nuvio season catalog](docs/images/nuvio-season.svg)
+
+### Metadata Detail Flow
+
+![Representative Nuvio anime detail flow](docs/images/nuvio-detail.svg)
+
+The important behavior illustrated here is the addon flow rather than the exact visual appearance:
+
+```text
+AniList seasonal catalog
+        ↓
+anilist:<id>
+        ↓
+Nuvio
+        ↓
+configured metadata addon
+```
+
+---
+
 ## 🧩 Architecture
 
 ```text
@@ -102,7 +132,7 @@ The previous AniBridge compatibility path is not part of the current production 
 
 Use the production manifest URL:
 
-```
+```text
 https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json
 ```
 
@@ -110,7 +140,9 @@ Add the manifest to your supported Nuvio/Stremio client.
 
 Production landing page:
 
+```text
 https://nuvio-anime-releases-addon-rho.vercel.app/
+```
 
 ---
 
