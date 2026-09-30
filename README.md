@@ -16,9 +16,11 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 - Keeps seasonal catalog pagination aligned with the 50-item AniList batch model.
 - Removes the per-title AniBridge/TVDB fallback from the seasonal catalog critical path.
 - Fixes batched external-ID mapping so each AniList ID is matched to its own metadata regardless of input ordering.
+- Exact AniList→Wikidata identity matching no longer requires an English Wikidata label; the AniList ID itself establishes the exact source identity.
+- Corrects the Wikidata MyAnimeList anime cross-reference to property P4086.
 - Seasonal identity resolution uses the batched supported external-ID lookup without creating dozens of provider requests for one catalog request.
 - Preserves lower-level identity fallback code for non-seasonal/internal uses rather than deleting it prematurely.
-- Adds regression coverage for seasonal critical-path fallback removal and AniList-ID mapping alignment.
+- Adds regression coverage for seasonal critical-path fallback removal, AniList-ID mapping alignment, and exact mappings without English labels.
 - Reduces provider request amplification and targets the remaining seasonal initial-load latency.
 
 ## Production release request
