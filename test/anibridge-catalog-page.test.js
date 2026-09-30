@@ -42,3 +42,23 @@ test("seasonal catalog converts AniBridge mappings to Nuvio series metas in AniL
   assert.equal(result[0].extra.anilistId, 185874);
   assert.equal(result[0].extra.tvdbId, "74796");
 });
+
+test("seasonal catalog can build a minimal Nuvio meta from AniBridge IDs alone", async () => {
+  const result = await canonicalizeCatalogPage([185874], {
+    resolveAniListMappings: async () => new Map([
+      ["185874", { tmdb: "30984", imdb: null, tvdb: "74796" }],
+    ]),
+  });
+
+  assert.deepEqual(result, [{
+    id: "tmdb:30984",
+    type: "series",
+    name: "Anime 185874",
+    posterShape: "poster",
+    extra: {
+      anilistId: 185874,
+      tmdbId: "30984",
+      tvdbId: "74796",
+    },
+  }]);
+});
