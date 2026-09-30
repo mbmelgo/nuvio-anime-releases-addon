@@ -28,6 +28,10 @@ export function catalogDefinitions(info) {
   return getCatalogDefinitions(info);
 }
 
+export function getSeasonInfo(date) {
+  return getSeasonInfoValue(date);
+}
+
 export default async function handler(req, res) {
   const url = new URL(req.url, `https://${req.headers.host || "localhost"}`);
   const parts = url.pathname.split("/").filter(Boolean);

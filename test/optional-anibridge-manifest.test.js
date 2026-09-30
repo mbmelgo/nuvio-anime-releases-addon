@@ -67,14 +67,18 @@ test("AniBridge mode falls back to AniList identity when mapping is unavailable"
 });
 
 test("manifests share catalogs while selecting different identity modes", () => {
-  const primary = buildManifest(new Date("2026-09-30T00:00:00Z"));
-  const bridge = buildManifest(new Date("2026-09-30T00:00:00Z"), { withAniBridge: true });
+  const info = {
+    ongoing: { season: "SUMMER", year: 2026 },
+    previous: { season: "SPRING", year: 2026 },
+    upcoming: { season: "FALL", year: 2026 },
+  };
+  const primary = buildManifest(info);
+  const bridge = buildManifest(info, { withAniBridge: true });
 
   assert.equal(primary.id, "com.marki.nuvio.anime-releases");
   assert.equal(bridge.id, "com.marki.nuvio.anime-releases-anibridge");
   assert.equal(primary.catalogs.length, bridge.catalogs.length);
+  assert.deepEqual(primary.catalogs.map((catalog) => catalog.id), bridge.catalogs.map((catalog) => catalog.id));
   assert.equal(primary.identityMode, "anilist");
   assert.equal(bridge.identityMode, "anibridge");
-  assert.equal(primary.catalogs[0].extra, undefined);
-  assert.equal(bridge.catalogs[0].extra.withAniBridge, true);
 });
