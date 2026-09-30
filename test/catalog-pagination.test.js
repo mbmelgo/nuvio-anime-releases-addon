@@ -21,7 +21,7 @@ test("validated catalog pagination fills a Nuvio page from later AniList pages",
   });
 
   assert.deepEqual(result.map((meta) => meta.id), ["a", "c", "d", "e"]);
-  assert.deepEqual(calls, [1, 2, 3]);
+  assert.deepEqual(calls, [1, 2]);
 });
 
 test("validated catalog pagination applies Nuvio skip after validation", async () => {
