@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { ANILIST_PAGE_SIZE, NUVIO_PAGE_SIZE, catalogDefinitions } from "../lib/catalog-config.js";
 import { fetchValidatedSeasonCatalogPage } from "../api/catalog-source.js";
 
-test("catalog pagination uses 50 upstream records and 50 Nuvio records", () => {
+test("catalog pagination uses 50 upstream records and 50 Nuvio records for seasonal catalogs", () => {
   assert.equal(ANILIST_PAGE_SIZE, 50);
   assert.equal(NUVIO_PAGE_SIZE, 50);
 
@@ -13,7 +13,7 @@ test("catalog pagination uses 50 upstream records and 50 Nuvio records", () => {
     upcoming: { season: "WINTER", year: 2027 },
   });
 
-  assert.equal(definitions.length, 5);
+  assert.equal(definitions.length, 3);
   for (const definition of definitions) {
     assert.equal(definition.type, "anime");
     assert.equal(definition.pageSize, 50);
