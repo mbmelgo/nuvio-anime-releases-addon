@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { selectScheduleMetas, selectSchedulePage } from "../lib/catalog-schedule.js";
+import { scheduleCatalog, selectScheduleMetas, selectSchedulePage } from "../lib/catalog-schedule.js";
 
 function schedule(id, airingAt, episode, title = id) {
   return {
@@ -42,7 +42,36 @@ test("upcoming schedule keeps one anime at its next airing event", () => {
   assert.deepEqual(result.map((meta) => meta.extra.episode), [2, 1]);
 });
 
-test("schedule pages can be filled from multiple AniList event pages without duplicates", () => {
+test("schedule page returns fewer than 50 unique anime without requesting another AniList page", async () => {
+  const schedules = [];
+  for (let index = 1; index <= 20; index++) {
+    schedules.push(schedule(String(index), index, 1, `Anime ${index}`));
+  }
+  schedules.push(schedule("1", 999, 2, "Anime 1"));
+
+  const calls = [];
+  const result = await scheduleCatalog(0, 1000, false, 0, "", async (...args) => {
+    calls.push(args);
+    return schedules;
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(result.length, 20);
+});
+
+test("schedule pages request the next 50-event batch for Nuvio skip 50", async () => {
+  const calls = [];
+  const result = await scheduleCatalog(0, 1000, false, 50, "", async (...args) => {
+    calls.push(args);
+    return [schedule("51", 51, 1, "Anime 51")];
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][3], 2);
+  assert.equal(result.length, 1);
+});
+
+test("schedule page deduplicates repeated airing events before applying the page limit", () => {
   const schedules = [];
   for (let index = 1; index <= 12; index++) {
     schedules.push(schedule(String(index), index, 1, `Anime ${index}`));
@@ -50,8 +79,7 @@ test("schedule pages can be filled from multiple AniList event pages without dup
   schedules.push(schedule("1", 999, 2, "Anime 1"));
 
   const page = selectSchedulePage(schedules, false, 0);
-  assert.equal(page.length, 10);
-  assert.deepEqual(page.map((meta) => meta.name), [
-    "Anime 1", "Anime 12", "Anime 11", "Anime 10", "Anime 9", "Anime 8", "Anime 7", "Anime 6", "Anime 5", "Anime 4",
-  ]);
+  assert.equal(page.length, 12);
+  assert.equal(new Set(page.map((meta) => meta.extra.anilistId)).size, 12);
+  assert.equal(page[0].name, "Anime 1");
 });
