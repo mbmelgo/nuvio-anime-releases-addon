@@ -4,11 +4,15 @@ import { buildManifest } from "../api/resolver-manifest.js";
 import { canonicalizeCatalogPage } from "../api/catalog-source.js";
 
 test("manifest exposes a single AniList identity mode", () => {
-  const manifest = buildManifest({ ongoing: "SUMMER", previous: "SPRING", upcoming: "FALL" });
+  const manifest = buildManifest({
+    ongoing: { season: "SUMMER", year: 2026 },
+    previous: { season: "SPRING", year: 2026 },
+    upcoming: { season: "FALL", year: 2026 },
+  });
 
   assert.equal(manifest.id, "com.marki.nuvio.anime-releases");
   assert.equal(manifest.identityMode, "anilist");
-  assert.match(manifest.name, /Anime Releases for Nuvio/);
+  assert.equal(manifest.name, "Anime Releases for Nuvio");
   assert.equal(manifest.catalogs.length > 0, true);
 });
 
