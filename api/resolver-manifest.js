@@ -22,9 +22,9 @@ export function buildManifest(info) {
     name: "Anime Releases for Nuvio",
     description: "Season-aware anime release catalogs for Nuvio. Detailed metadata is delegated to the user's preferred metadata addon.",
     resources: [
-      { name: "catalog", types: ["series"] },
+      { name: "catalog", types: ["anime"] },
     ],
-    types: ["series"],
+    types: ["anime"],
     catalogs: catalogDefinitions(info),
   };
 }

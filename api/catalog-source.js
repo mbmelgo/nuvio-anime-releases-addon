@@ -48,7 +48,7 @@ export default async function handler(req, res) {
 
   if (req.method === "OPTIONS") return send(res, {}, 200);
 
-  if (resource === "catalog" && type === "series") {
+  if (resource === "catalog" && type === "anime") {
     if (!catalogDefinitions(seasonInfo).some((catalog) => catalog.id === id)) {
       return send(res, { metas: [] }, 404);
     }
@@ -78,10 +78,10 @@ export function getCatalogFilter(id, info) {
 export async function canonicalizeCatalogPage(metas, options = {}) {
   if (!Array.isArray(metas) || metas.length === 0) return [];
 
-  // Catalog requests must stay on the cheap identity path. Direct TMDB/IMDb
-  // links from AniList are accepted immediately; unresolved AniList IDs are
-  // mapped in one batched lookup. The full relationship/provider resolver is
-  // intentionally reserved for detail-oriented identity work, not catalog
+  // Catalog requests must stay on the cheap identity path. Direct TVDB/TMDB/
+  // IMDb links from AniList are accepted immediately; unresolved AniList IDs
+  // are mapped in one batched lookup. The full relationship/provider resolver
+  // is intentionally reserved for detail-oriented identity work, not catalog
   // pagination, where its multi-provider fan-out makes every page expensive.
   try {
     return await canonicalizeCatalogIdentity(metas, options);
