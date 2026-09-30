@@ -3,7 +3,7 @@
 [![Nuvio](https://img.shields.io/badge/Nuvio-addon-ff6f61.svg)](https://nuvio.tv)
 [![AniList](https://img.shields.io/badge/AniList-data_source-02A9FF.svg)](https://anilist.co)
 [![Vercel](https://img.shields.io/badge/deployed_on-Vercel-black.svg?logo=vercel)](https://vercel.com)
-[![Version](https://img.shields.io/badge/version-4.0.0-blue.svg)](https://github.com/mbmelgo/nuvio-anime-releases-addon/releases)
+[![Version](https://img.shields.io/badge/version-4.0.6-blue.svg)](https://github.com/mbmelgo/nuvio-anime-releases-addon/releases)
 
 > A lightweight, season-aware anime release catalog for Nuvio and Stremio-compatible clients.
 
@@ -160,11 +160,13 @@ The season represented by each endpoint is calculated dynamically.
 
 ---
 
-## ✅ Current Production Baseline
+## ✅ Release State
 
-**Version:** `v4.0.0`
+**Current source version:** `v4.0.6`  
+**Last production release:** `v4.0.0`  
+**Major baseline:** `v4.0.0`
 
-The 2026 seasonal baselines validated during the current production release are:
+The 2026 seasonal baselines validated during the `v4.0.0` production release are:
 
 | Season | Anime |
 | --- | ---: |
