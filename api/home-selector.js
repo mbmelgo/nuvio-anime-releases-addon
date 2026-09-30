@@ -49,7 +49,7 @@ export default function handler(req, res) {
 
     <section class="panel">
       <h2>Production status</h2>
-      <p class="note">v${ADDON_VERSION} is the current production release. Nuvio validation confirmed Spring 2026 (54), Summer 2026 (52), and Fall 2026 (57) anime, with fast pagination and canonical AniList identities.</p>
+      <p class="note">v${ADDON_VERSION} is the current production release. Seasonal catalogs now match AniList's anime search across TV, TV Short, ONA, OVA, Special, and Movie formats without filtering by release status. Validated 2026 baselines: Spring 99, Summer 105, Fall 94.</p>
     </section>
 
     <section class="panel">
