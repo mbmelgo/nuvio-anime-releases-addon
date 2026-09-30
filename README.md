@@ -20,6 +20,10 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 - Removes per-title AniBridge/TVDB provider fallback from the seasonal critical path and relies on the batched supported-ID lookup.
 - Adds regression coverage for seasonal-only catalog exposure, bounded pagination, and the fast identity path.
 
+## Production release request
+
+v3.48.0 is ready for the controlled production deployment after CI verification.
+
 ## Previous release
 
 ### v3.47.0
