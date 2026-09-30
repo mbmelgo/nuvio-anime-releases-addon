@@ -15,6 +15,7 @@ test("release addon advertises anime catalogs for external metadata delegation",
   assert.deepEqual(manifest.resources, [
     { name: "catalog", types: ["anime"] },
   ]);
+  assert.deepEqual(manifest.catalogs.map((catalog) => catalog.type), ["anime", "anime", "anime", "anime", "anime"]);
   assert.equal(manifest.resources.some((resource) => resource.name === "meta"), false);
   assert.equal("idPrefixes" in manifest, false);
   assert.match(manifest.description, /catalog/i);
