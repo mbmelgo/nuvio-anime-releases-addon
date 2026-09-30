@@ -52,6 +52,9 @@ jobs:
           if [[ "${{ github.event_name }}" == "push" && "$COMMIT_MESSAGE" == *"[deploy-prod]"* ]]; then
             echo "release=true" >> "$GITHUB_OUTPUT"
             echo "redeploy=true" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "push" && "$COMMIT_MESSAGE" == *"[finalize-prod]"* ]]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "redeploy=false" >> "$GITHUB_OUTPUT"
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.deploy_prod }}" == "true" ]]; then
             echo "release=true" >> "$GITHUB_OUTPUT"
             echo "redeploy=true" >> "$GITHUB_OUTPUT"
@@ -80,13 +83,10 @@ jobs:
           package=json.loads(package_path.read_text())
           package['version']=next_version
           package_path.write_text(json.dumps(package,indent=2)+'\n')
-          readme=Path('README.md')
-          text=readme.read_text()
-          readme.write_text(text)
           PY
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add api/version.js package.json README.md
+          git add api/version.js package.json
           git commit -m "chore: bump patch version [skip-release-pipeline]"
           git push
 
@@ -152,9 +152,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          target="$GITHUB_SHA"
           release_version="$(python -c 'import json;print(json.load(open("ops/release-state.json"))["nextReleaseVersion"])')"
           tag="v$release_version"
+          if [[ "${{ steps.gate.outputs.redeploy }}" == "true" ]]; then
+            target="$GITHUB_SHA"
+          else
+            target="$(git log -S "ADDON_VERSION = \"$release_version\"" --format=%H -- api/version.js | head -n1)"
+            test -n "$target"
+          fi
           git fetch --tags --force
           previous="$(git tag --merged "$target^" --sort=-version:refname --list 'v*' | head -n1 || true)"
           if [ -n "$previous" ]; then range="$previous..$target"; else range="$target"; fi
@@ -208,13 +213,14 @@ jobs:
           state['deploymentsSincePause']=deployments
           state['totalDeployments']+=1
           state['paused']=deployments>=state['deploymentLimit']
-          state['lastDeploymentSha']='${{ github.sha }}'
+          state['lastDeploymentSha']=''+'''TARGET_SHA'''
           state['lastDeploymentId']=''
           state['lastDeploymentVersion']=version
           state['nextReleaseVersion']=f'{major}.{minor+1}.0'
           state['lastDeploymentTag']='v'+version
           path.write_text(json.dumps(state,indent=2)+'\n')
           PY
+          sed -i "s/TARGET_SHA/$target/" ops/release-state.json
           git add ops/release-state.json
           git commit -m "chore: record $tag production release [skip-release-pipeline]"
           git push origin HEAD:main
