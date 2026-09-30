@@ -74,18 +74,22 @@ export function normalizeSeasonalCatalogMetaTypes(metas) {
   return metas.map((meta) => ({ ...meta, type: "series" }));
 }
 
-export async function canonicalizeCatalogPage(anilistIds, options = {}) {
-  if (!Array.isArray(anilistIds) || anilistIds.length === 0) return [];
+export async function canonicalizeCatalogPage(mediaRows, options = {}) {
+  if (!Array.isArray(mediaRows) || mediaRows.length === 0) return [];
+
+  const normalizedRows = mediaRows
+    .map((row) => (typeof row === "object" && row !== null ? row : { id: row }))
+    .filter((row) => /^\d+$/.test(String(row.id ?? "").trim()));
+  if (normalizedRows.length === 0) return [];
 
   try {
     const resolveAniListMappings = options.resolveAniListMappings || defaultResolveAniListMappings;
-    const mappings = await resolveAniListMappings(anilistIds, options.fetchImpl || fetch);
+    const mappings = await resolveAniListMappings(normalizedRows.map((row) => row.id), options.fetchImpl || fetch);
     const metas = [];
 
-    for (const rawId of anilistIds) {
-      const anilistId = String(rawId ?? "").trim();
-      if (!/^\d+$/.test(anilistId)) continue;
-      const meta = toMetaFromAniBridgeMapping(anilistId, mappings.get(anilistId));
+    for (const row of normalizedRows) {
+      const anilistId = String(row.id).trim();
+      const meta = toMetaFromAniBridgeMapping(anilistId, mappings.get(anilistId), row);
       if (meta) metas.push(meta);
     }
 
