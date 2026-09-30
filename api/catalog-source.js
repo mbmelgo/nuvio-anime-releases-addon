@@ -74,9 +74,13 @@ export async function canonicalizeCatalogPage(metas, options = {}) {
   if (!Array.isArray(metas) || metas.length === 0) return [];
 
   try {
-    return await canonicalizeCatalogIdentity(metas, { ...options, allowProviderFallback: false });
+    return await canonicalizeCatalogIdentity(metas, {
+      ...options,
+      allowProviderFallback: true,
+      fallbackConcurrency: 4,
+    });
   } catch (error) {
-    console.warn("[catalog] cheap identity resolution failed", error);
+    console.warn("[catalog] identity resolution failed", error);
     return [];
   }
 }
