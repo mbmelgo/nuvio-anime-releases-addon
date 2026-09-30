@@ -16,7 +16,7 @@ test("external identity selection chooses the exact title when AniList maps to m
     },
   ], ["Example Anime"]);
 
-  assert.deepEqual(result, { tmdb: "200", imdb: null, tvdb: null });
+  assert.deepEqual(result, { tmdb: "200", imdb: null });
 });
 
 test("external identity selection rejects ambiguous exact-title matches from different entities", () => {
