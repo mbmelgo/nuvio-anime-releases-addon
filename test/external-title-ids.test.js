@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { expandTitleVariants, resolveExternalMetadataIdsByTitle, selectExternalMetadataIds } from "../lib/external-title-ids.js";
+import {
+  expandTitleVariants,
+  resolveExternalMetadataIdsByTitle,
+  resolveExternalMetadataIdsByAniListIds,
+  selectExternalMetadataIds,
+} from "../lib/external-title-ids.js";
 
 function wikidataFetchFor(expectedTitle, tmdb, imdb = null) {
   return async (url) => {
@@ -61,4 +66,38 @@ test("external ID selection rejects a mismatched franchise label instead of retu
   ], ["Pokémon Horizons"]);
 
   assert.deepEqual(result, { tmdb: null, imdb: null });
+});
+
+test("batched external identity resolution keeps each AniList ID aligned with its own metadata", async () => {
+  const fetchImpl = async (url) => {
+    const query = decodeURIComponent(new URL(url).searchParams.get("query") || "");
+    if (!query.includes("P8729")) return new Response(JSON.stringify({ results: { bindings: [] } }), { status: 200 });
+    return new Response(JSON.stringify({
+      results: {
+        bindings: [
+          {
+            anilist: { value: "100" },
+            item: { value: "http://www.wikidata.org/entity/Q100" },
+            label: { value: "Second Anime" },
+            tmdb: { value: "200" },
+          },
+          {
+            anilist: { value: "200" },
+            item: { value: "http://www.wikidata.org/entity/Q200" },
+            label: { value: "First Anime" },
+            tmdb: { value: "100" },
+          },
+        ],
+      },
+    }), { status: 200 });
+  };
+
+  const metas = [
+    { name: "First Anime", extra: { anilistId: "200" } },
+    { name: "Second Anime", extra: { anilistId: "100" } },
+  ];
+  const result = await resolveExternalMetadataIdsByAniListIds(["100", "200"], metas, fetchImpl);
+
+  assert.deepEqual(result.get("100"), { tmdb: "200", imdb: null });
+  assert.deepEqual(result.get("200"), { tmdb: "100", imdb: null });
 });
