@@ -20,6 +20,8 @@ function schedule(id, airingAt, episode, title = id) {
   };
 }
 
+const identityCanonicalize = async (metas) => metas;
+
 test("latest schedule keeps one anime at its newest airing event", () => {
   const result = selectScheduleMetas([
     schedule("1", 100, 1, "Anime One"),
@@ -53,7 +55,7 @@ test("schedule page returns fewer than 50 unique anime without requesting anothe
   const result = await scheduleCatalog(0, 1000, false, 0, "", async (...args) => {
     calls.push(args);
     return schedules;
-  });
+  }, identityCanonicalize);
 
   assert.equal(calls.length, 1);
   assert.equal(result.length, 20);
@@ -64,7 +66,7 @@ test("schedule pages request the next 50-event batch for Nuvio skip 50", async (
   const result = await scheduleCatalog(0, 1000, false, 50, "", async (...args) => {
     calls.push(args);
     return [schedule("51", 51, 1, "Anime 51")];
-  });
+  }, identityCanonicalize);
 
   assert.equal(calls.length, 1);
   assert.equal(calls[0][3], 2);
