@@ -22,8 +22,8 @@ test("catalog model exposes exactly the five requested catalogs", () => {
   assert.deepEqual(catalogs.map((catalog) => catalog.pageSize), [10, 10, 10, 10, 10]);
 });
 
-test("catalog pages are intentionally small and bounded for serverless latency", () => {
-  assert.equal(ANILIST_PAGE_SIZE, 10);
+test("catalog pages use 50 AniList records while retaining a five-page validation bound", () => {
+  assert.equal(ANILIST_PAGE_SIZE, 50);
   assert.equal(MAX_CATALOG_FILL_PAGES, 5);
 });
 
@@ -83,7 +83,7 @@ test("AniList external links are converted to direct supported catalog identitie
     ],
   };
   const meta = toMeta(media);
-  assert.equal(meta.id, "tvdb:433862");
+  assert.equal(meta.id, "tmdb:220150");
   assert.equal(meta.type, "anime");
   assert.equal(meta.extra.tvdbId, "433862");
   assert.equal(meta.extra.tmdbId, "220150");
