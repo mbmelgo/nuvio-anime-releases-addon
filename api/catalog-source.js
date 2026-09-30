@@ -70,11 +70,15 @@ export function getCatalogFilter(id, info) {
   return null;
 }
 
+export function normalizeSeasonalCatalogMetaTypes(metas) {
+  return metas.map((meta) => ({ ...meta, type: "series" }));
+}
+
 export async function canonicalizeCatalogPage(metas, options = {}) {
   if (!Array.isArray(metas) || metas.length === 0) return [];
 
   try {
-    return await canonicalizeCatalogIdentity(metas, {
+    const canonical = await canonicalizeCatalogIdentity(metas, {
       ...options,
       // Seasonal catalogs are the current production critical path. Resolve
       // supported IDs through the single batched mapping request only. The
@@ -83,6 +87,7 @@ export async function canonicalizeCatalogPage(metas, options = {}) {
       // 50-item catalog request into dozens of provider requests.
       allowProviderFallback: false,
     });
+    return normalizeSeasonalCatalogMetaTypes(canonical);
   } catch (error) {
     console.warn("[catalog] identity resolution failed", error);
     return [];
