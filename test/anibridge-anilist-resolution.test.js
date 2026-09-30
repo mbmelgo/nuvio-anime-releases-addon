@@ -53,6 +53,7 @@ test("AniBridge resolves a seasonal AniList page with one batched ID query", asy
   try {
     const result = await resolveAniListMappings([185874, 166254], globalThis.fetch);
 
+    assert.equal(new URL(requestUrl).origin, "https://mappings.anibridge.eliasbenb.dev");
     const query = new URL(requestUrl).searchParams;
     assert.equal(query.get("with_anilist"), "true");
     assert.equal(query.get("per_page"), "2");
