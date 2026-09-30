@@ -25,6 +25,6 @@ test("catalog external-ID lookup can use a MAL cross-reference when AniList mapp
     fetchImpl,
   );
 
-  assert.match(queryText, /P4082/);
+  assert.match(queryText, /P4086/);
   assert.deepEqual(result.get("999"), { tmdb: "30984", imdb: "tt0434665" });
 });
