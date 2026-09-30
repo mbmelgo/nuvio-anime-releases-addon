@@ -125,3 +125,28 @@ test("batched exact AniList mapping does not require an English Wikidata label",
 
   assert.deepEqual(result.get("300"), { tmdb: "3000", imdb: null });
 });
+
+test("batched external identity resolution splits large AniList sets into bounded Wikidata requests", async () => {
+  const requests = [];
+  const ids = Array.from({ length: 50 }, (_, index) => String(1000 + index));
+  const metas = ids.map((id) => ({ name: `Anime ${id}`, extra: { anilistId: id } }));
+  const fetchImpl = async (url) => {
+    const query = decodeURIComponent(new URL(url).searchParams.get("query") || "");
+    requests.push(query);
+    const bindings = ids
+      .filter((id) => query.includes(`"${id}"`))
+      .map((id) => ({
+        anilist: { value: id },
+        item: { value: `http://www.wikidata.org/entity/Q${id}` },
+        tmdb: { value: id },
+      }));
+    return new Response(JSON.stringify({ results: { bindings } }), { status: 200 });
+  };
+
+  const result = await resolveExternalMetadataIdsByAniListIds(ids, metas, fetchImpl);
+
+  assert.equal(requests.length, 2);
+  assert.equal(result.size, 50);
+  assert.deepEqual(result.get("1000"), { tmdb: "1000", imdb: null });
+  assert.deepEqual(result.get("1049"), { tmdb: "1049", imdb: null });
+});
