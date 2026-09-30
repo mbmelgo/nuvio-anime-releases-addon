@@ -64,7 +64,7 @@ The addon determines the current, previous, and upcoming seasons dynamically fro
 
 ## 🖼️ What It Looks Like
 
-These are **representative showcase mockups**, not screenshots of the Nuvio application. They illustrate the catalog flow using real promotional artwork from anime represented in the 2026 seasonal data.
+These are **representative showcase mockups**, not screenshots of the Nuvio application. They illustrate the catalog flow using sample artwork from anime represented in the seasonal data.
 
 ### Seasonal Catalogs
 
@@ -132,7 +132,7 @@ The previous AniBridge compatibility path is not part of the current production 
 
 Use the production manifest URL:
 
-```text
+```
 https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json
 ```
 
@@ -140,7 +140,7 @@ Add the manifest to your supported Nuvio/Stremio client.
 
 Production landing page:
 
-```text
+```
 https://nuvio-anime-releases-addon-rho.vercel.app/
 ```
 
@@ -272,4 +272,4 @@ It is **not** a replacement for a detailed anime metadata/provider addon.
 
 ## 📜 License
 
-See the repository for the project's license and source code.
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for the full license text.
