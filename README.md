@@ -1,71 +1,241 @@
-# Anime Releases for Nuvio — v4.0.0
+# Anime Releases for Nuvio
 
-A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
+[![Nuvio](https://img.shields.io/badge/Nuvio-addon-ff6f61.svg)](https://nuvio.tv)
+[![AniList](https://img.shields.io/badge/AniList-data_source-02A9FF.svg)](https://anilist.co)
+[![Vercel](https://img.shields.io/badge/deployed_on-Vercel-black.svg?logo=vercel)](https://vercel.com)
+[![Version](https://img.shields.io/badge/version-4.0.0-blue.svg)](https://github.com/mbmelgo/nuvio-anime-releases-addon/releases)
 
-## Current status
+> A lightweight, season-aware anime release catalog for Nuvio and Stremio-compatible clients.
 
-- **Production release:** `v4.0.0` (major release)
-- **Identity:** AniList-only, using `anilist:<id>` as the canonical catalog identity
-- **Catalogs:** Upcoming, Current, and Previous Season
-- **Seasonal query:** AniList `ANIME` entries in `TV`, `TV_SHORT`, `ONA`, `OVA`, `SPECIAL`, and `MOVIE` formats, with no status restriction
-- **Pagination:** 50 AniList items per page, aligned with Nuvio pagination
-- **Metadata:** delegated to the configured metadata addon
-- **Deployment checkpoint:** tracked in `ops/release-state.json`
-- **CI:** PR CI plus the main release pipeline; redundant post-release verification workflow removed
+**Anime Releases for Nuvio** provides dynamically generated seasonal anime catalogs using **AniList** as the catalog source. Anime are exposed with their canonical `anilist:<id>` identity, while detailed metadata and provider mapping are delegated to the metadata addon configured in the client.
 
-## v4.0.0 major release
+---
 
-This release establishes the current AniList-only catalog architecture as the **4.0.0 major baseline**.
+## ✨ Features
 
-- Seasonal catalogs use the canonical AniList identity `anilist:<id>`.
-- Seasonal discovery covers `TV`, `TV_SHORT`, `ONA`, `OVA`, `SPECIAL`, and `MOVIE` formats.
-- Seasonal catalogs have no status restriction, so anime remain present as they transition from upcoming to airing and finished.
-- Nuvio pagination follows AniList's 50-item page size.
-- Detailed metadata/provider mapping remains delegated to IOMetadata/AIOMetadata rather than duplicated in this addon.
-- Spring 2026 production baseline: **99** anime.
-- Summer 2026 production baseline: **105** anime.
-- Fall 2026 production baseline: **94** anime.
-- The previous AniBridge compatibility path remains removed.
+### 📺 Seasonal Anime Catalogs
 
-## v3.58.0 changes
+The addon currently exposes three seasonal catalogs:
 
-- Updated the Vercel landing page with the current AniList-only architecture and seasonal catalog baselines.
-- Production landing page reports Spring 2026: **99**, Summer 2026: **105**, Fall 2026: **94**.
-- The seasonal query includes `TV`, `TV_SHORT`, `ONA`, `OVA`, `SPECIAL`, and `MOVIE` formats with no status restriction.
+- **Upcoming Season** — anime scheduled for the next season.
+- **Current Season** — anime belonging to the current season.
+- **Previous Season** — anime from the immediately preceding season.
 
-## v3.57.0 changes
+All three catalogs use the same generalized AniList query model; only the requested season changes.
 
-- Expanded all seasonal catalogs to match AniList's seasonal anime search across the six anime formats used by the website.
-- Removed the `NOT_YET_RELEASED` status restriction so anime remain in their seasonal catalog as their status changes from upcoming to releasing and finished.
-- Spring 2026 diagnostic baseline: **99** anime.
-- Summer 2026 diagnostic baseline: **105** anime.
-- Fall 2026 diagnostic baseline: **94** anime, matching the equivalent AniList website search.
-- Preserved the existing 50-item AniList/Nuvio pagination model.
+### 🗂️ Broad Anime Format Coverage
 
-## Architecture
+Seasonal catalogs include these AniList anime formats:
+
+- **TV**
+- **TV Short**
+- **ONA**
+- **OVA**
+- **Special**
+- **Movie**
+
+The catalog does **not** use a release-status filter, so entries remain associated with their season as they move from upcoming to releasing and finished.
+
+### 🔑 Canonical AniList IDs
+
+Every catalog item uses:
 
 ```text
-AniList → anilist:<id> → Nuvio → metadata addon
+anilist:<id>
 ```
 
-The addon is intentionally a release/airing catalog rather than a duplicate metadata provider. Detailed anime metadata remains the responsibility of the configured metadata addon.
+This keeps the addon focused on catalog discovery and lets the downstream metadata addon resolve detailed information.
 
-## Catalogs
+### 📄 Nuvio-Friendly Pagination
 
-The production manifest exposes exactly three seasonal catalogs:
+AniList requests use a **50-item page size**, matching the pagination model used by Nuvio.
 
-- Upcoming Season
-- Current Season
-- Previous Season
+Large seasonal catalogs can therefore be consumed page-by-page without introducing a separate addon-side pagination scheme.
 
-All three use the same AniList query constraints and differ only by the requested season.
+### 🔎 Catalog Search
 
-Catalog pages follow AniList's 50-item page size so Nuvio can request additional pages directly.
+The catalog endpoint accepts Nuvio/Stremio catalog search requests and applies the search term to the AniList-backed catalog.
 
-## Known external behavior
+### 🌐 Dynamic Seasonal Windows
 
-Some individual metadata lookups can still fail when the upstream metadata provider returns an error or `null`. Those failures are outside the catalog identity path and should not be worked around by reintroducing provider-mapping logic into this addon.
+The addon determines the current, previous, and upcoming seasons dynamically from the current date rather than hard-coding specific seasons.
 
-## Release workflow
+---
 
-Production releases require passing CI, then a controlled Vercel deployment and production smoke test. Release tags use `vMAJOR.MINOR.PATCH`; production deployments increment the minor version and ordinary meaningful changes increment the patch version. A deliberate major release establishes a new MAJOR baseline.
+## 🧩 Architecture
+
+```text
+                         ┌─────────────────────┐
+                         │       AniList       │
+                         │  Seasonal Catalog   │
+                         └──────────┬──────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │ Anime Releases      │
+                         │     for Nuvio       │
+                         │                     │
+                         │ anilist:<id>        │
+                         └──────────┬──────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │       Nuvio         │
+                         └──────────┬──────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │ Metadata Addon      │
+                         │ IOMetadata /        │
+                         │ AIOMetadata /       │
+                         │ configured provider │
+                         └─────────────────────┘
+```
+
+The addon is intentionally **catalog-focused**. It does not duplicate the detailed metadata/provider-mapping functionality handled downstream.
+
+The previous AniBridge compatibility path is not part of the current production architecture.
+
+---
+
+## 📦 Installation
+
+Use the production manifest URL:
+
+```
+https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json
+```
+
+Add the manifest to your supported Nuvio/Stremio client.
+
+Production landing page:
+
+https://nuvio-anime-releases-addon-rho.vercel.app/
+
+---
+
+## 📋 Production Catalogs
+
+The current production addon exposes these catalog endpoints:
+
+| Catalog | Endpoint |
+| --- | --- |
+| Upcoming Season | `/catalog/anime/upcoming_season.json` |
+| Current Season | `/catalog/anime/current_season.json` |
+| Previous Season | `/catalog/anime/previous_season.json` |
+
+The season represented by each endpoint is calculated dynamically.
+
+---
+
+## ✅ Current Production Baseline
+
+**Version:** `v4.0.0`
+
+The 2026 seasonal baselines validated during the current production release are:
+
+| Season | Anime |
+| --- | ---: |
+| Spring 2026 | **99** |
+| Summer 2026 | **105** |
+| Fall 2026 | **94** |
+
+These counts correspond to the AniList seasonal query using the six supported anime formats described above.
+
+---
+
+## 🔧 Development
+
+This project is a small serverless JavaScript addon designed for Vercel.
+
+### Requirements
+
+- Node.js **20+**
+- npm
+
+### Run tests
+
+```bash
+npm test
+```
+
+### Project structure
+
+```text
+api/
+  catalog-source.js
+  home-selector.js
+  resolver-manifest.js
+  version.js
+
+lib/
+  catalog configuration, AniList querying, and catalog normalization
+
+test/
+  automated tests
+
+ops/
+  release state and deployment bookkeeping
+```
+
+---
+
+## 🚀 Release Workflow
+
+Production releases follow the repository release pipeline:
+
+```text
+Change
+  ↓
+Tests
+  ↓
+GitHub Actions CI
+  ↓
+Controlled Vercel deployment
+  ↓
+Production smoke test
+  ↓
+Release tag
+  ↓
+Release-state update
+```
+
+Semantic versioning is used:
+
+- **PATCH** — normal meaningful changes.
+- **MINOR** — production deployments.
+- **MAJOR** — deliberate architectural or project-baseline changes.
+
+Current major baseline:
+
+```text
+v4.0.0
+```
+
+---
+
+## ⚠️ Known External Behavior
+
+Detailed anime metadata is provided by downstream metadata services rather than this addon.
+
+As a result, an individual anime may occasionally experience an upstream metadata error or delayed resolution even when the anime is present and correctly identified in the catalog. Such behavior is outside the catalog identity path and is not worked around by reintroducing provider-mapping logic into this addon.
+
+---
+
+## 📄 Scope
+
+This addon is responsible for:
+
+- seasonal anime catalog discovery
+- AniList-based anime identities
+- catalog pagination
+- catalog search
+- seasonal catalog organization
+
+It is **not** a replacement for a detailed anime metadata/provider addon.
+
+---
+
+## 📜 License
+
+See the repository for the project's license and source code.
