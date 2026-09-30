@@ -4,6 +4,8 @@ import {
   NUVIO_PAGE_SIZE,
   buildCatalogMediaVariables,
   catalogDefinitions as getCatalogDefinitions,
+  getLast7DaysRangeManila,
+  getNext7DaysRangeManila,
   getSeasonInfo as getSeasonInfoValue,
   parseCatalogExtraPath,
 } from "../lib/catalog-config.js";
@@ -14,6 +16,8 @@ export {
   ANILIST_PAGE_SIZE,
   NUVIO_PAGE_SIZE,
   buildCatalogMediaVariables,
+  getLast7DaysRangeManila,
+  getNext7DaysRangeManila,
   parseCatalogExtraPath,
   filterCatalogMetasBySearch,
   toMeta,
