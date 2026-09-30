@@ -56,8 +56,8 @@ test("validated catalog pagination stops at the configured page bound", async ()
 test("validated catalog pagination deduplicates canonical identities before applying the Nuvio page boundary", async () => {
   const calls = [];
   const pages = [
-    [{ id: "tvdb:100", name: "Season 1" }, { id: "tvdb:100", name: "Season 1 duplicate" }, { id: "tvdb:200", name: "Season 2" }, { id: "tvdb:250", name: "Season 2 alternate" }],
-    [{ id: "tvdb:300", name: "Season 3" }, { id: "tvdb:200", name: "Season 2 duplicate" }, { id: "tvdb:400", name: "Season 4" }, { id: "tvdb:450", name: "Season 4 alternate" }],
+    [{ id: "tvdb:100" }, { id: "tvdb:100" }, { id: "tvdb:200" }, { id: "tvdb:250" }],
+    [{ id: "tvdb:300" }, { id: "tvdb:200" }, { id: "tvdb:400" }, { id: "tvdb:450" }],
   ];
   const result = await collectValidatedCatalogPage({
     skip: 0,
@@ -74,27 +74,48 @@ test("validated catalog pagination deduplicates canonical identities before appl
   assert.deepEqual(calls, [1, 2]);
 });
 
-test("validated catalog pagination prefetches the next AniList page while validating the current page", async () => {
-  const calls = [];
-  let releaseValidation;
-  const validationGate = new Promise((resolve) => { releaseValidation = resolve; });
-
-  const resultPromise = collectValidatedCatalogPage({
+// Regression: page 2 must not be started before page 1 has been validated.
+// This prevents speculative upstream AniList traffic when page 1 is already sufficient.
+test("validated catalog pagination does not speculatively fetch another AniList page", async () => {
+  const events = [];
+  const result = await collectValidatedCatalogPage({
     skip: 0,
     pageSize: 2,
     maxPages: 2,
     fetchPage: async (page) => {
-      calls.push(page);
+      events.push(`fetch:${page}`);
       return [{ id: `${page}-a` }, { id: `${page}-b` }];
     },
     canonicalizePage: async (rows) => {
-      assert.deepEqual(calls, [1, 2]);
-      releaseValidation();
-      await validationGate;
+      events.push(`validate:${rows[0].id.split("-")[0]}`);
       return rows;
     },
   });
 
-  const result = await resultPromise;
   assert.deepEqual(result.map((meta) => meta.id), ["1-a", "1-b"]);
+  assert.deepEqual(events, ["fetch:1", "validate:1"]);
+});
+
+// Regression: later AniList pages remain available when validation rejects candidates,
+// but the next request must begin only after the current page has been reconciled.
+test("validated catalog pagination fetches the next AniList page only after validation shows that more items are required", async () => {
+  const events = [];
+  const result = await collectValidatedCatalogPage({
+    skip: 0,
+    pageSize: 2,
+    maxPages: 2,
+    fetchPage: async (page) => {
+      events.push(`fetch:${page}`);
+      return page === 1
+        ? [{ id: "1-a" }, { id: "1-rejected" }]
+        : [{ id: "2-a" }, { id: "2-b" }];
+    },
+    canonicalizePage: async (rows) => {
+      events.push(`validate:${rows[0].id.split("-")[0]}`);
+      return rows.filter((row) => row.id !== "1-rejected");
+    },
+  });
+
+  assert.deepEqual(result.map((meta) => meta.id), ["1-a", "2-a"]);
+  assert.deepEqual(events, ["fetch:1", "validate:1", "fetch:2", "validate:2"]);
 });
