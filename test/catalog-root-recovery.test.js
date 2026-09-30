@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { canonicalizeCatalogPage } from "../api/catalog-source.js";
 
-test("catalog canonicalization uses the batched AniBridge identity path for unresolved AniList IDs", async () => {
+test("AniBridge compatibility mode uses the batched AniBridge identity path for unresolved AniList IDs", async () => {
   const calls = [];
   const result = await canonicalizeCatalogPage([185874, 204650, 199068], {
+    withAniBridge: true,
     resolveAniListMappings: async (ids) => {
       calls.push(ids);
       return new Map([
@@ -25,13 +26,14 @@ test("catalog canonicalization uses the batched AniBridge identity path for unre
   });
 
   assert.deepEqual(calls, [[185874, 204650, 199068]]);
-  assert.deepEqual(result.map((meta) => meta.id), ["tmdb:443384", "tmdb:205493"]);
+  assert.deepEqual(result.map((meta) => meta.id), ["tmdb:443384", "tmdb:205493", "anilist:199068"]);
 });
 
-test("catalog canonicalization rejects unresolved AniList identities", async () => {
+test("AniBridge compatibility mode falls back to AniList identity for unresolved mappings", async () => {
   const result = await canonicalizeCatalogPage([999], {
+    withAniBridge: true,
     resolveAniListMappings: async () => new Map(),
   });
 
-  assert.deepEqual(result, []);
+  assert.deepEqual(result.map((meta) => meta.id), ["anilist:999"]);
 });

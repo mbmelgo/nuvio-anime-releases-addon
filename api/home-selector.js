@@ -9,6 +9,11 @@ const CATALOGS = [
   ["Previous Season", "previous_season", "Anime from the immediately preceding season"],
 ];
 
+const MANIFESTS = [
+  ["AniList-only (default)", `${BASE_URL}/manifest.json`, "Uses anilist:<id> directly; recommended for authoritative AniList identity."],
+  ["AniBridge compatibility", `${BASE_URL}/anibridge/manifest.json`, "Uses AniBridge when a mapping exists, then falls back to anilist:<id>."],
+];
+
 export default function handler(req, res) {
   const manifest = `${BASE_URL}/manifest.json`;
   const html = `<!doctype html>
@@ -31,10 +36,13 @@ export default function handler(req, res) {
   <main class="wrap">
     <section class="panel">
       <h2>Install the addon</h2>
-      <p>The addon provides release catalogs only. Detailed metadata is resolved by the configured metadata addon.</p>
-      <label for="manifest-url">Production manifest URL</label>
-      <div class="url"><code id="manifest-url">${manifest}</code></div>
-      <a class="button" href="${manifest}">Install addon</a>
+      <p>The addon provides release catalogs only. Choose the identity strategy that matches your Nuvio setup.</p>
+      ${MANIFESTS.map(([name, url, description], index) => `
+      <div class="catalog">
+        <div><h3>${name}</h3><p>${description}</p></div>
+        <a class="button${index ? " secondary" : ""}" href="${url}">${index ? "Install compatibility" : "Install default"}</a>
+      </div>
+      <div class="url"><code>${url}</code></div>`).join("")}
       <a class="button secondary" href="${GITHUB_URL}">GitHub</a>
     </section>
 
@@ -50,7 +58,7 @@ export default function handler(req, res) {
 
     <section class="panel">
       <h2>Production architecture</h2>
-      <p class="note">The current resolver is catalog-only. This addon does not provide detailed metadata or public <code>/meta</code> routes. Nuvio receives release/airing identities here, while BingeCat provides detailed metadata.</p>
+      <p class="note">The addon is catalog-only. Nuvio receives release identities here, while BingeCat provides detailed metadata. The default manifest uses AniList IDs directly; the compatibility manifest preserves AniBridge identity resolution with an AniList fallback.</p>
     </section>
   </main>
   <footer class="wrap">Anime Releases for Nuvio · v${ADDON_VERSION}</footer>

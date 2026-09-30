@@ -1,23 +1,36 @@
-# Anime Releases for Nuvio — v3.53.0
+# Anime Releases for Nuvio — v3.53.2
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
-- **Branch:** `main`
-- **Development version:** `3.53.0`
-- **Production release:** `v3.52.4`
-- **Release candidate:** `v3.53.0`
-- **Autonomous deployment checkpoint:** `0/5` (cycle resumed)
+- **Branch:** `feature/optional-anibridge-manifests`
+- **Development version:** `3.53.2`
+- **Production release:** `v3.53.0`
+- **Release candidate:** `v3.53.2`
+- **Autonomous deployment checkpoint:** `0/10` for this iteration only
 
-## v3.53.0 changes
+## v3.53.2 changes
 
-- Restores the minimal AniList preview metadata required for correct Nuvio catalog cards.
-- Keeps seasonal AniList discovery at 50-item pagination and AniBridge v3 identity resolution.
-- Preserves bounded per-ID AniBridge lookup and partial-failure behavior.
-- Provides Nuvio-facing title and poster fields instead of ID-only catalog previews.
+- Adds a shared catalog identity pipeline with `withAniBridge` as an explicit runtime option.
+- Makes the primary manifest AniList-only, using `anilist:<id>` identities without AniBridge requests.
+- Adds an `/anibridge/manifest.json` compatibility manifest using the same codebase.
+- Preserves AniBridge mappings when available and falls back to `anilist:<id>` when unavailable or when the resolver fails.
+- Keeps Nuvio preview metadata such as title, poster, genres, and release information.
+- Adds regression coverage for AniList-only identity, mapped AniBridge identity, missing AniBridge mapping, and dual-manifest behavior.
+- Expands routing regression coverage for the compatibility manifest and catalog path.
 
-## Known investigation
+## Architecture
 
-- Latest Anime and Upcoming Anime remain hidden while the seasonal pipeline is being stabilized.
-- BingeCat delegation remains dependent on validating the complete Nuvio click-through in production.
+```text
+AniList → primary manifest → anilist:<id> → Nuvio → BingeCat metadata
+
+AniList → compatibility manifest → AniBridge mapping
+                              ↘ no mapping/error → anilist:<id>
+```
+
+Both manifests use the same catalog implementation; only identity resolution differs.
+
+## Production validation
+
+The current production baseline is `v3.53.0`. The optional-manifest change is not yet deployed while its PR is being tested and reviewed.

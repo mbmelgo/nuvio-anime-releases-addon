@@ -9,7 +9,7 @@ import {
   getSeasonInfo as getSeasonInfoValue,
   parseCatalogExtraPath,
 } from "../lib/catalog-config.js";
-import { filterCatalogMetasBySearch, toMetaFromAniBridgeMapping } from "../lib/catalog-meta.js";
+import { filterCatalogMetasBySearch, toMetaFromAniBridgeMapping, toMetaFromAniList } from "../lib/catalog-meta.js";
 import { queryAnime } from "../lib/catalog-anilist.js";
 
 export {
@@ -21,6 +21,7 @@ export {
   parseCatalogExtraPath,
   filterCatalogMetasBySearch,
   toMetaFromAniBridgeMapping,
+  toMetaFromAniList,
 };
 
 export function catalogDefinitions(info) {
@@ -41,6 +42,7 @@ export default async function handler(req, res) {
   const type = query.type || parts[1];
   const rawId = query.id || parts[2]?.replace(/\.json$/, "");
   const id = rawId ? decodeURIComponent(String(rawId).replace(/\.json$/, "")) : "";
+  const withAniBridge = query.withAniBridge === true || String(query.withAniBridge || "").toLowerCase() === "true";
   const now = new Date();
   const seasonInfo = getSeasonInfo(now);
 
@@ -53,9 +55,9 @@ export default async function handler(req, res) {
     try {
       const skip = Math.max(0, Number(query.skip || 0) || 0);
       const search = String(query.search || "").trim();
-      return send(res, { metas: await buildCatalog(id, seasonInfo, skip, search) });
+      return send(res, { metas: await buildCatalog(id, seasonInfo, skip, search, { withAniBridge }) });
     } catch (error) {
-      console.error("[catalog] request failed", { id, skip: query.skip, search: query.search, error });
+      console.error("[catalog] request failed", { id, skip: query.skip, search: query.search, withAniBridge, error });
       return send(res, { metas: [] }, 500);
     }
   }
@@ -82,6 +84,13 @@ export async function canonicalizeCatalogPage(mediaRows, options = {}) {
     .filter((row) => /^\d+$/.test(String(row.id ?? "").trim()));
   if (normalizedRows.length === 0) return [];
 
+  const withAniBridge = options.withAniBridge === true;
+  if (!withAniBridge) {
+    return normalizeSeasonalCatalogMetaTypes(
+      normalizedRows.map((row) => toMetaFromAniList(row.id, row)).filter(Boolean),
+    );
+  }
+
   try {
     const resolveAniListMappings = options.resolveAniListMappings || defaultResolveAniListMappings;
     const mappings = await resolveAniListMappings(normalizedRows.map((row) => row.id), options.fetchImpl || fetch);
@@ -89,14 +98,16 @@ export async function canonicalizeCatalogPage(mediaRows, options = {}) {
 
     for (const row of normalizedRows) {
       const anilistId = String(row.id).trim();
-      const meta = toMetaFromAniBridgeMapping(anilistId, mappings.get(anilistId), row);
-      if (meta) metas.push(meta);
+      const mapped = toMetaFromAniBridgeMapping(anilistId, mappings.get(anilistId), row);
+      metas.push(mapped || toMetaFromAniList(anilistId, row));
     }
 
-    return normalizeSeasonalCatalogMetaTypes(metas);
+    return normalizeSeasonalCatalogMetaTypes(metas.filter(Boolean));
   } catch (error) {
-    console.warn("[catalog] AniBridge identity resolution failed", error);
-    return [];
+    console.warn("[catalog] AniBridge identity resolution failed; falling back to AniList IDs", error);
+    return normalizeSeasonalCatalogMetaTypes(
+      normalizedRows.map((row) => toMetaFromAniList(row.id, row)).filter(Boolean),
+    );
   }
 }
 
@@ -104,6 +115,7 @@ export async function fetchValidatedSeasonCatalogPage({
   filter,
   skip = 0,
   search = "",
+  withAniBridge = false,
   fetchPage = queryAnime,
   canonicalizePage = canonicalizeCatalogPage,
 }) {
@@ -111,14 +123,14 @@ export async function fetchValidatedSeasonCatalogPage({
   const anilistPage = Math.floor(normalizedSkip / NUVIO_PAGE_SIZE) + 1;
   const pageOffset = normalizedSkip % NUVIO_PAGE_SIZE;
   const rows = await fetchPage(filter, anilistPage, search);
-  const canonical = await canonicalizePage(rows);
+  const canonical = await canonicalizePage(rows, { withAniBridge });
   return canonical.slice(pageOffset, pageOffset + NUVIO_PAGE_SIZE);
 }
 
-export async function buildCatalog(id, info, skip, search) {
+export async function buildCatalog(id, info, skip, search, options = {}) {
   const filter = getCatalogFilter(id, info);
   if (!filter) return [];
-  return fetchValidatedSeasonCatalogPage({ filter, skip, search });
+  return fetchValidatedSeasonCatalogPage({ filter, skip, search, ...options });
 }
 
 function send(res, body, status = 200) {

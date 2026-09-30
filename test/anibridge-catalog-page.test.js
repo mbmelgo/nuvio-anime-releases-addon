@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { canonicalizeCatalogPage } from "../api/catalog-source.js";
 
-test("seasonal catalog converts AniBridge mappings plus AniList preview data to Nuvio series metas in AniList order", async () => {
+test("AniBridge compatibility mode converts AniBridge mappings plus AniList preview data to Nuvio series metas in AniList order", async () => {
   const calls = [];
   const result = await canonicalizeCatalogPage([
     {
@@ -25,6 +25,7 @@ test("seasonal catalog converts AniBridge mappings plus AniList preview data to 
     },
     { id: 123456, title: { romaji: "Unmapped Anime" }, coverImage: { large: "https://example.test/unmapped.jpg" } },
   ], {
+    withAniBridge: true,
     resolveAniListMappings: async (ids) => {
       calls.push(ids);
       return new Map([
@@ -35,8 +36,8 @@ test("seasonal catalog converts AniBridge mappings plus AniList preview data to 
   });
 
   assert.deepEqual(calls, [[185874, 166254, 123456]]);
-  assert.deepEqual(result.map((meta) => meta.id), ["tmdb:30984", "tt28399462"]);
-  assert.deepEqual(result.map((meta) => meta.type), ["series", "series"]);
+  assert.deepEqual(result.map((meta) => meta.id), ["tmdb:30984", "tt28399462", "anilist:123456"]);
+  assert.deepEqual(result.map((meta) => meta.type), ["series", "series", "series"]);
   assert.equal(result[0].name, "Bleach: Thousand-Year Blood War");
   assert.equal(result[0].poster, "https://example.test/bleach.jpg");
   assert.equal(result[0].releaseInfo, "2022-");
@@ -45,8 +46,9 @@ test("seasonal catalog converts AniBridge mappings plus AniList preview data to 
   assert.equal(result[0].extra.tvdbId, "74796");
 });
 
-test("seasonal catalog can still build a minimal Nuvio meta from AniBridge IDs when AniList preview data is unavailable", async () => {
+test("AniBridge compatibility mode can still build a minimal Nuvio meta from mapped IDs when AniList preview data is unavailable", async () => {
   const result = await canonicalizeCatalogPage([185874], {
+    withAniBridge: true,
     resolveAniListMappings: async () => new Map([
       ["185874", { tmdb: "30984", imdb: null, tvdb: "74796" }],
     ]),
