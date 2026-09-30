@@ -101,3 +101,27 @@ test("batched external identity resolution keeps each AniList ID aligned with it
   assert.deepEqual(result.get("100"), { tmdb: "200", imdb: null });
   assert.deepEqual(result.get("200"), { tmdb: "100", imdb: null });
 });
+
+test("batched exact AniList mapping does not require an English Wikidata label", async () => {
+  const fetchImpl = async (url) => {
+    const query = decodeURIComponent(new URL(url).searchParams.get("query") || "");
+    assert.match(query, /P8729/);
+    return new Response(JSON.stringify({
+      results: {
+        bindings: [{
+          anilist: { value: "300" },
+          item: { value: "http://www.wikidata.org/entity/Q300" },
+          tmdb: { value: "3000" },
+        }],
+      },
+    }), { status: 200 });
+  };
+
+  const result = await resolveExternalMetadataIdsByAniListIds(
+    ["300"],
+    [{ name: "Japanese Only Title", extra: { anilistId: "300" } }],
+    fetchImpl,
+  );
+
+  assert.deepEqual(result.get("300"), { tmdb: "3000", imdb: null });
+});
