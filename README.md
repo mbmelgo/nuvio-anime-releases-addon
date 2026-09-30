@@ -1,4 +1,4 @@
-# Anime Releases for Nuvio — v3.56.0
+# Anime Releases for Nuvio — v3.56.1
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
