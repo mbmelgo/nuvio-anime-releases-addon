@@ -4,7 +4,7 @@ import { buildManifest } from "../api/resolver-manifest.js";
 import { extractSupportedExternalIds, toMeta } from "../lib/catalog-meta.js";
 import { canonicalizeCatalogMetasFast } from "../lib/catalog-identity.js";
 
-test("release addon advertises anime catalogs for external metadata delegation", () => {
+test("release addon advertises only seasonal anime catalogs for external metadata delegation", () => {
   const manifest = buildManifest({
     ongoing: { season: "SUMMER", year: 2026 },
     previous: { season: "SPRING", year: 2026 },
@@ -15,7 +15,8 @@ test("release addon advertises anime catalogs for external metadata delegation",
   assert.deepEqual(manifest.resources, [
     { name: "catalog", types: ["anime"] },
   ]);
-  assert.deepEqual(manifest.catalogs.map((catalog) => catalog.type), ["anime", "anime", "anime", "anime", "anime"]);
+  assert.deepEqual(manifest.catalogs.map((catalog) => catalog.type), ["anime", "anime", "anime"]);
+  assert.deepEqual(manifest.catalogs.map((catalog) => catalog.id), ["upcoming_season", "current_season", "previous_season"]);
   assert.equal(manifest.resources.some((resource) => resource.name === "meta"), false);
   assert.equal("idPrefixes" in manifest, false);
   assert.match(manifest.description, /catalog/i);
