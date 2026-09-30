@@ -1,17 +1,23 @@
-# Anime Releases for Nuvio — v3.57.0
+# Anime Releases for Nuvio — v3.58.0
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
-- **Production release:** `v3.57.0`
+- **Production release:** `v3.58.0`
 - **Identity:** AniList-only, using `anilist:<id>` as the canonical catalog identity
 - **Catalogs:** Upcoming, Current, and Previous Season
 - **Seasonal query:** AniList `ANIME` entries in `TV`, `TV_SHORT`, `ONA`, `OVA`, `SPECIAL`, and `MOVIE` formats, with no status restriction
 - **Pagination:** 50 AniList items per page, aligned with Nuvio pagination
 - **Metadata:** delegated to the configured metadata addon
-- **Deployment checkpoint:** `3/10` before this release; this deployment will be `4/10`
+- **Deployment checkpoint:** `4/10` before this release; this deployment will be `5/10`
 - **CI:** PR CI plus the main release pipeline; redundant post-release verification workflow removed
+
+## v3.58.0 changes
+
+- Updated the Vercel landing page with the current AniList-only architecture and seasonal catalog baselines.
+- Production landing page now reports Spring 2026: **99**, Summer 2026: **105**, Fall 2026: **94**.
+- The seasonal query includes `TV`, `TV_SHORT`, `ONA`, `OVA`, `SPECIAL`, and `MOVIE` formats with no status restriction.
 
 ## v3.57.0 changes
 
@@ -21,10 +27,6 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 - Summer 2026 diagnostic baseline: **105** anime.
 - Fall 2026 diagnostic baseline: **94** anime, matching the equivalent AniList website search.
 - Preserved the existing 50-item AniList/Nuvio pagination model.
-
-## Previous production validation
-
-Before this release, the AniList-only architecture was validated in Nuvio with fast initial loading and pagination, canonical `anilist:<id>` identities, and successful metadata resolution for representative anime including AniList `195604` and `205896`.
 
 ## Architecture
 
