@@ -2,97 +2,71 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { resolveAniListMappings } from "../lib/anibridge-resolver.js";
 
-test("AniBridge resolves a seasonal AniList page with one batched ID query", async () => {
-  const originalFetch = globalThis.fetch;
-  let requestUrl;
-
-  globalThis.fetch = async (url) => {
-    requestUrl = String(url);
-    return new Response(JSON.stringify({
-      items: [
-        {
-          descriptor: "anilist:185874",
-          provider: "anilist",
-          entry_id: "185874",
-          edges: [
-            { target_provider: "tvdb_show", target_entry_id: "74796", target_scope: "s17", source_range: "1-13" },
-            { target_provider: "tmdb_show", target_entry_id: "30984", target_scope: "s2", source_range: "1-13" },
-          ],
-          anilist: {
-            id: 185874,
-            title: { english: "Bleach: Thousand-Year Blood War", romaji: "Bleach: Sennen Kessen-hen" },
-            coverImage: { medium: "https://example.test/bleach.jpg" },
-            status: "RELEASING",
-            format: "TV",
-          },
-        },
-        {
-          descriptor: "anilist:166254",
-          provider: "anilist",
-          entry_id: "166254",
-          edges: [
-            { target_provider: "imdb_show", target_entry_id: "tt28399462", target_scope: "s1", source_range: "1-150" },
-          ],
-          anilist: {
-            id: 166254,
-            title: { english: "Pokémon Horizons", romaji: "Pokemon (2023)" },
-            coverImage: { medium: "https://example.test/pokemon.jpg" },
-            status: "RELEASING",
-            format: "TV",
-          },
-        },
-      ],
-      total: 2,
-      page: 1,
-      per_page: 2,
-      pages: 1,
-      with_anilist: true,
-    }), { status: 200, headers: { "Content-Type": "application/json" } });
+test("AniBridge v3 resolves each AniList ID through the v3 mapping endpoint", async () => {
+  const requests = [];
+  const responses = {
+    "185874": {
+      "anilist:185874": {
+        "anidb:19079:R": { "1-": "1-" },
+        "mal:60636": { "1-": "1-" },
+        "tmdb_show:30984:s2": { "1-": "41-" },
+        "tvdb_show:74796:s17": { "1-": "41-" },
+      },
+    },
+    "166254": {
+      "anilist:166254": {
+        "imdb_show:tt28399462:s1": { "1-": "1-" },
+      },
+    },
   };
 
-  try {
-    const result = await resolveAniListMappings([185874, 166254], globalThis.fetch);
+  const result = await resolveAniListMappings([185874, 166254], async (url) => {
+    const parsed = new URL(url);
+    requests.push(parsed);
+    const id = parsed.searchParams.get("id");
+    return new Response(JSON.stringify({
+      pagination: { limit: 50, offset: 0, total: 1, returned: 1 },
+      data: responses[id] || {},
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  });
 
-    assert.equal(new URL(requestUrl).origin, "https://mappings.anibridge.eliasbenb.dev");
-    const query = new URL(requestUrl).searchParams;
-    assert.equal(query.get("with_anilist"), "true");
-    assert.equal(query.get("per_page"), "2");
-    assert.equal(query.get("page"), "1");
-    assert.equal(query.get("q"), "source.provider:anilist source.id:185874,166254");
+  assert.deepEqual(requests.map((url) => [
+    url.origin + url.pathname,
+    url.searchParams.get("provider"),
+    url.searchParams.get("id"),
+  ]).sort(), [
+    ["https://mappings.anibridge.eliasbenb.dev/api/v3/mappings", "anilist", "166254"],
+    ["https://mappings.anibridge.eliasbenb.dev/api/v3/mappings", "anilist", "185874"],
+  ]);
 
-    assert.deepEqual(result.get("185874"), {
-      tmdb: "30984",
-      imdb: null,
-      tvdb: "74796",
-      anilist: {
-        id: 185874,
-        title: { english: "Bleach: Thousand-Year Blood War", romaji: "Bleach: Sennen Kessen-hen" },
-        coverImage: { medium: "https://example.test/bleach.jpg" },
-        status: "RELEASING",
-        format: "TV",
-      },
-    });
-    assert.equal(result.get("166254").imdb, "tt28399462");
-    assert.equal(result.get("166254").tmdb, null);
-    assert.equal(result.has("999999"), false);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+  assert.deepEqual(result.get("185874"), { tmdb: "30984", imdb: null, tvdb: "74796" });
+  assert.deepEqual(result.get("166254"), { tmdb: null, imdb: "tt28399462", tvdb: null });
 });
 
-test("AniBridge resolution deduplicates invalid and repeated AniList IDs", async () => {
-  const originalFetch = globalThis.fetch;
-  let calls = 0;
-  globalThis.fetch = async () => {
-    calls += 1;
-    return new Response(JSON.stringify({ items: [], total: 0, page: 1, per_page: 1, pages: 0, with_anilist: true }), { status: 200 });
-  };
+test("AniBridge v3 ignores missing mappings and invalid IDs without failing the page", async () => {
+  const requests = [];
+  const result = await resolveAniListMappings(["185874", "missing", 185874, "not-an-id"], async (url) => {
+    const parsed = new URL(url);
+    requests.push(parsed.searchParams.get("id"));
+    return new Response(JSON.stringify({
+      pagination: { limit: 50, offset: 0, total: 0, returned: 0 },
+      data: {},
+    }), { status: 200 });
+  });
 
-  try {
-    const result = await resolveAniListMappings(["185874", 185874, "not-an-id", null], globalThis.fetch);
-    assert.equal(calls, 1);
-    assert.equal(result.size, 0);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+  assert.deepEqual(requests.sort(), ["185874", "missing"]);
+  assert.equal(result.size, 0);
+});
+
+test("AniBridge v3 continues resolving other IDs when one lookup fails", async () => {
+  const result = await resolveAniListMappings([185874, 166254], async (url) => {
+    const id = new URL(url).searchParams.get("id");
+    if (id === "185874") return new Response("server error", { status: 500 });
+    return new Response(JSON.stringify({
+      data: { "anilist:166254": { "imdb_show:tt28399462:s1": { "1-": "1-" } } },
+    }), { status: 200 });
+  });
+
+  assert.equal(result.has("185874"), false);
+  assert.deepEqual(result.get("166254"), { tmdb: null, imdb: "tt28399462", tvdb: null });
 });
