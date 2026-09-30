@@ -22,6 +22,26 @@ test("catalog identity keeps direct BingeCat-supported identities without provid
   assert.equal(calls, 0);
 });
 
+test("catalog identity prefers TMDB, then IMDb, then TVDB when a mapping has multiple IDs", async () => {
+  const result = await canonicalizeCatalogMetasFast(
+    [
+      { id: "anilist:11", name: "One", extra: { anilistId: 11 } },
+      { id: "anilist:12", name: "Two", extra: { anilistId: 12 } },
+      { id: "anilist:13", name: "Three", extra: { anilistId: 13 } },
+    ],
+    {
+      resolveExternalMetadataIdsByAniListIds: async () => new Map([
+        ["11", { tmdb: "111", imdb: "tt112", tvdb: "113" }],
+        ["12", { imdb: "tt222", tvdb: "223" }],
+        ["13", { tvdb: "333" }],
+      ]),
+      resolveWithAniBridgeTvdb: async () => null,
+    },
+  );
+
+  assert.deepEqual(result.map((meta) => meta.id), ["tmdb:111", "tt222", "tvdb:333"]);
+});
+
 test("catalog identity resolves multiple AniList candidates with one batched lookup", async () => {
   const calls = [];
   const result = await canonicalizeCatalogMetasFast(
@@ -43,7 +63,7 @@ test("catalog identity resolves multiple AniList candidates with one batched loo
   );
 
   assert.deepEqual(calls, [{ ids: ["11", "12", "13"], names: ["One", "Two", "Unresolved"] }]);
-  assert.deepEqual(result.map((meta) => meta.id), ["tvdb:111", "tmdb:222"]);
+  assert.deepEqual(result.map((meta) => meta.id), ["tmdb:112", "tmdb:222"]);
   assert.equal(result[0].extra.originalCatalogId, "mal:101");
   assert.equal(result[1].extra.originalCatalogId, "anilist:12");
 });
@@ -65,4 +85,16 @@ test("catalog identity uses validated AniBridge fallback when the batch lookup h
   assert.deepEqual(calls, [["anilist", "999"]]);
   assert.deepEqual(result.map((meta) => meta.id), ["tvdb:555"]);
   assert.equal(result[0].extra.originalCatalogId, "anilist:999");
+});
+
+test("catalog identity rejects a mapped identity when the mapping provider returns no exact title match", async () => {
+  const result = await canonicalizeCatalogMetasFast(
+    [{ id: "anilist:950", name: "Pokémon Horizons", extra: { anilistId: 950, titleEnglish: "Pokémon Horizons" } }],
+    {
+      resolveExternalMetadataIdsByAniListIds: async () => new Map(),
+      resolveWithAniBridgeTvdb: async () => null,
+    },
+  );
+
+  assert.deepEqual(result, []);
 });
