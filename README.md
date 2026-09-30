@@ -3,7 +3,7 @@
 [![Nuvio](https://img.shields.io/badge/Nuvio-addon-ff6f61.svg)](https://nuvio.tv)
 [![AniList](https://img.shields.io/badge/AniList-data_source-02A9FF.svg)](https://anilist.co)
 [![Vercel](https://img.shields.io/badge/deployed_on-Vercel-black.svg?logo=vercel)](https://vercel.com)
-[![Version](https://img.shields.io/badge/version-4.0.6-blue.svg)](https://github.com/mbmelgo/nuvio-anime-releases-addon/releases)
+[![Version](https://img.shields.io/badge/version-4.1.0-blue.svg)](https://github.com/mbmelgo/nuvio-anime-releases-addon/releases)
 
 > A lightweight, season-aware anime release catalog for Nuvio and Stremio-compatible clients.
 
@@ -162,8 +162,7 @@ The season represented by each endpoint is calculated dynamically.
 
 ## ✅ Release State
 
-**Current source version:** `v4.0.6`  
-**Last production release:** `v4.0.0`  
+**Current production version:** `v4.1.0`  
 **Major baseline:** `v4.0.0`
 
 The 2026 seasonal baselines validated during the `v4.0.0` production release are:
@@ -175,6 +174,28 @@ The 2026 seasonal baselines validated during the `v4.0.0` production release are
 | Fall 2026 | **94** |
 
 These counts correspond to the AniList seasonal query using the six supported anime formats described above.
+
+---
+
+## 🚀 Releases
+
+Production releases are published as GitHub Releases alongside their production release tags.
+
+**GitHub Releases:** https://github.com/mbmelgo/nuvio-anime-releases-addon/releases
+
+Every **MINOR** production deployment creates a corresponding release entry with a human-readable summary of the changes included in that release.
+
+Semantic versioning is used:
+
+- **PATCH** — normal meaningful changes.
+- **MINOR** — production deployments.
+- **MAJOR** — deliberate architectural or project-baseline changes.
+
+Current major baseline:
+
+```text
+v4.0.0
+```
 
 ---
 
@@ -214,7 +235,7 @@ ops/
 
 ---
 
-## 🚀 Release Workflow
+## 🚦 Release Workflow
 
 Production releases follow the repository release pipeline:
 
@@ -229,21 +250,11 @@ Controlled Vercel deployment
   ↓
 Production smoke test
   ↓
-Release tag
+Git tag
+  ↓
+GitHub Release
   ↓
 Release-state update
-```
-
-Semantic versioning is used:
-
-- **PATCH** — normal meaningful changes.
-- **MINOR** — production deployments.
-- **MAJOR** — deliberate architectural or project-baseline changes.
-
-Current major baseline:
-
-```text
-v4.0.0
 ```
 
 ---
