@@ -7,8 +7,6 @@ const CATALOGS = [
   ["Upcoming Season", "upcoming_season", "Anime scheduled for the next season"],
   ["Current Season", "current_season", "Anime in the current season"],
   ["Previous Season", "previous_season", "Anime from the immediately preceding season"],
-  ["Latest Anime — Last 7 Days", "new_episodes", "Anime with episodes released within the rolling last 7 days; refreshed hourly"],
-  ["Upcoming Anime — Next 7 Days", "upcoming_episodes", "Anime with episodes scheduled within the rolling next 7 days; refreshed hourly"],
 ];
 
 export default function handler(req, res) {
@@ -42,11 +40,11 @@ export default function handler(req, res) {
 
     <section class="panel">
       <h2>Supported catalogs</h2>
-      <p class="note">Seasonal catalogs are generated dynamically from the current date. The latest/upcoming episode catalogs use rolling seven-day windows and are cached for up to one hour.</p>
+      <p class="note">Only the three seasonal catalogs are currently exposed. Results are generated dynamically from the current date.</p>
       ${CATALOGS.map(([name, id, description]) => `
       <div class="catalog">
         <div><h3>${name}</h3><p>${description}</p></div>
-        <a href="${BASE_URL}/catalog/series/${id}.json">${BASE_URL}/catalog/series/${id}.json</a>
+        <a href="${BASE_URL}/catalog/anime/${id}.json">${BASE_URL}/catalog/anime/${id}.json</a>
       </div>`).join("")}
     </section>
 
