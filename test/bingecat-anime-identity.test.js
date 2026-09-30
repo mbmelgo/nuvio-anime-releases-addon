@@ -22,7 +22,7 @@ test("release addon advertises anime catalogs for external metadata delegation",
   assert.match(manifest.description, /release/i);
 });
 
-test("AniList external links prefer TVDB, then TMDB, then IMDb in BingeCat-compatible formats", () => {
+test("AniList external links prefer TMDB, then IMDb, then TVDB in BingeCat-compatible formats", () => {
   const media = {
     id: 158871,
     idMal: 53876,
@@ -36,7 +36,7 @@ test("AniList external links prefer TVDB, then TMDB, then IMDb in BingeCat-compa
   };
 
   const meta = toMeta(media);
-  assert.equal(meta.id, "tvdb:433862");
+  assert.equal(meta.id, "tmdb:220150");
   assert.equal(meta.type, "anime");
   assert.equal(meta.extra.tvdbId, "433862");
   assert.equal(meta.extra.tmdbId, "220150");
@@ -72,7 +72,7 @@ test("catalog identity treats raw IMDb IDs and TVDB IDs as direct BingeCat-compa
   assert.equal(calls, 0);
 });
 
-test("catalog identity prefers a validated TVDB mapping over TMDB and IMDb mappings", async () => {
+test("catalog identity prefers TMDB, then IMDb, then TVDB when mappings are all available", async () => {
   const result = await canonicalizeCatalogMetasFast([
     { id: "anilist:158871", name: "Pokémon Horizons", extra: { anilistId: 158871 } },
   ], {
@@ -81,5 +81,5 @@ test("catalog identity prefers a validated TVDB mapping over TMDB and IMDb mappi
     ]),
   });
 
-  assert.equal(result[0].id, "tvdb:433862");
+  assert.equal(result[0].id, "tmdb:220150");
 });
