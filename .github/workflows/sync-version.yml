@@ -10,6 +10,11 @@ on:
         required: true
         default: false
         type: boolean
+      finalize_release:
+        description: 'Finalize an already-deployed production release without redeploying Vercel'
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -46,10 +51,16 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "push" && "$COMMIT_MESSAGE" == *"[deploy-prod]"* ]]; then
             echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "redeploy=true" >> "$GITHUB_OUTPUT"
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.deploy_prod }}" == "true" ]]; then
             echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "redeploy=true" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.finalize_release }}" == "true" ]]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "redeploy=false" >> "$GITHUB_OUTPUT"
           else
             echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "redeploy=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Bump patch version and sync metadata
@@ -71,12 +82,10 @@ jobs:
           package_path.write_text(json.dumps(package,indent=2)+'\n')
           readme=Path('README.md')
           text=readme.read_text()
-          text=re.sub(r'(?m)^(# Anime Releases for Nuvio — v)\d+\.\d+\.\d+',rf'\g<1>{next_version}',text)
-          text=re.sub(r'(?m)^(\- \*\*Development version:\*\* `)\d+\.\d+\.\d+(`)',rf'\g<1>{next_version}\g<2>',text)
           readme.write_text(text)
           PY
           git config user.name github-actions[bot]
-          git config user.email 41898282+mbmelgo@users.noreply.github.com
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add api/version.js package.json README.md
           git commit -m "chore: bump patch version [skip-release-pipeline]"
           git push
@@ -97,7 +106,7 @@ jobs:
           PY
 
       - name: Trigger Vercel deployment
-        if: steps.gate.outputs.release == 'true'
+        if: steps.gate.outputs.release == 'true' && steps.gate.outputs.redeploy == 'true'
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: test -n "$VERCEL_DEPLOY_HOOK_URL" && curl --fail --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
@@ -126,7 +135,7 @@ jobs:
           assert metas
           assert all(re.match(r'^anilist:\d+$',str(m.get('id',''))) for m in metas)
           assert all(m.get('type') == 'series' for m in metas)
-          assert any(m.get('id') == 'anilist:185874' for m in metas)
+          assert any(m.get('id') == 'anilist:195604' for m in metas)
           PY
             then
               echo "Production smoke test passed."
