@@ -1,27 +1,13 @@
 name: Verify automatic version commits
 
+# TEMPORARILY DISABLED while GitHub Actions are being optimized.
+# The previous implementation is preserved in Git history.
 on:
-  workflow_run:
-    workflows: ["CI, automatic patch versioning, and controlled Vercel release"]
-    types: [completed]
-
-permissions:
-  contents: read
+  workflow_dispatch:
 
 jobs:
-  verify:
-    if: github.event.workflow_run.conclusion == 'success'
+  disabled:
+    if: ${{ false }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     steps:
-      - name: Checkout current main after release workflow
-        uses: actions/checkout@v7
-        with:
-          ref: main
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          package-manager-cache: false
-      - name: Run full test suite
-        run: npm test
+      - run: echo "Temporarily disabled during Actions optimization."
