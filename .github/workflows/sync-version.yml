@@ -88,7 +88,7 @@ jobs:
             if EXPECTED="$expected" ROOT="$root_manifest" CATALOG="$catalog" META_STATUS="$meta_status" python - <<'PY'
           import json,os,re
           root=json.loads(os.environ['ROOT']); catalog=json.loads(os.environ['CATALOG']); expected=os.environ['EXPECTED']
-          assert root.get('version')==expected and root.get('id')=='com.marki.nuvio.anime-releases'; assert root.get('resources') == [{"name":"catalog","types":["anime"]}]; assert root.get('types') == ['anime']; assert root.get('catalogs') and all(c.get('type') == 'anime' for c in root['catalogs']); assert os.environ['META_STATUS']=='404'; metas=catalog.get('metas',[]); assert metas; assert all(re.match(r'^(tt\d+|tvdb:\d+|tmdb:\d+)$',str(m.get('id',''))) for m in metas); assert all(m.get('type') == 'series' for m in metas)
+          assert root.get('version')==expected and root.get('id')=='com.marki.nuvio.anime-releases'; assert root.get('resources') == [{"name":"catalog","types":["anime"]}]; assert root.get('types') == ['anime']; assert root.get('catalogs') and all(c.get('type') == 'anime' for c in root['catalogs']); assert os.environ['META_STATUS']=='404'; metas=catalog.get('metas',[]); assert metas; assert all(re.match(r'^(anilist:\d+|tt\d+|tvdb:\d+|tmdb:\d+)$',str(m.get('id',''))) for m in metas); assert all(m.get('type') == 'series' for m in metas); assert any(m.get('id') == 'anilist:185874' for m in metas)
           PY
             then echo "Production smoke test passed."; exit 0; fi; sleep 5
           done
