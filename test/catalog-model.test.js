@@ -7,6 +7,7 @@ import {
   catalogDefinitions,
   getLast7DaysRangeManila,
   getNext7DaysRangeManila,
+  normalizeSeasonalCatalogMetaTypes,
 } from "../api/catalog-source.js";
 import { canonicalizeCatalogMetasFast } from "../lib/kitsu-canonical.js";
 import { extractSupportedExternalIds, toMeta } from "../lib/catalog-meta.js";
@@ -18,6 +19,16 @@ test("catalog model exposes only the three seasonal catalogs with 50-item Nuvio 
   assert.equal(catalogs[1].name, "Current Season — Summer 2026");
   assert.equal(catalogs[2].name, "Previous Season — Spring 2026");
   assert.deepEqual(catalogs.map((catalog) => catalog.pageSize), [50, 50, 50]);
+});
+
+test("seasonal catalog items use a Nuvio-compatible series type while the catalog resource remains anime", () => {
+  const metas = normalizeSeasonalCatalogMetaTypes([
+    { id: "tmdb:325158", type: "anime", name: "The Forsaken Saintess and Her Foodie Roadtrip in Another World" },
+    { id: "tt1234567", type: "anime", name: "Example Anime" },
+  ]);
+
+  assert.deepEqual(metas.map((meta) => meta.type), ["series", "series"]);
+  assert.equal(catalogDefinitions({ previous: { season: "SPRING", year: 2026 }, ongoing: { season: "SUMMER", year: 2026 }, upcoming: { season: "FALL", year: 2026 } })[1].type, "anime");
 });
 
 test("Nuvio and AniList seasonal pages are both 50", () => {
