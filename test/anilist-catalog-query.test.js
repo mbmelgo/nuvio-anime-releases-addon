@@ -2,28 +2,52 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { queryAnime, queryAiringSchedulePage } from "../lib/catalog-anilist.js";
 
-test("catalog AniList queries request 50 media IDs and no external metadata fields", async () => {
+test("catalog AniList queries request 50 media rows with only fields needed to render Nuvio previews", async () => {
   const originalFetch = globalThis.fetch;
   let request;
   globalThis.fetch = async (_url, options) => {
     request = JSON.parse(options.body);
     return new Response(JSON.stringify({
-      data: { Page: { media: [{ id: 166254 }, { id: 185874 }] } },
+      data: {
+        Page: {
+          media: [{
+            id: 166254,
+            title: { english: "Pokémon Horizons", romaji: "Pokemon Horizons", native: "ポケットモンスター" },
+            coverImage: { large: "https://example.test/pokemon.jpg" },
+            status: "RELEASING",
+            startDate: { year: 2026, month: 4, day: 11 },
+            endDate: { year: null },
+            genres: ["Action", "Adventure"],
+          }],
+        },
+      },
     }), { status: 200, headers: { "Content-Type": "application/json" } });
   };
 
   try {
     const filter = { season: { season: "FALL", year: 2026 }, status: "NOT_YET_RELEASED", sort: ["ID"] };
     const result = await queryAnime(filter, 2, "Pokémon Horizons");
-    assert.deepEqual(result, [166254, 185874]);
+    assert.deepEqual(result, [{
+      id: 166254,
+      title: { english: "Pokémon Horizons", romaji: "Pokemon Horizons", native: "ポケットモンスター" },
+      coverImage: { large: "https://example.test/pokemon.jpg" },
+      status: "RELEASING",
+      startDate: { year: 2026, month: 4, day: 11 },
+      endDate: { year: null },
+      genres: ["Action", "Adventure"],
+    }]);
     assert.equal(request.variables.page, 2);
     assert.equal(request.variables.search, "Pokémon Horizons");
     assert.deepEqual(request.variables.sort, ["ID"]);
     assert.match(request.query, /perPage:50/);
     assert.match(request.query, /\bid\b/);
+    assert.match(request.query, /title\s*\{/);
+    assert.match(request.query, /coverImage\s*\{/);
+    assert.match(request.query, /status/);
+    assert.match(request.query, /startDate\s*\{/);
+    assert.match(request.query, /endDate\s*\{/);
+    assert.match(request.query, /genres/);
     assert.doesNotMatch(request.query, /idMal/);
-    assert.doesNotMatch(request.query, /title\s*\{/);
-    assert.doesNotMatch(request.query, /coverImage/);
     assert.doesNotMatch(request.query, /externalLinks/);
     assert.doesNotMatch(request.query, /nextAiringEpisode/);
   } finally {
