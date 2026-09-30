@@ -9,6 +9,10 @@
       "destination": "/api/resolver-manifest"
     },
     {
+      "source": "/anibridge/manifest.json",
+      "destination": "/api/resolver-manifest?withAniBridge=true"
+    },
+    {
       "source": "/catalog/:type/:id.json",
       "destination": "/api/catalog-source?resource=catalog&type=:type&id=:id"
     },
@@ -19,6 +23,18 @@
     {
       "source": "/catalog/:type/:id/:extra*",
       "destination": "/api/catalog-source?resource=catalog&type=:type&id=:id&extra=:extra*"
+    },
+    {
+      "source": "/anibridge/catalog/:type/:id.json",
+      "destination": "/api/catalog-source?resource=catalog&type=:type&id=:id&withAniBridge=true"
+    },
+    {
+      "source": "/anibridge/catalog/:type/:id/search=:search&skip=:skip.json",
+      "destination": "/api/catalog-source?resource=catalog&type=:type&id=:id&search=:search&skip=:skip&withAniBridge=true"
+    },
+    {
+      "source": "/anibridge/catalog/:type/:id/:extra*",
+      "destination": "/api/catalog-source?resource=catalog&type=:type&id=:id&extra=:extra*&withAniBridge=true"
     },
     {
       "source": "/",
