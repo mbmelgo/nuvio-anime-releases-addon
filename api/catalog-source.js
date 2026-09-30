@@ -13,7 +13,6 @@ import {
 import { filterCatalogMetasBySearch, toMeta } from "../lib/catalog-meta.js";
 import { queryAnime } from "../lib/catalog-anilist.js";
 import { scheduleCatalog } from "../lib/catalog-schedule.js";
-import { collectValidatedCatalogPage } from "../lib/catalog-pagination.js";
 
 export {
   ANILIST_PAGE_SIZE,
@@ -80,11 +79,6 @@ export function getCatalogFilter(id, info) {
 export async function canonicalizeCatalogPage(metas, options = {}) {
   if (!Array.isArray(metas) || metas.length === 0) return [];
 
-  // Catalog requests must stay on the cheap identity path. Direct TVDB/TMDB/
-  // IMDb links from AniList are accepted immediately; unresolved AniList IDs
-  // are mapped in one batched lookup. The full relationship/provider resolver
-  // is intentionally reserved for detail-oriented identity work, not catalog
-  // pagination, where its multi-provider fan-out makes every page expensive.
   try {
     return await canonicalizeCatalogIdentity(metas, options);
   } catch (error) {
@@ -106,24 +100,15 @@ export async function buildCatalog(id, info, now, skip, search) {
   const filter = getCatalogFilter(id, info);
   if (!filter) return [];
 
-  return collectValidatedCatalogPage({
-    skip,
-    pageSize: NUVIO_PAGE_SIZE,
-    maxPages: MAX_CATALOG_FILL_PAGES,
-    fetchPage: (page) => queryAnime(filter, page, search),
-    canonicalizePage: (metas) => canonicalizeCatalogPage(metas),
-    onPage: ({ page, rawCount, validCount, accumulatedCount }) => {
-      console.info("[catalog] page", {
-        catalog: id,
-        skip,
-        search: search || undefined,
-        anilistPage: page,
-        rawCount,
-        validCount,
-        accumulatedCount,
-      });
-    },
-  });
+  // One Nuvio page maps to one AniList page. If validation leaves fewer than
+  // 50 results, return fewer than 50 instead of fetching another AniList page
+  // solely to fill the page. This keeps request volume predictable and avoids
+  // pagination amplification caused by rejected identities.
+  const anilistPage = Math.floor(Math.max(0, Number(skip) || 0) / NUVIO_PAGE_SIZE) + 1;
+  const pageOffset = Math.max(0, Number(skip) || 0) % NUVIO_PAGE_SIZE;
+  const rows = await queryAnime(filter, anilistPage, search);
+  const canonical = await canonicalizeCatalogPage(rows);
+  return canonical.slice(pageOffset, pageOffset + NUVIO_PAGE_SIZE);
 }
 
 function send(res, body, status = 200) {
