@@ -2,6 +2,29 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { queryAnime, queryAiringSchedulePage } from "../lib/catalog-anilist.js";
 
+test("catalog AniList queries request all seasonal anime formats without a status filter", async () => {
+  const originalFetch = globalThis.fetch;
+  let request;
+  globalThis.fetch = async (_url, options) => {
+    request = JSON.parse(options.body);
+    return new Response(JSON.stringify({ data: { Page: { media: [] } } }), { status: 200 });
+  };
+
+  try {
+    await queryAnime({ season: { season: "FALL", year: 2026 }, sort: ["ID"] }, 1);
+    assert.equal(request.variables.page, 1);
+    assert.equal(request.variables.season, "FALL");
+    assert.equal(request.variables.seasonYear, 2026);
+    assert.equal(request.variables.sort[0], "ID");
+    assert.equal(Object.hasOwn(request.variables, "status"), false);
+    assert.match(request.query, /format_in:\[TV,TV_SHORT,ONA,OVA,SPECIAL,MOVIE\]/);
+    assert.doesNotMatch(request.query, /status:\$status/);
+    assert.match(request.query, /perPage:50/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("catalog AniList queries request 50 media rows with only fields needed to render Nuvio previews", async () => {
   const originalFetch = globalThis.fetch;
   let request;
@@ -25,7 +48,7 @@ test("catalog AniList queries request 50 media rows with only fields needed to r
   };
 
   try {
-    const filter = { season: { season: "FALL", year: 2026 }, status: "NOT_YET_RELEASED", sort: ["ID"] };
+    const filter = { season: { season: "FALL", year: 2026 }, sort: ["ID"] };
     const result = await queryAnime(filter, 2, "Pokémon Horizons");
     assert.deepEqual(result, [{
       id: 166254,
