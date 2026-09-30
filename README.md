@@ -1,16 +1,16 @@
-# Anime Releases for Nuvio — v3.53.3
+# Anime Releases for Nuvio — v3.54.0
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
-- **Branch:** `feature/optional-anibridge-manifests`
-- **Development version:** `3.53.3`
+- **Branch:** `main`
+- **Development version:** `3.54.0`
 - **Production release:** `v3.53.0`
-- **Release candidate:** `v3.53.2`
+- **Release candidate:** `v3.54.0`
 - **Autonomous deployment checkpoint:** `0/10` for this iteration only
 
-## v3.53.2 changes
+## v3.54.0 changes
 
 - Adds a shared catalog identity pipeline with `withAniBridge` as an explicit runtime option.
 - Makes the primary manifest AniList-only, using `anilist:<id>` identities without AniBridge requests.
@@ -33,4 +33,4 @@ Both manifests use the same catalog implementation; only identity resolution dif
 
 ## Production validation
 
-The current production baseline is `v3.53.0`. The optional-manifest change is not yet deployed while its PR is being tested and reviewed.
+The current production baseline is `v3.53.0`. The optional-manifest change is queued for controlled production deployment as `v3.54.0`.
