@@ -2,10 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { canonicalizeCatalogMetasFast } from "../lib/catalog-identity.js";
 
-test("catalog identity keeps direct supported identities without provider calls", async () => {
+test("catalog identity keeps direct BingeCat-supported identities without provider calls", async () => {
   let calls = 0;
   const result = await canonicalizeCatalogMetasFast(
-    [{ id: "tmdb:123", name: "Control" }],
+    [
+      { id: "tmdb:123", name: "Control" },
+      { id: "tvdb:456", name: "TVDB Control" },
+      { id: "tt1234567", name: "IMDb Control" },
+    ],
     {
       resolveExternalMetadataIdsByAniListIds: async () => {
         calls += 1;
@@ -14,7 +18,7 @@ test("catalog identity keeps direct supported identities without provider calls"
     },
   );
 
-  assert.deepEqual(result.map((meta) => meta.id), ["tmdb:123"]);
+  assert.deepEqual(result.map((meta) => meta.id), ["tmdb:123", "tvdb:456", "tt1234567"]);
   assert.equal(calls, 0);
 });
 
@@ -30,8 +34,8 @@ test("catalog identity resolves multiple AniList candidates with one batched loo
       resolveExternalMetadataIdsByAniListIds: async (ids, metas) => {
         calls.push({ ids, names: metas.map((meta) => meta.name) });
         return new Map([
-          ["11", { tmdb: "111", imdb: null }],
-          ["12", { tmdb: null, imdb: "tt222" }],
+          ["11", { tvdb: "111", tmdb: "112", imdb: "tt113" }],
+          ["12", { tmdb: "222", imdb: "tt223" }],
         ]);
       },
       resolveWithAniBridgeTvdb: async () => null,
@@ -39,7 +43,7 @@ test("catalog identity resolves multiple AniList candidates with one batched loo
   );
 
   assert.deepEqual(calls, [{ ids: ["11", "12", "13"], names: ["One", "Two", "Unresolved"] }]);
-  assert.deepEqual(result.map((meta) => meta.id), ["tmdb:111", "imdb:tt222"]);
+  assert.deepEqual(result.map((meta) => meta.id), ["tvdb:111", "tmdb:222"]);
   assert.equal(result[0].extra.originalCatalogId, "mal:101");
   assert.equal(result[1].extra.originalCatalogId, "anilist:12");
 });

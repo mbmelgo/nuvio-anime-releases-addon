@@ -34,7 +34,7 @@ test("catalog search is passed to AniList instead of requiring full-season local
 });
 
 test("fast catalog identity prefers a validated TVDB mapping without invoking the full resolver", async () => {
-  const metas = [{ id: "mal:62080", type: "series", name: "The Oblivious Saint Can't Contain Her Power", releaseInfo: "2026", extra: { anilistId: 196219, malId: 62080 } }];
+  const metas = [{ id: "mal:62080", type: "anime", name: "The Oblivious Saint Can't Contain Her Power", releaseInfo: "2026", extra: { anilistId: 196219, malId: 62080 } }];
   const calls = [];
   const result = await canonicalizeCatalogMetasFast(metas, {
     resolveTvdb: async (meta) => { calls.push(meta.extra.anilistId); return "465988"; },
@@ -46,7 +46,7 @@ test("fast catalog identity prefers a validated TVDB mapping without invoking th
 });
 
 test("fast catalog identity omits an item when no supported downstream identity exists", async () => {
-  const metas = [{ id: "mal:53876", type: "series", name: "Pokémon Horizons", releaseInfo: "2023-", extra: { anilistId: 166254, malId: 53876 } }];
+  const metas = [{ id: "mal:53876", type: "anime", name: "Pokémon Horizons", releaseInfo: "2023-", extra: { anilistId: 166254, malId: 53876 } }];
   let called = false;
   const result = await canonicalizeCatalogMetasFast(metas, { resolveTvdb: async () => { called = true; return null; }, resolveMalTvdb: async () => null, recoverContinuation: async () => { throw new Error("must not run for ordinary title"); } });
   assert.equal(called, true);
@@ -54,7 +54,7 @@ test("fast catalog identity omits an item when no supported downstream identity 
 });
 
 test("fast catalog identity recovers the franchise TVDB identity for a roman-numbered continuation", async () => {
-  const metas = [{ id: "mal:61897", type: "series", name: "From Old Country Bumpkin to Master Swordsman II", releaseInfo: "2026", extra: { anilistId: 194829, malId: 61897 } }];
+  const metas = [{ id: "mal:61897", type: "anime", name: "From Old Country Bumpkin to Master Swordsman II", releaseInfo: "2026", extra: { anilistId: 194829, malId: 61897 } }];
   let recoveryTitles = null;
   const result = await canonicalizeCatalogMetasFast(metas, {
     resolveTvdb: async () => null,
@@ -79,10 +79,13 @@ test("AniList external links are converted to direct supported catalog identitie
       { site: "MyAnimeList", url: "https://myanimelist.net/anime/53876" },
       { site: "IMDb", url: "https://www.imdb.com/title/tt26692417/" },
       { site: "The Movie Database", url: "https://www.themoviedb.org/tv/220150" },
+      { site: "TheTVDB", url: "https://thetvdb.com/dereferrer/series/433862" },
     ],
   };
   const meta = toMeta(media);
-  assert.equal(meta.id, "tmdb:220150");
+  assert.equal(meta.id, "tvdb:433862");
+  assert.equal(meta.type, "anime");
+  assert.equal(meta.extra.tvdbId, "433862");
   assert.equal(meta.extra.tmdbId, "220150");
   assert.equal(meta.extra.imdbId, "tt26692417");
 });
