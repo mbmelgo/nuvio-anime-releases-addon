@@ -20,7 +20,7 @@ test("catalog AniList queries request 50 media records and only preview/identity
         externalLinks: [
           { site: "The Movie Database", url: "https://www.themoviedb.org/tv/217542" },
           { site: "IMDb", url: "https://www.imdb.com/title/tt28399462/" },
-          { site: "TheTVDB", url: "https://thetvdb.com/series/pokemon-horizons" },
+          { site: "TheTVDB", url: "https://thetvdb.com/series/421898" },
         ],
       }] } },
     }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -35,7 +35,7 @@ test("catalog AniList queries request 50 media records and only preview/identity
     assert.equal(result[0].extra.anilistId, 166254);
     assert.equal(result[0].extra.tmdbId, "217542");
     assert.equal(result[0].extra.imdbId, "tt28399462");
-    assert.equal(result[0].extra.tvdbId, "pokemon-horizons");
+    assert.equal(result[0].extra.tvdbId, "421898");
     assert.match(request.query, /idMal/);
     assert.match(request.query, /coverImage/);
     assert.match(request.query, /nextAiringEpisode/);
