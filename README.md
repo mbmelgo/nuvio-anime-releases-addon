@@ -1,16 +1,16 @@
-# Anime Releases for Nuvio — v3.49.0
+# Anime Releases for Nuvio — v3.49.1
 
 A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible clients**.
 
 ## Current status
 
 - **Branch:** `main`
-- **Development version:** `3.49.0`
-- **Production release:** `v3.47.0`
-- **Release candidate:** `v3.49.0`
+- **Development version:** `3.49.1`
+- **Production release:** `v3.48.1`
+- **Release candidate:** `v3.49.1`
 - **Autonomous deployment checkpoint:** `1/5`
 
-## v3.49.0 changes
+## v3.49.1 changes
 
 - Keeps only the three seasonal anime catalogs exposed to Nuvio while the release/airing catalogs remain disabled.
 - Keeps seasonal catalog pagination aligned with the 50-item AniList batch model.
@@ -22,7 +22,7 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 
 ## Production release request
 
-v3.49.0 is ready for the controlled production deployment after CI verification.
+v3.49.1 is ready for the controlled production deployment after CI verification.
 
 ## Previous production direction
 
