@@ -4,7 +4,7 @@ A season-aware anime release catalog for **Nuvio / BingeCat / Stremio-compatible
 
 ## Current status
 
-- **Production release:** `v3.57.0` (pending production deployment)
+- **Production release:** `v3.57.0`
 - **Identity:** AniList-only, using `anilist:<id>` as the canonical catalog identity
 - **Catalogs:** Upcoming, Current, and Previous Season
 - **Seasonal query:** AniList `ANIME` entries in `TV`, `TV_SHORT`, `ONA`, `OVA`, `SPECIAL`, and `MOVIE` formats, with no status restriction
