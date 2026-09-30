@@ -2,34 +2,34 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { canonicalizeCatalogPage } from "../api/catalog-source.js";
 
-test("seasonal catalog converts AniBridge mappings to Nuvio series metas in AniList order", async () => {
+test("seasonal catalog converts AniBridge mappings plus AniList preview data to Nuvio series metas in AniList order", async () => {
   const calls = [];
-  const result = await canonicalizeCatalogPage([185874, 166254, 123456], {
+  const result = await canonicalizeCatalogPage([
+    {
+      id: 185874,
+      title: { english: "Bleach: Thousand-Year Blood War", romaji: "Bleach: Sennen Kessen-hen", native: "BLEACH 千年血戦篇" },
+      coverImage: { large: "https://example.test/bleach.jpg" },
+      status: "RELEASING",
+      startDate: { year: 2022, month: 10, day: 11 },
+      endDate: { year: null },
+      genres: ["Action", "Adventure"],
+    },
+    {
+      id: 166254,
+      title: { english: "Pokémon Horizons" },
+      coverImage: { large: "https://example.test/pokemon.jpg" },
+      status: "RELEASING",
+      startDate: { year: 2023, month: 4, day: 14 },
+      endDate: { year: null },
+      genres: ["Adventure"],
+    },
+    { id: 123456, title: { romaji: "Unmapped Anime" }, coverImage: { large: "https://example.test/unmapped.jpg" } },
+  ], {
     resolveAniListMappings: async (ids) => {
       calls.push(ids);
       return new Map([
-        ["185874", {
-          tmdb: "30984",
-          imdb: null,
-          tvdb: "74796",
-          anilist: {
-            id: 185874,
-            title: { english: "Bleach: Thousand-Year Blood War", romaji: "Bleach: Sennen Kessen-hen" },
-            coverImage: { medium: "https://example.test/bleach.jpg" },
-            status: "RELEASING",
-          },
-        }],
-        ["166254", {
-          tmdb: null,
-          imdb: "tt28399462",
-          tvdb: null,
-          anilist: {
-            id: 166254,
-            title: { english: "Pokémon Horizons" },
-            coverImage: { medium: "https://example.test/pokemon.jpg" },
-            status: "RELEASING",
-          },
-        }],
+        ["185874", { tmdb: "30984", imdb: null, tvdb: "74796" }],
+        ["166254", { tmdb: null, imdb: "tt28399462", tvdb: null }],
       ]);
     },
   });
@@ -39,11 +39,13 @@ test("seasonal catalog converts AniBridge mappings to Nuvio series metas in AniL
   assert.deepEqual(result.map((meta) => meta.type), ["series", "series"]);
   assert.equal(result[0].name, "Bleach: Thousand-Year Blood War");
   assert.equal(result[0].poster, "https://example.test/bleach.jpg");
+  assert.equal(result[0].releaseInfo, "2022-");
+  assert.deepEqual(result[0].genres, ["Action", "Adventure"]);
   assert.equal(result[0].extra.anilistId, 185874);
   assert.equal(result[0].extra.tvdbId, "74796");
 });
 
-test("seasonal catalog can build a minimal Nuvio meta from AniBridge IDs alone", async () => {
+test("seasonal catalog can still build a minimal Nuvio meta from AniBridge IDs when AniList preview data is unavailable", async () => {
   const result = await canonicalizeCatalogPage([185874], {
     resolveAniListMappings: async () => new Map([
       ["185874", { tmdb: "30984", imdb: null, tvdb: "74796" }],
