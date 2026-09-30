@@ -27,7 +27,7 @@ test("catalog AniList queries request 50 media records and only preview/identity
   };
 
   try {
-    const filter = { season: { season: "FALL", year: 2026 }, status: "NOT_YET_RELEASED", sort: ["START_DATE", "TITLE_ROMAJI", "ID"] };
+    const filter = { season: { season: "FALL", year: 2026 }, status: "NOT_YET_RELEASED", sort: ["ID"] };
     const result = await queryAnime(filter, 2, "Pokémon Horizons");
     assert.equal(result.length, 1);
     assert.equal(result[0].id, "tmdb:217542");
@@ -45,7 +45,7 @@ test("catalog AniList queries request 50 media records and only preview/identity
     assert.match(request.query, /perPage:50/);
     assert.equal(request.variables.page, 2);
     assert.equal(request.variables.search, "Pokémon Horizons");
-    assert.deepEqual(request.variables.sort, ["START_DATE", "TITLE_ROMAJI", "ID"]);
+    assert.deepEqual(request.variables.sort, ["ID"]);
   } finally {
     globalThis.fetch = originalFetch;
   }
