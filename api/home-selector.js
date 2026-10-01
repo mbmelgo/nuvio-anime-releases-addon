@@ -7,6 +7,8 @@ const SAMPLE_IMAGES = [
   ["Seasonal Catalogs", "/docs/images/readme-nuvio-home.png", "Representative seasonal catalog view"],
   ["Season Listing", "/docs/images/readme-nuvio-season.png", "Representative season listing"],
   ["Metadata Detail Flow", "/docs/images/readme-nuvio-detail.png", "Representative anime detail flow"],
+  ["Upcoming — 5 days", "/docs/images/readme-nuvio-upcoming-5-days.svg", "Representative upcoming rolling catalog"],
+  ["Previous — 7 days", "/docs/images/readme-nuvio-previous-7-days.svg", "Representative previous rolling catalog"],
 ];
 
 const CATALOGS = [

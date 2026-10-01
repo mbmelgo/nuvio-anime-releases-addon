@@ -85,6 +85,18 @@ These are **representative showcase images**, not screenshots of the Nuvio appli
 
 ![Representative Nuvio season catalog](docs/images/readme-nuvio-season.png)
 
+### Rolling Catalogs
+
+#### Upcoming — 5 days
+
+![Upcoming — 5 days sample](docs/images/readme-nuvio-upcoming-5-days.svg)
+
+#### Previous — 7 days
+
+![Previous — 7 days sample](docs/images/readme-nuvio-previous-7-days.svg)
+
+These two images illustrate the rolling catalog concepts and filtering behavior; they are representative showcase graphics rather than exact Nuvio UI screenshots.
+
 ### Metadata Detail Flow
 
 ![Representative Nuvio anime detail flow](docs/images/readme-nuvio-detail.png)
