@@ -7,13 +7,14 @@ import {
   fetchValidatedSeasonCatalogPage,
 } from "../api/catalog-source.js";
 
-function schedule(mediaId, airingAt, episode, title = `Anime ${mediaId}`) {
+function schedule(mediaId, airingAt, episode, title = `Anime ${mediaId}`, malId = null) {
   return {
     id: `${mediaId}-${episode}`,
     airingAt,
     episode,
     media: {
       id: mediaId,
+      ...(malId ? { idMal: malId } : {}),
       title: { english: title, romaji: title, native: title },
       coverImage: { large: `https://example.test/${mediaId}.jpg` },
       status: "RELEASING",
@@ -49,19 +50,19 @@ test("rolling ranges are exactly 5 days upcoming and 7 days previous", () => {
   assert.equal(previous.end, now.getTime());
 });
 
-test("upcoming rolling catalog deduplicates anime while preserving schedule order", async () => {
+test("upcoming rolling catalog prefers MAL and falls back to AniList", async () => {
   const now = new Date("2026-10-01T00:00:00.000Z");
   const rows = [
-    schedule(10, now.getTime() + 60_000, 2),
-    schedule(20, now.getTime() + 120_000, 1),
-    schedule(10, now.getTime() + 180_000, 3),
-    schedule(30, now.getTime() + 240_000, 1),
+    schedule(10, now.getTime() + 60_000, 2, "MAL Anime", 10010),
+    schedule(20, now.getTime() + 120_000, 1, "AniList Fallback"),
+    schedule(10, now.getTime() + 180_000, 3, "MAL Anime", 10010),
+    schedule(30, now.getTime() + 240_000, 1, "Another MAL Anime", 10030),
   ];
   const result = await buildRollingCatalog("upcoming_5_days", now, 0, "", {
     fetchPage: async () => rows,
     maxPages: 1,
   });
-  assert.deepEqual(result.map((meta) => meta.id), ["anilist:10", "anilist:20", "anilist:30"]);
+  assert.deepEqual(result.map((meta) => meta.id), ["mal:10010", "anilist:20", "mal:10030"]);
   assert.equal(result[0].extra.nextEpisode, 2);
   assert.equal(result[0].extra.nextAiringAt, rows[0].airingAt);
 });
@@ -69,16 +70,16 @@ test("upcoming rolling catalog deduplicates anime while preserving schedule orde
 test("previous rolling catalog keeps most-recent schedule order and deduplicates anime", async () => {
   const now = new Date("2026-10-01T00:00:00.000Z");
   const rows = [
-    schedule(30, now.getTime() - 60_000, 4),
-    schedule(10, now.getTime() - 120_000, 9),
-    schedule(30, now.getTime() - 180_000, 3),
-    schedule(20, now.getTime() - 240_000, 7),
+    schedule(30, now.getTime() - 60_000, 4, "Anime 30", 10030),
+    schedule(10, now.getTime() - 120_000, 9, "Anime 10", 10010),
+    schedule(30, now.getTime() - 180_000, 3, "Anime 30", 10030),
+    schedule(20, now.getTime() - 240_000, 7, "Anime 20", 10020),
   ];
   const result = await buildRollingCatalog("previous_7_days", now, 0, "", {
     fetchPage: async () => rows,
     maxPages: 1,
   });
-  assert.deepEqual(result.map((meta) => meta.id), ["anilist:30", "anilist:10", "anilist:20"]);
+  assert.deepEqual(result.map((meta) => meta.id), ["mal:10030", "mal:10010", "mal:10020"]);
 });
 
 test("rolling pagination fills a Nuvio page across schedule pages after deduplication", async () => {
@@ -119,21 +120,20 @@ test("rolling search is applied before logical pagination so later schedule page
   assert.deepEqual(calls, [1, 2]);
 });
 
-test("seasonal pagination remains the existing direct AniList-page mapping", async () => {
+test("seasonal pagination requests AniList pages using the Nuvio 50-item offset", async () => {
   const calls = [];
   const result = await fetchValidatedSeasonCatalogPage({
     filter: { season: { season: "FALL", year: 2026 }, sort: ["ID"] },
     skip: 50,
     fetchPage: async (_filter, page) => {
       calls.push(page);
-      return [{ id: page * 100 + 1 }, { id: page * 100 + 2 }];
+      return [{ id: page * 100 + 1, idMal: 10001 }, { id: page * 100 + 2, idMal: 10002 }];
     },
-    canonicalizePage: async (rows) => rows.map((row) => ({ id: `anilist:${row.id}` })),
+    canonicalizePage: async (rows) => rows.map((row) => ({ id: `mal:${row.idMal}` })),
   });
   assert.deepEqual(calls, [2]);
-  assert.deepEqual(result, [{ id: "anilist:201" }, { id: "anilist:202" }]);
+  assert.deepEqual(result, [{ id: "mal:10001" }, { id: "mal:10002" }]);
 });
-
 
 test("rolling catalogs exclude adult and unsupported-format media", async () => {
   const now = new Date("2026-10-01T00:00:00.000Z");
