@@ -170,7 +170,7 @@ Catalog names and season labels are generated dynamically.
 **Development:** `v5.5.3`  
 **Major baseline:** `v5.0.0`
 
-v5.5.0 is the current production baseline. It includes MAL-first catalog identity, AniList fallback, Nuvio pagination, and the five supported seasonal/rolling catalogs. Development currently contains additional catalog-integrity and release-validation coverage that has not yet been promoted to production.
+v5.4.0 promotes MAL identity to the primary catalog identity while retaining AniList as the fallback. The rolling upcoming and previous catalogs remain part of the production addon.
 
 Production releases are published as Git tags and GitHub Releases.
 
@@ -214,8 +214,6 @@ lib/
 
 scripts/
   release-target.mjs
-  release-integrity.mjs
-  validate-production.mjs
 
 test/
   automated regression and release tests
@@ -232,28 +230,20 @@ docs/images/
 Production releases follow:
 
 ```text
-Feature / change
+Change
   ↓
-PR CI
+Tests
   ↓
-Merge to main
-  ↓
-Main CI + patch versioning
-  ↓
-Explicit release authorization
-  ↓
-Release/version integrity validation
+GitHub Actions CI
   ↓
 Controlled Vercel deployment
   ↓
-Production validation: manifest + all 5 catalogs + metadata boundary
+Production smoke test
   ↓
-Annotated Git tag + GitHub Release
+Git tag + GitHub Release
   ↓
 Release-state update
 ```
-
-Release metadata is validated across `api/version.js`, `package.json`, `README.md`, and `ops/release-state.json`. Production validation checks all five supported catalogs for valid, unique Nuvio series identities and catalog-specific rolling metadata.
 
 ## 📄 Scope
 
