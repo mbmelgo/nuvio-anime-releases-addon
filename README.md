@@ -3,11 +3,11 @@
 [![Nuvio](https://img.shields.io/badge/Nuvio-addon-ff6f61.svg)](https://nuvio.tv)
 [![AniList](https://img.shields.io/badge/AniList-data_source-02A9FF.svg)](https://anilist.co)
 [![Vercel](https://img.shields.io/badge/deployed_on-Vercel-black.svg?logo=vercel)](https://vercel.com)
-[![Version](https://img.shields.io/badge/version-4.2.0-blue.svg)](https://github.com/mbmelgo/nuvio-anime-releases-addon/releases)
+[![Version](https://img.shields.io/badge/version-4.2.4-blue.svg)](https://github.com/mbmelgo/nuvio-anime-releases-addon/releases)
 
 > A lightweight, season-aware anime release catalog for Nuvio and Stremio-compatible clients.
 
-**Anime Releases for Nuvio** provides dynamically generated seasonal anime catalogs using **AniList** as the catalog source. Anime are exposed with their canonical `anilist:<id>` identity, while detailed metadata and provider mapping are delegated to the metadata addon configured in the client.
+**Anime Releases for Nuvio** provides dynamically generated seasonal and rolling anime release catalogs using **AniList** as the catalog source. Anime are exposed with their canonical `anilist:<id>` identity, while detailed metadata and provider mapping are delegated to the metadata addon configured in the client.
 
 ---
 
@@ -22,6 +22,15 @@ The addon currently exposes three seasonal catalogs:
 - **Previous Season** — anime from the immediately preceding season.
 
 All three catalogs use the same generalized AniList query model; only the requested season changes.
+
+### ⏱️ Rolling Release Catalogs
+
+The addon also exposes two rolling release catalogs:
+
+- **Upcoming — 5 days** — unique anime with an upcoming airing schedule in the next five days.
+- **Previous — 7 days** — unique anime with an airing schedule in the previous seven days.
+
+Rolling catalogs use a separate AniList `Page.airingSchedules` pipeline, deduplicate by AniList media ID, and apply Nuvio pagination after deduplication.
 
 ### 🗂️ Broad Anime Format Coverage
 
@@ -51,6 +60,8 @@ This keeps the addon focused on catalog discovery and lets the downstream metada
 AniList requests use a **50-item page size**, matching the pagination model used by Nuvio.
 
 Large seasonal catalogs can therefore be consumed page-by-page without introducing a separate addon-side pagination scheme.
+
+Rolling catalogs apply pagination after schedule records have been deduplicated into unique anime.
 
 ### 🔎 Catalog Search
 
@@ -155,6 +166,8 @@ The current production addon exposes these catalog endpoints:
 | Upcoming Season | `/catalog/anime/upcoming_season.json` |
 | Current Season | `/catalog/anime/current_season.json` |
 | Previous Season | `/catalog/anime/previous_season.json` |
+| Upcoming — 5 days | `/catalog/anime/upcoming_5_days.json` |
+| Previous — 7 days | `/catalog/anime/previous_7_days.json` |
 
 The season represented by each endpoint is calculated dynamically.
 
@@ -163,6 +176,7 @@ The season represented by each endpoint is calculated dynamically.
 ## ✅ Release State
 
 **Current production version:** `v4.2.0`  
+**Development version:** `v4.2.4`  
 **Major baseline:** `v4.0.0`
 
 The 2026 seasonal baselines validated during the `v4.0.0` production release are:
@@ -272,6 +286,7 @@ As a result, an individual anime may occasionally experience an upstream metadat
 This addon is responsible for:
 
 - seasonal anime catalog discovery
+- rolling upcoming/recent airing catalog discovery
 - AniList-based anime identities
 - catalog pagination
 - catalog search

@@ -78,7 +78,7 @@ test("catalog AniList queries request 50 media rows with only fields needed to r
   }
 });
 
-test("schedule queries are page-bounded and request only fields used by the catalog", async () => {
+test("schedule queries default to descending time order", async () => {
   const originalFetch = globalThis.fetch;
   let request;
   globalThis.fetch = async (_url, options) => {
@@ -87,14 +87,34 @@ test("schedule queries are page-bounded and request only fields used by the cata
   };
 
   try {
-    const result = await queryAiringSchedulePage(1790000000000, 1791000000000, false, 4);
-    assert.deepEqual(result, []);
+    await queryAiringSchedulePage(1790000000000, 1791000000000, false, 4);
     assert.equal(request.variables.page, 4);
+    assert.match(request.query, /sort:TIME_DESC/);
     assert.match(request.query, /perPage:50/);
     assert.match(request.query, /airingSchedules/);
     assert.match(request.query, /episode/);
     assert.match(request.query, /airingAt/);
     assert.doesNotMatch(request.query, /nextAiringEpisode/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("upcoming schedule queries explicitly request future-only ascending time order", async () => {
+  const originalFetch = globalThis.fetch;
+  let request;
+  globalThis.fetch = async (_url, options) => {
+    request = JSON.parse(options.body);
+    return new Response(JSON.stringify({ data: { Page: { airingSchedules: [] } } }), { status: 200 });
+  };
+
+  try {
+    await queryAiringSchedulePage(1790812800000, 1791244800000, true, 1, "TIME");
+    assert.equal(request.variables.page, 1);
+    assert.equal(request.variables.notYetAired, true);
+    assert.equal(request.variables.start, 1790812800);
+    assert.equal(request.variables.end, 1791244800);
+    assert.match(request.query, /sort:TIME(?!_DESC)/);
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -1,15 +1,19 @@
 import {
   ANILIST_PAGE_SIZE,
+  MAX_SCHEDULE_PAGES,
   NUVIO_PAGE_SIZE,
   buildCatalogMediaVariables,
   catalogDefinitions as getCatalogDefinitions,
   getLast7DaysRangeManila,
   getNext7DaysRangeManila,
+  getNext5DaysRangeManila,
+  getPrevious7DaysRangeManila,
   getSeasonInfo as getSeasonInfoValue,
   parseCatalogExtraPath,
 } from "../lib/catalog-config.js";
+import { collectValidatedCatalogPage } from "../lib/catalog-pagination.js";
 import { filterCatalogMetasBySearch, toMetaFromAniList } from "../lib/catalog-meta.js";
-import { queryAnime } from "../lib/catalog-anilist.js";
+import { queryAnime, queryAiringSchedulePage } from "../lib/catalog-anilist.js";
 
 export {
   ANILIST_PAGE_SIZE,
@@ -17,6 +21,8 @@ export {
   buildCatalogMediaVariables,
   getLast7DaysRangeManila,
   getNext7DaysRangeManila,
+  getNext5DaysRangeManila,
+  getPrevious7DaysRangeManila,
   parseCatalogExtraPath,
   filterCatalogMetasBySearch,
   toMetaFromAniList,
@@ -75,12 +81,10 @@ export function normalizeSeasonalCatalogMetaTypes(metas) {
 
 export function canonicalizeCatalogPage(mediaRows) {
   if (!Array.isArray(mediaRows) || mediaRows.length === 0) return [];
-
   const normalizedRows = mediaRows
     .map((row) => (typeof row === "object" && row !== null ? row : { id: row }))
     .filter((row) => /^\d+$/.test(String(row.id ?? "").trim()));
   if (normalizedRows.length === 0) return [];
-
   return normalizeSeasonalCatalogMetaTypes(
     normalizedRows.map((row) => toMetaFromAniList(row.id, row)).filter(Boolean),
   );
@@ -101,10 +105,57 @@ export async function fetchValidatedSeasonCatalogPage({
   return canonical.slice(pageOffset, pageOffset + NUVIO_PAGE_SIZE);
 }
 
+export function getRollingCatalogRange(id, date) {
+  if (id === "upcoming_5_days") return getNext5DaysRangeManila(date);
+  if (id === "previous_7_days") return getPrevious7DaysRangeManila(date);
+  return null;
+}
+
+export async function buildRollingCatalog(id, date, skip, search, {
+  fetchPage = queryAiringSchedulePage,
+  maxPages = MAX_SCHEDULE_PAGES,
+  pageSize = NUVIO_PAGE_SIZE,
+} = {}) {
+  const range = getRollingCatalogRange(id, date);
+  if (!range) return [];
+
+  const futureOnly = id === "upcoming_5_days";
+  const sort = futureOnly ? "TIME" : "TIME_DESC";
+
+  return collectValidatedCatalogPage({
+    skip,
+    pageSize,
+    maxPages,
+    fetchPage: (page) => fetchPage(range.start, range.end, futureOnly, page, sort),
+    canonicalizePage: async (rows) => {
+      const metas = [];
+      for (const row of Array.isArray(rows) ? rows : []) {
+        const media = row?.media;
+        const mediaId = media?.id;
+        if (!Number.isInteger(Number(mediaId)) || Number(mediaId) <= 0) continue;
+        const meta = toMetaFromAniList(mediaId, media);
+        meta.type = "series";
+        meta.extra = {
+          ...meta.extra,
+          episode: row.episode,
+          airingAt: row.airingAt,
+          ...(futureOnly ? {
+            nextEpisode: row.episode,
+            nextAiringAt: row.airingAt,
+          } : {}),
+        };
+        metas.push(meta);
+      }
+      return filterCatalogMetasBySearch(metas, search);
+    },
+  });
+}
+
 export async function buildCatalog(id, info, skip, search) {
   const filter = getCatalogFilter(id, info);
-  if (!filter) return [];
-  return fetchValidatedSeasonCatalogPage({ filter, skip, search });
+  if (filter) return fetchValidatedSeasonCatalogPage({ filter, skip, search });
+  if (getRollingCatalogRange(id, new Date())) return buildRollingCatalog(id, new Date(), skip, search);
+  return [];
 }
 
 function send(res, body, status = 200) {
