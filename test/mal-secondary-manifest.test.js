@@ -41,6 +41,15 @@ test("MAL catalog identity is derived only from an available MAL id", () => {
   assert.equal(meta.extra.anilistId, 195604);
   assert.equal(meta.extra.malId, 61967);
   assert.equal(toCatalogIdentity({ id: "anilist:1", extra: {} }, "mal"), null);
+
+  const fallback = toCatalogIdentity({ id: "anilist:195604", extra: { anilistId: 195604 } }, "mal");
+  assert.equal(fallback.id, "anilist:195604");
+});
+
+test("MAL secondary identity falls back to AniList when MAL id is unavailable", () => {
+  const meta = { id: "anilist:195604", extra: { anilistId: 195604 } };
+  assert.deepEqual(toCatalogIdentity(meta, "mal"), meta);
+  assert.equal(toCatalogIdentity({ id: "anilist:195604", extra: { anilistId: 195604, malId: 0 } }, "mal").id, "anilist:195604");
 });
 
 test("secondary catalog ids preserve the same underlying catalog semantics", () => {
@@ -48,6 +57,29 @@ test("secondary catalog ids preserve the same underlying catalog semantics", () 
   assert.equal(getCatalogIdentityMode("mal_current_season"), "mal");
   assert.equal(getBaseCatalogId("mal_current_season"), "current_season");
   assert.equal(getBaseCatalogId("previous_7_days"), "previous_7_days");
+});
+
+test("secondary seasonal canonicalization preserves MAL-less entries with AniList identity", () => {
+  const [meta] = canonicalizeCatalogPage([{
+    id: 195604,
+    title: { romaji: "Black Clover 2nd Season" },
+  }], { identityMode: "mal" });
+  assert.equal(meta.id, "anilist:195604");
+  assert.equal(meta.extra.anilistId, 195604);
+});
+
+test("secondary rolling canonicalization preserves MAL-less entries with AniList identity", async () => {
+  const rows = [{
+    airingAt: 1790000000,
+    episode: 1,
+    media: { id: 195604, title: { romaji: "Black Clover 2nd Season" }, format: "TV", isAdult: false },
+  }];
+  const page = await import("../api/catalog-source.js");
+  const metas = await page.buildRollingCatalog("mal_upcoming_5_days", new Date("2026-10-01T00:00:00Z"), 0, "", {
+    fetchPage: async () => rows,
+    maxPages: 1,
+  });
+  assert.equal(metas[0].id, "anilist:195604");
 });
 
 test("secondary seasonal queries can request MAL ids without changing the primary query", async () => {
