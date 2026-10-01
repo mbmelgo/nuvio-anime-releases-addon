@@ -30,7 +30,7 @@ The addon also exposes two rolling release catalogs:
 - **Upcoming — 5 days** — unique anime with an upcoming airing schedule in the next five days.
 - **Previous — 7 days** — unique anime with an airing schedule in the previous seven days.
 
-Rolling catalogs use a separate AniList `Page.airingSchedules` pipeline, deduplicate by AniList media ID, and apply Nuvio pagination after deduplication.
+Rolling catalogs use a separate AniList `Page.airingSchedules` pipeline, deduplicate by AniList media ID, and apply Nuvio pagination after deduplication. They are constrained to `isAdult:false` and the supported `TV`, `TV_SHORT`, `ONA`, `OVA`, `SPECIAL`, and `MOVIE` formats. AniList does not expose those media filters as arguments on `airingSchedules`, so the addon requests the media fields and applies the equivalent eligibility filter before catalog pagination.
 
 ### 🗂️ Broad Anime Format Coverage
 
