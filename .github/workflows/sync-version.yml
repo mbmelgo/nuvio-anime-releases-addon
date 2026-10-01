@@ -76,6 +76,12 @@ jobs:
             echo "release=true" >> "$GITHUB_OUTPUT"
             echo "redeploy=false" >> "$GITHUB_OUTPUT"
             echo "release_target_sha=${{ inputs.release_target_sha }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.dry_run }}" == "true" ]]; then
+            target="${{ inputs.release_target_sha }}"
+            if [ -z "$target" ]; then target="$GITHUB_SHA"; fi
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "redeploy=false" >> "$GITHUB_OUTPUT"
+            echo "release_target_sha=$target" >> "$GITHUB_OUTPUT"
           else
             echo "release=false" >> "$GITHUB_OUTPUT"
             echo "redeploy=false" >> "$GITHUB_OUTPUT"
@@ -150,8 +156,27 @@ jobs:
               raise SystemExit("Release target SHA must be a full 40-character commit SHA.")
           PY
 
+      - name: Check for an existing Vercel deployment
+        if: steps.gate.outputs.release == 'true' && inputs.dry_run != true
+        id: existing_vercel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          target="${{ steps.gate.outputs.release_target_sha }}"
+          status_payload="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${target}/status")"
+          deployment_id="$(printf '%s' "$status_payload" | node scripts/resolve-vercel-deployment-id.mjs || true)"
+          if [ -n "$deployment_id" ]; then
+            echo "needs_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
+            echo "Existing successful Vercel deployment detected: $deployment_id"
+          else
+            echo "needs_deploy=true" >> "$GITHUB_OUTPUT"
+            echo "deployment_id=" >> "$GITHUB_OUTPUT"
+            echo "No existing successful Vercel deployment found for target."
+          fi
       - name: Trigger Vercel deployment
-        if: steps.gate.outputs.release == 'true' && steps.gate.outputs.redeploy == 'true' && inputs.dry_run != true
+        if: steps.gate.outputs.release == 'true' && steps.gate.outputs.redeploy == 'true' && steps.existing_vercel.outputs.needs_deploy == 'true' && inputs.dry_run != true
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: test -n "$VERCEL_DEPLOY_HOOK_URL" && curl --fail --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
@@ -356,6 +381,7 @@ jobs:
           import os
           import sys
           from pathlib import Path
+          from datetime import datetime, timezone
 
           path = Path("ops/release-state.json")
           state = json.loads(path.read_text())
@@ -371,6 +397,16 @@ jobs:
           state["lastDeploymentVersion"] = version
           state["nextReleaseVersion"] = f"{major}.{minor + 1}.0"
           state["lastDeploymentTag"] = "v" + version
+          state["lastDeployment"] = {
+              "version": version,
+              "sha": state["lastDeploymentSha"],
+              "vercelDeploymentId": state["lastDeploymentId"],
+              "tag": state["lastDeploymentTag"],
+              "releasedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+              "ciRunId": os.environ["GITHUB_RUN_ID"],
+              "ciRunUrl": "https://github.com/" + os.environ["GITHUB_REPOSITORY"] + "/actions/runs/" + os.environ["GITHUB_RUN_ID"],
+              "smokeTest": "passed",
+          }
 
           path.write_text(json.dumps(state, indent=2) + "\n")
           PY
