@@ -17,6 +17,8 @@ function schedule(mediaId, airingAt, episode, title = `Anime ${mediaId}`) {
       title: { english: title, romaji: title, native: title },
       coverImage: { large: `https://example.test/${mediaId}.jpg` },
       status: "RELEASING",
+      format: "TV",
+      isAdult: false,
       startDate: { year: 2026, month: 1, day: 1 },
       endDate: { year: null },
       genres: ["Action"],
