@@ -213,7 +213,7 @@ These counts correspond to the AniList seasonal query using the six supported an
 
 ## 🚀 Releases
 
-Production releases are published as GitHub Releases alongside their production release tags. The `v5.0.0` baseline formally consolidates the seasonal and rolling release-catalog architecture. `v5.1.0` introduced the isolated MAL identity experiment, and the subsequent releases validated its Nuvio routing and fallback behavior. The current v5.4.0 release promotes MAL identity to the primary manifest while retaining an AniList fallback for MAL-less entries. The obsolete secondary MAL manifest and routes are removed.
+Production releases are published as GitHub Releases alongside their production release tags. The `v5.0.0` baseline formally consolidates the seasonal and rolling release-catalog architecture. `v5.1.0` introduced the isolated MAL identity experiment, and the subsequent releases validated its Nuvio routing and fallback behavior. The v5.4.0 primary manifest uses MAL identity when available while retaining an AniList fallback for MAL-less entries. The obsolete secondary MAL manifest and routes are removed.
 
 **GitHub Releases:** https://github.com/mbmelgo/nuvio-anime-releases-addon/releases
 
