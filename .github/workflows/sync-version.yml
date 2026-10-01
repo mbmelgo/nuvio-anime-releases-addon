@@ -188,6 +188,20 @@ jobs:
           done
           exit 1
 
+      - name: Resolve Vercel deployment ID
+        if: steps.gate.outputs.release == 'true'
+        id: vercel_deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          target="${{ steps.gate.outputs.release_target_sha }}"
+          status_payload="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${target}/status")"
+          deployment_id="$(printf '%s' "$status_payload" | node scripts/resolve-vercel-deployment-id.mjs)"
+          test -n "$deployment_id"
+          echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
+          echo "Resolved Vercel deployment ID: $deployment_id"
+
       - name: Create annotated release tag, GitHub Release, and update release state
         if: steps.gate.outputs.release == 'true'
         shell: bash
@@ -320,7 +334,7 @@ jobs:
           state["totalDeployments"] += 1
           state["paused"] = deployments >= state["deploymentLimit"]
           state["lastDeploymentSha"] = sys.argv[1]
-          state["lastDeploymentId"] = ""
+          state["lastDeploymentId"] = os.environ["VERCEL_DEPLOYMENT_ID"]
           state["lastDeploymentVersion"] = version
           state["nextReleaseVersion"] = f"{major}.{minor + 1}.0"
           state["lastDeploymentTag"] = "v" + version
