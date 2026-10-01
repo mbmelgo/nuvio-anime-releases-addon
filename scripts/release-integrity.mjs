@@ -86,10 +86,10 @@ export function validateRepositoryReleaseState(root = process.cwd()) {
     paused: state.paused,
   });
 
-  if (readmeVersions.badge !== addonVersion || readmeVersions.development !== addonVersion) {
+  if (readmeVersions.badge !== addonVersion || readmeVersions.development.replace(/^v/, "") !== addonVersion) {
     throw new Error("README development version is out of sync with api/version.js.");
   }
-  if (readmeVersions.production !== state.lastDeploymentVersion) {
+  if (readmeVersions.production.replace(/^v/, "") !== state.lastDeploymentVersion) {
     throw new Error("README production version is out of sync with ops/release-state.json.");
   }
   return true;
