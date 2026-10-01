@@ -17,6 +17,11 @@ test("release finalization validates the deployed target version", () => {
   assert.match(deployWorkflow, /Release target version.*next release baseline/);
 });
 
+test("release smoke test uses the deployed target version during finalization", () => {
+  assert.match(deployWorkflow, /steps\.gate\.outputs\.redeploy/);
+  assert.match(deployWorkflow, /release_target_sha.*api\/version\.js/);
+});
+
 test("release workflow runs CI before deployment", () => {
   assert.match(deployWorkflow, /Run full CI/);
   assert.match(deployWorkflow, /npm test/);
