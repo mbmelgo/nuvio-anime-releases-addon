@@ -70,3 +70,7 @@ test("dry-run validates the existing production version instead of the unrelease
   assert.equal(deployWorkflow.includes('EXPECTED="$production_expected" TARGET="$expected"'), true);
   assert.equal(deployWorkflow.includes('EXPECTED_VERSION="$production_expected" PRODUCTION_BASE_URL='), true);
 });
+
+test("dry-run trims whitespace from a manually supplied release target SHA", () => {
+  assert.equal(deployWorkflow.includes("target=\"$(printf '%s' '${{ inputs.release_target_sha }}' | xargs)\""), true);
+});

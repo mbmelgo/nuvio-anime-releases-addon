@@ -77,7 +77,7 @@ jobs:
             echo "redeploy=false" >> "$GITHUB_OUTPUT"
             echo "release_target_sha=${{ inputs.release_target_sha }}" >> "$GITHUB_OUTPUT"
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.dry_run }}" == "true" ]]; then
-            target="${{ inputs.release_target_sha }}"
+            target="$(printf '%s' '${{ inputs.release_target_sha }}' | xargs)"
             if [ -z "$target" ]; then target="$GITHUB_SHA"; fi
             echo "release=true" >> "$GITHUB_OUTPUT"
             echo "redeploy=false" >> "$GITHUB_OUTPUT"
