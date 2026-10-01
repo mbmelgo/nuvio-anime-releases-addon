@@ -11,6 +11,11 @@ test("release workflow exposes manual dispatch inputs", () => {
   assert.match(deployWorkflow, /release_target_sha:/);
 });
 
+test("release finalization validates the deployed target version", () => {
+  assert.match(deployWorkflow, /git show.*api\\/version\\.js/);
+  assert.match(deployWorkflow, /Release target version.*next release baseline/);
+});
+
 test("release workflow runs CI before deployment", () => {
   assert.match(deployWorkflow, /Run full CI/);
   assert.match(deployWorkflow, /npm test/);
