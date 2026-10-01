@@ -3,7 +3,7 @@
 [![Nuvio](https://img.shields.io/badge/Nuvio-addon-ff6f61.svg)](https://nuvio.tv)
 [![AniList](https://img.shields.io/badge/AniList-data_source-02A9FF.svg)](https://anilist.co)
 [![Vercel](https://img.shields.io/badge/deployed_on-Vercel-black.svg?logo=vercel)](https://vercel.com)
-[![Version](https://img.shields.io/badge/version-4.5.0-blue.svg)](https://github.com/mbmelgo/nuvio-anime-releases-addon/releases)
+[![Version](https://img.shields.io/badge/version-4.5.1-blue.svg)](https://github.com/mbmelgo/nuvio-anime-releases-addon/releases)
 
 > A lightweight, season-aware anime release catalog for Nuvio and Stremio-compatible clients.
 
@@ -75,7 +75,7 @@ The addon determines the current, previous, and upcoming seasons dynamically fro
 
 ## 🖼️ What It Looks Like
 
-These are **representative showcase images**, not screenshots of the Nuvio application. They illustrate the catalog flow using sample artwork from anime represented in the seasonal data.
+These are **Nuvio-style catalog screenshots** created to illustrate the addon views with representative anime artwork.
 
 ### Seasonal Catalogs
 
@@ -89,13 +89,13 @@ These are **representative showcase images**, not screenshots of the Nuvio appli
 
 #### Upcoming — 5 days
 
-![Upcoming — 5 days sample](docs/images/readme-nuvio-upcoming-5-days.svg)
+![Upcoming — 5 days sample](docs/images/nuvio-upcoming-5-days.png)
 
 #### Previous — 7 days
 
-![Previous — 7 days sample](docs/images/readme-nuvio-previous-7-days.svg)
+![Previous — 7 days sample](docs/images/nuvio-previous-7-days.png)
 
-These two images illustrate the rolling catalog concepts and filtering behavior; they are representative showcase graphics rather than exact Nuvio UI screenshots.
+These two images illustrate the rolling catalog views, including the distinct upcoming and previous release sets.
 
 ### Metadata Detail Flow
 
@@ -188,7 +188,7 @@ The season represented by each endpoint is calculated dynamically.
 ## ✅ Release State
 
 **Current production version:** `v4.5.0`  
-**Development version:** `v4.4.1`  
+**Development version:** `v4.5.1`  
 **Major baseline:** `v4.0.0`
 
 The 2026 seasonal baselines validated during the `v4.0.0` production release are:
