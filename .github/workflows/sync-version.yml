@@ -207,6 +207,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          VERCEL_DEPLOYMENT_ID: ${{ steps.vercel_deployment.outputs.deployment_id }}
         run: |
           set -euo pipefail
           release_version="$(python -c 'import json;print(json.load(open("ops/release-state.json"))["nextReleaseVersion"])')"
@@ -321,6 +322,7 @@ jobs:
           git pull --rebase origin main
           python - "$target" <<'PY'
           import json
+          import os
           import sys
           from pathlib import Path
 
