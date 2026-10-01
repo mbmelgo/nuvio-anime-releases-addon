@@ -26,7 +26,7 @@ test("runtime source does not use deprecated url.parse API", async () => {
 });
 
 test("retired runtime entrypoints and helpers stay removed", async () => {
-  const retired = ["api/home.js", "api/stremio.js", "api/catalog-delegation.js", "lib/http.js"];
+  const retired = ["api/home.js", "api/stremio.js", "api/catalog-delegation.js", "lib/http.js", "lib/catalog-identity.js", "lib/release-version.js"];
   for (const file of retired) {
     await assert.rejects(access(file), undefined, `${file} should remain removed`);
   }
@@ -44,6 +44,18 @@ test("every retained Vercel runtime module has a serverless default export", asy
     const source = await readFile(file, "utf8");
     assert.match(source, /export default (?:async )?function\s+\w+\s*\(/, `${file} must export a default handler`);
   }
+});
+
+test("README and home page describe the current MAL-primary release", async () => {
+  const readme = await readFile("README.md", "utf8");
+  const home = await readFile("api/home-selector.js", "utf8");
+  assert.match(readme, /\[!\[MAL\]\(https:\/\/img\.shields\.io\/badge\/MyAnimeList-identity-2e51a2\.svg\)\]\(https:\/\/myanimelist\.net\)/);
+  assert.match(readme, /version-5\.4\.0-blue/);
+  assert.match(readme, /MAL identities when available/);
+  assert.doesNotMatch(readme, /AniList-only/);
+  assert.match(home, /MAL is the primary catalog identity when available/);
+  assert.match(home, /mal:&lt;id&gt;/);
+  assert.doesNotMatch(home, /AniList-only/);
 });
 
 test("home page uses only canonical unversioned catalog URLs", async () => {

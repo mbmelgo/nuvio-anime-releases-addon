@@ -1,97 +1,83 @@
 # Anime Releases for Nuvio
 
 [![Nuvio](https://img.shields.io/badge/Nuvio-addon-ff6f61.svg)](https://nuvio.tv)
-[![MAL](https://img.shields.io/badge/MyAnimeList-identity-2e51a2.svg](https://myanimelist.net)
+[![MAL](https://img.shields.io/badge/MyAnimeList-identity-2e51a2.svg)](https://myanimelist.net)
 [![Vercel](https://img.shields.io/badge/deployed_on-Vercel-black.svg?logo=vercel)](https://vercel.com)
-[![Version](https://img.shields.io/badge/version-5.3.0-blue.svg)](https://github.com/mbmelgo/nuvio-anime-releases-addon/releases)
+[![Version](https://img.shields.io/badge/version-5.4.0-blue.svg)](https://github.com/mbmelgo/nuvio-anime-releases-addon/releases)
 
 > A lightweight, season-aware anime release catalog for Nuvio and Stremio-compatible clients.
 
-**Anime Releases for Nuvio** provides dynamically generated seasonal and rolling anime release catalogs using **AniList** as the catalog data source while exposing **MyAnimeList (MAL)** identities whenever AniList provides a MAL id. Anime without a MAL id fall back to their canonical `anilist:<id>` identity. Detailed metadata and provider mapping are delegated to the metadata addon configured in the client.
-
----
+**Anime Releases for Nuvio** discovers anime releases from **AniList** and exposes **MAL identities when available**, with an `anilist:<id>` fallback when MAL is unavailable. Detailed anime metadata and provider mapping are intentionally delegated to the metadata addon configured in the client.
 
 ## ✨ Features
 
-### 📺 Seasonal Anime Catalogs
+### 📺 Seasonal catalogs
 
-The addon currently exposes three seasonal catalogs:
+The addon dynamically exposes:
 
-- **Upcoming Season** — anime scheduled for the next season.
-- **Current Season** — anime belonging to the current season.
-- **Previous Season** — anime from the immediately preceding season.
+- **Upcoming Season**
+- **Current Season**
+- **Previous Season**
 
-All three catalogs use the same generalized AniList query model; only the requested season changes.
+The season windows are calculated from the current date rather than hard-coded to a particular year.
 
-### ⏱️ Rolling Release Catalogs
+### ⏱️ Rolling release catalogs
 
-The addon also exposes two rolling release catalogs:
+Two rolling catalogs complement the seasonal views:
 
-- **Upcoming — 5 days** — unique anime with an upcoming airing schedule in the next five days.
-- **Previous — 7 days** — unique anime with an airing schedule in the previous seven days.
+- **Upcoming — 5 days** — unique anime with an upcoming airing within the next five days.
+- **Previous — 7 days** — unique anime with an airing within the previous seven days.
 
-Rolling catalogs use a separate AniList `Page.airingSchedules` pipeline, deduplicate by AniList media ID, and apply Nuvio pagination after deduplication. They are constrained to `isAdult:false` and the supported `TV`, `TV_SHORT`, `ONA`, `OVA`, `SPECIAL`, and `MOVIE` formats. AniList does not expose those media filters as arguments on `airingSchedules`, so the addon requests the media fields and applies the equivalent eligibility filter before catalog pagination.
+Rolling catalogs use AniList airing schedules, deduplicate by anime, and paginate the resulting unique catalog for Nuvio.
 
-### 🗂️ Broad Anime Format Coverage
+### 🔑 MAL-first catalog identity
 
-Seasonal catalogs include these AniList anime formats:
+Catalog items normally use:
 
-- **TV**
-- **TV Short**
-- **ONA**
-- **OVA**
-- **Special**
-- **Movie**
-
-The catalog does **not** use a release-status filter, so entries remain associated with their season as they move from upcoming to releasing and finished.
-
-### 🔑 Canonical MAL IDs with AniList fallback
-
-Catalog items use:
-
-```text
+``text
 mal:<id>
-```
+``
 
-when AniList provides a valid MAL id. If MAL is unavailable for an entry, the addon preserves the source identity as:
+When AniList has no valid MAL id, the item falls back to:
 
-```text
+``text
 anilist:<id>
-```
+``
 
-This keeps the addon focused on catalog discovery while giving downstream metadata addons the most useful supported identity available.
+The catalog keeps the AniList source id in the item's extra metadata so downstream systems can correlate the entry when needed.
 
-### 📄 Nuvio-Friendly Pagination
+### 📄 Nuvio pagination
 
-AniList requests use a **50-item page size**, matching the pagination model used by Nuvio.
+- AniList seasonal pages use **50 items**, matching the Nuvio catalog page size.
+- Rolling catalogs paginate **after** schedule records are filtered and deduplicated.
+- Nuvio search parameters are supported by the catalog endpoints.
 
-Large seasonal catalogs can therefore be consumed page-by-page without introducing a separate addon-side pagination scheme.
+### 🎞️ Supported anime formats
 
-Rolling catalogs apply pagination after schedule records have been deduplicated into unique anime.
+Seasonal catalog discovery includes:
 
-### 🔎 Catalog Search
+- TV
+- TV Short
+- ONA
+- OVA
+- Special
+- Movie
 
-The catalog endpoint accepts Nuvio/Stremio catalog search requests and applies the search term to the AniList-backed catalog.
+Adult entries are excluded.
 
-### 🌐 Dynamic Seasonal Windows
+## 🖼️ What it looks like
 
-The addon determines the current, previous, and upcoming seasons dynamically from the current date rather than hard-coding specific seasons.
+The repository includes representative Nuvio-style screenshots for the addon views.
 
----
-
-## 🖼️ What It Looks Like
-
-These are **Nuvio-style catalog screenshots** created to illustrate the addon views with representative anime artwork.
-
-### Seasonal Catalogs
+### Seasonal catalogs
 
 ![Representative Nuvio seasonal catalog](docs/images/readme-nuvio-home.png)
 
-### Season Listing
+### Season listing
 
 ![Representative Nuvio season catalog](docs/images/readme-nuvio-season.png)
 
-### Rolling Catalogs
+### Rolling catalogs
 
 #### Upcoming — 5 days
 
@@ -101,85 +87,72 @@ These are **Nuvio-style catalog screenshots** created to illustrate the addon vi
 
 ![Previous — 7 days sample](docs/images/nuvio-previous-7-days.png)
 
-These two images illustrate the rolling catalog views, including the distinct upcoming and previous release sets.
+The rolling views are intentionally shown separately so the upcoming and previous release sets are clear.
 
-### Metadata Detail Flow
+### Metadata detail flow
 
 ![Representative Nuvio anime detail flow](docs/images/readme-nuvio-detail.png)
 
-The important behavior illustrated here is the addon flow rather than exact Nuvio UI styling:
+The production flow is:
 
-```text
-AniList seasonal catalog
+``text
+AniList release discovery
         ↓
 mal:<id> (or anilist:<id> fallback)
         ↓
-Nuvio
+Nuvio catalog
         ↓
 configured metadata addon
-```
-
----
+``
 
 ## 🧩 Architecture
 
-```text
-                         ┌─────────────────────┐
-                         │       AniList       │
-                         │  Seasonal Catalog   │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │ Anime Releases      │
-                         │     for Nuvio       │
-                         │                     │
-                         │ anilist:<id>        │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │       Nuvio         │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │ Metadata Addon      │
-                         │ IOMetadata /        │
-                         │ AIOMetadata /       │
-                         │ configured provider │
-                         └─────────────────────┘
-```
+``text
+┌──────────────────────┐
+│       AniList        │
+│ release / airing data│
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│ Anime Releases       │
+│      for Nuvio       │
+│ MAL-first identities │
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│        Nuvio         │
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│ Configured metadata  │
+│       addon          │
+└──────────────────────┘
+``
 
-The addon is intentionally **catalog-focused**. It does not duplicate the detailed metadata/provider-mapping functionality handled downstream.
-
-The previous AniBridge compatibility path is not part of the current production architecture.
-
----
+This addon is intentionally **catalog-focused**. It does not duplicate detailed metadata, provider mapping, or playback resolution.
 
 ## 📦 Installation
 
-Use the production manifest URL:
+### Production manifest
 
-```text
+``text
 https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json
-```
+``
 
-Add the manifest to your supported Nuvio/Stremio client.
+Add the manifest URL to a supported Nuvio/Stremio client.
 
-The primary manifest now uses MAL identities when available and falls back to AniList identities per catalog item. The former secondary MAL manifest has been merged into the primary addon.
+### Production landing page
 
-Production landing page:
-
-```text
+``text
 https://nuvio-anime-releases-addon-rho.vercel.app/
-```
+``
 
----
+The landing page provides the manifest, current catalog endpoints, release information, and representative screenshots.
 
-## 📋 Production Catalogs
-
-The current production addon exposes these catalog endpoints:
+## 📋 Production catalogs
 
 | Catalog | Endpoint |
 | --- | --- |
@@ -189,61 +162,28 @@ The current production addon exposes these catalog endpoints:
 | Upcoming — 5 days | `/catalog/anime/upcoming_5_days.json` |
 | Previous — 7 days | `/catalog/anime/previous_7_days.json` |
 
-The season represented by each endpoint is calculated dynamically.
+Catalog names and season labels are generated dynamically.
 
----
+## 🚀 Current release
 
-## ✅ Release State
-
-**Current production version:** `v5.4.0`  
-**Development version:** `v5.4.0`  
+**Production:** `v5.4.0`  
 **Major baseline:** `v5.0.0`
 
-The 2026 seasonal baselines validated during the `v4.0.0` production release are:
+v5.4.0 promotes MAL identity to the primary catalog identity while retaining AniList as the fallback. The rolling upcoming and previous catalogs remain part of the production addon.
 
-| Season | Anime |
-| --- | ---: |
-| Spring 2026 | **99** |
-| Summer 2026 | **105** |
-| Fall 2026 | **94** |
+Production releases are published as Git tags and GitHub Releases.
 
-These counts correspond to the AniList seasonal query using the six supported anime formats described above.
+**Releases:** https://github.com/mbmelgo/nuvio-anime-releases-addon/releases
 
----
+Versioning:
 
-## 🚀 Releases
-
-Production releases are published as GitHub Releases alongside their production release tags. The `v5.0.0` baseline formally consolidates the seasonal and rolling release-catalog architecture. `v5.1.0` introduced the isolated MAL identity experiment, and the subsequent releases validated its Nuvio routing and fallback behavior. The v5.4.0 primary manifest uses MAL identity when available while retaining an AniList fallback for MAL-less entries. The obsolete secondary MAL manifest and routes are removed.
-
-**GitHub Releases:** https://github.com/mbmelgo/nuvio-anime-releases-addon/releases
-
-Every **MINOR** production deployment creates a corresponding release entry with a human-readable summary of the changes included in that release.
-
-Semantic versioning is used:
-
-- **PATCH** — normal meaningful changes.
+- **PATCH** — meaningful development changes.
 - **MINOR** — production deployments.
-- **MAJOR** — deliberate architectural or project-baseline changes.
-
-`v5.0.0` is the major baseline for the current catalog architecture, including the rolling upcoming/recent airing catalogs and their Nuvio pagination/filtering behavior.
-
-Current major baseline:
-
-```text
-v5.0.0
-```
-
-Current production release:
-
-```text
-v5.4.0
-```
-
----
+- **MAJOR** — deliberate project or architectural baseline changes.
 
 ## 🔧 Development
 
-This project is a small serverless JavaScript addon designed for Vercel.
+This is a small serverless JavaScript addon designed for Vercel.
 
 ### Requirements
 
@@ -252,13 +192,13 @@ This project is a small serverless JavaScript addon designed for Vercel.
 
 ### Run tests
 
-```bash
+``bash
 npm test
-```
+``
 
 ### Project structure
 
-```text
+``text
 api/
   catalog-source.js
   home-selector.js
@@ -266,22 +206,29 @@ api/
   version.js
 
 lib/
-  catalog configuration, AniList querying, and catalog normalization
+  catalog-anilist.js
+  catalog-config.js
+  catalog-meta.js
+  catalog-pagination.js
+
+scripts/
+  release-target.mjs
 
 test/
-  automated tests
+  automated regression and release tests
 
 ops/
-  release state and deployment bookkeeping
-```
+  release-state.json
 
----
+docs/images/
+  representative Nuvio showcase images
+``
 
-## 🚦 Release Workflow
+## 🚦 Release pipeline
 
-Production releases follow the repository release pipeline:
+Production releases follow:
 
-```text
+``text
 Change
   ↓
 Tests
@@ -292,37 +239,23 @@ Controlled Vercel deployment
   ↓
 Production smoke test
   ↓
-Git tag
-  ↓
-GitHub Release
+Git tag + GitHub Release
   ↓
 Release-state update
-```
-
----
-
-## ⚠️ Known External Behavior
-
-Detailed anime metadata is provided by downstream metadata services rather than this addon.
-
-As a result, an individual anime may occasionally experience an upstream metadata error or delayed resolution even when the anime is present and correctly identified in the catalog. Such behavior is outside the catalog identity path and is not worked around by reintroducing provider-mapping logic into this addon.
-
----
+``
 
 ## 📄 Scope
 
 This addon is responsible for:
 
-- seasonal anime catalog discovery
-- rolling upcoming/recent airing catalog discovery
-- MAL-first anime identities with AniList fallback
-- catalog pagination
+- seasonal anime release discovery
+- rolling upcoming/recent airing discovery
+- MAL-first catalog identities with AniList fallback
+- Nuvio-compatible catalog pagination
 - catalog search
-- seasonal catalog organization
+- dynamic seasonal organization
 
 It is **not** a replacement for a detailed anime metadata/provider addon.
-
----
 
 ## 📜 License
 

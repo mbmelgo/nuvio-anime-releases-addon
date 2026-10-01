@@ -36,12 +36,12 @@ export default function handler(req, res) {
   <header class="wrap">
     <div class="eyebrow">Nuvio anime catalog addon · v${ADDON_VERSION}</div>
     <h1>Anime Releases for Nuvio</h1>
-    <p class="lead">Season-aware anime catalogs powered by AniList. The addon provides catalog discovery and canonical AniList identities; detailed metadata is resolved by the configured metadata addon.</p>
+    <p class="lead">Dynamic seasonal and rolling anime release catalogs. AniList supplies release and airing data; MAL is the primary catalog identity when available, with AniList as the fallback.</p>
   </header>
   <main class="wrap">
     <section class="panel">
       <h2>Install the addon</h2>
-      <p>The production addon is AniList-only and uses <code>anilist:&lt;id&gt;</code> as the canonical catalog identity.</p>
+      <p>The production addon uses <code>mal:&lt;id&gt;</code> when a MAL identity is available and falls back to <code>anilist:&lt;id&gt;</code>. Detailed metadata is delegated to the metadata addon configured in Nuvio.</p>
       <div class="url"><code>${manifest}</code></div>
       <a class="button" href="${manifest}">Install addon</a>
       <a class="button secondary" href="${GITHUB_URL}">GitHub</a>
@@ -68,13 +68,13 @@ export default function handler(req, res) {
 
     <section class="panel">
       <h2>Production status</h2>
-      <p class="note">v${ADDON_VERSION} is the current production release. Seasonal catalogs include TV, TV Short, ONA, OVA, Special, and Movie formats without filtering by release status. Validated 2026 baselines: Spring 99, Summer 105, Fall 94.</p>
+      <p class="note">Version ${ADDON_VERSION} is the current addon version. Seasonal catalogs support TV, TV Short, ONA, OVA, Special, and Movie formats and exclude adult entries.</p>
     </section>
 
     <section class="panel">
-      <h2>Architecture</h2>
-      <p class="note"><code>AniList → anilist:&lt;id&gt; → Nuvio → metadata addon</code></p>
-      <p class="note">The addon is catalog-focused and does not duplicate downstream detailed metadata/provider-mapping functionality.</p>
+      <h2>Identity and metadata flow</h2>
+      <p class="note"><code>AniList → mal:&lt;id&gt; / anilist:&lt;id&gt; → Nuvio → configured metadata addon</code></p>
+      <p class="note">This addon is catalog-focused. It does not duplicate detailed metadata, provider mapping, or playback resolution.</p>
     </section>
   </main>
   <footer class="wrap">Anime Releases for Nuvio · v${ADDON_VERSION}</footer>
