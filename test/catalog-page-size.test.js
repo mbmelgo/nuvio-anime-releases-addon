@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { ANILIST_PAGE_SIZE, NUVIO_PAGE_SIZE, catalogDefinitions } from "../lib/catalog-config.js";
 import { fetchValidatedSeasonCatalogPage } from "../api/catalog-source.js";
 
-test("catalog pagination uses 50 upstream records and 50 Nuvio records for seasonal catalogs", () => {
+test("catalog pagination uses 50 upstream records and 50 Nuvio records for all catalogs", () => {
   assert.equal(ANILIST_PAGE_SIZE, 50);
   assert.equal(NUVIO_PAGE_SIZE, 50);
 
@@ -13,16 +13,12 @@ test("catalog pagination uses 50 upstream records and 50 Nuvio records for seaso
     upcoming: { season: "WINTER", year: 2027 },
   });
 
-  assert.equal(definitions.length, 3);
+  assert.equal(definitions.length, 5);
   for (const definition of definitions) {
     assert.equal(definition.type, "anime");
     assert.equal(definition.pageSize, 50);
   }
 });
-
-function meta(id) {
-  return { id: `tmdb:${id}`, type: "anime", name: `Anime ${id}` };
-}
 
 test("seasonal page returns fewer than 50 validated results without fetching another AniList page", async () => {
   const calls = [];
@@ -57,3 +53,7 @@ test("seasonal page 2 requests only AniList page 2 and does not fill from page 3
   assert.deepEqual(calls, [2]);
   assert.equal(result[0].name, "Anime 200");
 });
+
+function meta(id) {
+  return { id: `tmdb:${id}`, type: "anime", name: `Anime ${id}` };
+}
