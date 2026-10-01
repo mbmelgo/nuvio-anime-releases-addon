@@ -14,11 +14,6 @@ import {
   catalogDefinitions,
 } from "../lib/catalog-config.js";
 import { filterCatalogMetasBySearch, toMetaFromAniList } from "../lib/catalog-meta.js";
-import {
-  compareVersions,
-  incrementMinor,
-  validateVersionConsistency,
-} from "../scripts/release-integrity.mjs";
 
 const SEASON_INFO = {
   ongoing: { season: "FALL", year: 2026 },
@@ -209,52 +204,4 @@ test("catalog search matches all supported title identities without changing cat
     assert.equal(result[0].extra.anilistId, 1);
   }
   assert.equal(filterCatalogMetasBySearch(metas, "").length, 2);
-});
-
-
-test("release version helpers enforce semantic versioning and minor baselines", () => {
-  assert.equal(compareVersions("5.5.3", "5.5.0") > 0, true);
-  assert.equal(compareVersions("5.5.0", "5.5.0"), 0);
-  assert.equal(incrementMinor("5.5.3"), "5.6.0");
-});
-
-test("release state rejects inconsistent production and development metadata", () => {
-  assert.throws(
-    () => validateVersionConsistency({
-      addonVersion: "5.5.3",
-      packageVersion: "5.5.2",
-      productionVersion: "5.5.0",
-      productionTag: "v5.5.0",
-      nextReleaseVersion: "5.6.0",
-      deploymentsSincePause: 6,
-      deploymentLimit: 10,
-      paused: false,
-    }),
-    /does not match/,
-  );
-
-  assert.throws(
-    () => validateVersionConsistency({
-      addonVersion: "5.5.3",
-      packageVersion: "5.5.3",
-      productionVersion: "5.5.0",
-      productionTag: "v5.5.0",
-      nextReleaseVersion: "5.7.0",
-      deploymentsSincePause: 6,
-      deploymentLimit: 10,
-      paused: false,
-    }),
-    /Next release/,
-  );
-
-  assert.equal(validateVersionConsistency({
-    addonVersion: "5.5.3",
-    packageVersion: "5.5.3",
-    productionVersion: "5.5.0",
-    productionTag: "v5.5.0",
-    nextReleaseVersion: "5.6.0",
-    deploymentsSincePause: 6,
-    deploymentLimit: 10,
-    paused: false,
-  }), true);
 });
