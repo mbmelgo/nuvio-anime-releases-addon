@@ -3,7 +3,7 @@
 [![Nuvio](https://img.shields.io/badge/Nuvio-addon-ff6f61.svg)](https://nuvio.tv)
 [![MAL](https://img.shields.io/badge/MyAnimeList-identity-2e51a2.svg)](https://myanimelist.net)
 [![Vercel](https://img.shields.io/badge/deployed_on-Vercel-black.svg?logo=vercel)](https://vercel.com)
-[![Version](https://img.shields.io/badge/version-5.5.3-blue.svg)](https://github.com/mbmelgo/nuvio-anime-releases-addon/releases)
+[![Version](https://img.shields.io/badge/version-5.4.1-blue.svg)](https://github.com/mbmelgo/nuvio-anime-releases-addon/releases)
 
 > A lightweight, season-aware anime release catalog for Nuvio and Stremio-compatible clients.
 
@@ -167,10 +167,10 @@ Catalog names and season labels are generated dynamically.
 ## 🚀 Current release
 
 **Production:** `v5.5.0`  
-**Development:** `v5.5.3`  
+**Development:** `v5.5.0`  
 **Major baseline:** `v5.0.0`
 
-v5.5.0 is the current production baseline. It includes MAL-first catalog identity, AniList fallback, Nuvio pagination, and the five supported seasonal/rolling catalogs. Development currently contains additional catalog-integrity and release-validation coverage that has not yet been promoted to production.
+v5.4.0 promotes MAL identity to the primary catalog identity while retaining AniList as the fallback. The rolling upcoming and previous catalogs remain part of the production addon.
 
 Production releases are published as Git tags and GitHub Releases.
 
@@ -214,8 +214,6 @@ lib/
 
 scripts/
   release-target.mjs
-  release-integrity.mjs
-  validate-production.mjs
 
 test/
   automated regression and release tests
@@ -232,28 +230,20 @@ docs/images/
 Production releases follow:
 
 ```text
-Feature / change
+Change
   ↓
-PR CI
+Tests
   ↓
-Merge to main
-  ↓
-Main CI + patch versioning
-  ↓
-Explicit release authorization
-  ↓
-Release/version integrity validation
+GitHub Actions CI
   ↓
 Controlled Vercel deployment
   ↓
-Production validation: manifest + all 5 catalogs + metadata boundary
+Production smoke test
   ↓
-Annotated Git tag + GitHub Release
+Git tag + GitHub Release
   ↓
 Release-state update
 ```
-
-Release metadata is validated across `api/version.js`, `package.json`, `README.md`, and `ops/release-state.json`. Production validation checks all five supported catalogs for valid, unique Nuvio series identities and catalog-specific rolling metadata.
 
 ## 📄 Scope
 
