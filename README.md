@@ -3,7 +3,7 @@
 [![Nuvio](https://img.shields.io/badge/Nuvio-addon-ff6f61.svg)](https://nuvio.tv)
 [![MAL](https://img.shields.io/badge/MyAnimeList-identity-2e51a2.svg)](https://myanimelist.net)
 [![Vercel](https://img.shields.io/badge/deployed_on-Vercel-black.svg?logo=vercel)](https://vercel.com)
-[![Version](https://img.shields.io/badge/version-5.4.0-blue.svg)](https://github.com/mbmelgo/nuvio-anime-releases-addon/releases)
+[![Version](https://img.shields.io/badge/version-5.4.1-blue.svg)](https://github.com/mbmelgo/nuvio-anime-releases-addon/releases)
 
 > A lightweight, season-aware anime release catalog for Nuvio and Stremio-compatible clients.
 
@@ -34,15 +34,15 @@ Rolling catalogs use AniList airing schedules, deduplicate by anime, and paginat
 
 Catalog items normally use:
 
-``text
+```text
 mal:<id>
-``
+```
 
 When AniList has no valid MAL id, the item falls back to:
 
-``text
+```text
 anilist:<id>
-``
+```
 
 The catalog keeps the AniList source id in the item's extra metadata so downstream systems can correlate the entry when needed.
 
@@ -95,7 +95,7 @@ The rolling views are intentionally shown separately so the upcoming and previou
 
 The production flow is:
 
-``text
+```text
 AniList release discovery
         ↓
 mal:<id> (or anilist:<id> fallback)
@@ -103,11 +103,11 @@ mal:<id> (or anilist:<id> fallback)
 Nuvio catalog
         ↓
 configured metadata addon
-``
+```
 
 ## 🧩 Architecture
 
-``text
+```text
 ┌──────────────────────┐
 │       AniList        │
 │ release / airing data│
@@ -130,7 +130,7 @@ configured metadata addon
 │ Configured metadata  │
 │       addon          │
 └──────────────────────┘
-``
+```
 
 This addon is intentionally **catalog-focused**. It does not duplicate detailed metadata, provider mapping, or playback resolution.
 
@@ -138,17 +138,17 @@ This addon is intentionally **catalog-focused**. It does not duplicate detailed 
 
 ### Production manifest
 
-``text
+```text
 https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json
-``
+```
 
 Add the manifest URL to a supported Nuvio/Stremio client.
 
 ### Production landing page
 
-``text
+```text
 https://nuvio-anime-releases-addon-rho.vercel.app/
-``
+```
 
 The landing page provides the manifest, current catalog endpoints, release information, and representative screenshots.
 
@@ -167,6 +167,7 @@ Catalog names and season labels are generated dynamically.
 ## 🚀 Current release
 
 **Production:** `v5.4.0`  
+**Development:** `v5.4.1`  
 **Major baseline:** `v5.0.0`
 
 v5.4.0 promotes MAL identity to the primary catalog identity while retaining AniList as the fallback. The rolling upcoming and previous catalogs remain part of the production addon.
@@ -192,13 +193,13 @@ This is a small serverless JavaScript addon designed for Vercel.
 
 ### Run tests
 
-``bash
+```bash
 npm test
-``
+```
 
 ### Project structure
 
-``text
+```text
 api/
   catalog-source.js
   home-selector.js
@@ -222,13 +223,13 @@ ops/
 
 docs/images/
   representative Nuvio showcase images
-``
+```
 
 ## 🚦 Release pipeline
 
 Production releases follow:
 
-``text
+```text
 Change
   ↓
 Tests
@@ -242,7 +243,7 @@ Production smoke test
 Git tag + GitHub Release
   ↓
 Release-state update
-``
+```
 
 ## 📄 Scope
 
