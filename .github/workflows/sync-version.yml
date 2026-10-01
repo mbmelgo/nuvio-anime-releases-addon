@@ -28,6 +28,7 @@ on:
 
 permissions:
   contents: write
+  statuses: read
 
 concurrency:
   group: main-release-pipeline
