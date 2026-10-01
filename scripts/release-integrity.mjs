@@ -51,4 +51,51 @@ export function validateVersionConsistency({
   return true;
 }
 
-import fs from "node:fs";\nimport path from "node:path";\n\nfunction readVersionFile(filePath) {\n  const content = fs.readFileSync(filePath, "utf8");\n  const match = content.match(/ADDON_VERSION = "([^"]+)"/);\n  if (!match) throw new Error(`Missing ADDON_VERSION in ${filePath}.`);\n  return match[1];\n}\n\nfunction readReadmeVersions(readme) {\n  const badge = readme.match(/version-(\d+\.\d+\.\d+)-blue/);\n  const production = readme.match(/\*\*Production:\*\*\s*`([^`]+)`/);\n  const development = readme.match(/\*\*Development:\*\*\s*`([^`]+)`/);\n  if (!badge || !production || !development) throw new Error("README release version markers are incomplete.");\n  return { badge: badge[1], production: production[1], development: development[1] };\n}\n\nexport function validateRepositoryReleaseState(root = process.cwd()) {\n  const addonVersion = readVersionFile(path.join(root, "api/version.js"));\n  const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));\n  const state = JSON.parse(fs.readFileSync(path.join(root, "ops/release-state.json"), "utf8"));\n  const readmeVersions = readReadmeVersions(fs.readFileSync(path.join(root, "README.md"), "utf8"));\n\n  validateVersionConsistency({\n    addonVersion,\n    packageVersion: packageJson.version,\n    productionVersion: state.lastDeploymentVersion,\n    productionTag: state.lastDeploymentTag,\n    nextReleaseVersion: state.nextReleaseVersion,\n    deploymentsSincePause: state.deploymentsSincePause,\n    deploymentLimit: state.deploymentLimit,\n    paused: state.paused,\n  });\n\n  if (readmeVersions.badge !== addonVersion || readmeVersions.development !== addonVersion) {\n    throw new Error("README development version is out of sync with api/version.js.");\n  }\n  if (readmeVersions.production !== state.lastDeploymentVersion) {\n    throw new Error("README production version is out of sync with ops/release-state.json.");\n  }\n  return true;\n}\n\nif (import.meta.url === `file://${process.argv[1]}`) {\n  validateRepositoryReleaseState();\n  console.log("Release metadata validation passed.");\n}
+import fs from "node:fs";
+import path from "node:path";
+
+function readVersionFile(filePath) {
+  const content = fs.readFileSync(filePath, "utf8");
+  const match = content.match(/ADDON_VERSION = "([^"]+)"/);
+  if (!match) throw new Error(`Missing ADDON_VERSION in ${filePath}.`);
+  return match[1];
+}
+
+function readReadmeVersions(readme) {
+  const badge = readme.match(/version-(\d+\.\d+\.\d+)-blue/);
+  const production = readme.match(/\*\*Production:\*\*\s*`([^`]+)`/);
+  const development = readme.match(/\*\*Development:\*\*\s*`([^`]+)`/);
+  if (!badge || !production || !development) throw new Error("README release version markers are incomplete.");
+  return { badge: badge[1], production: production[1], development: development[1] };
+}
+
+export function validateRepositoryReleaseState(root = process.cwd()) {
+  const addonVersion = readVersionFile(path.join(root, "api/version.js"));
+  const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+  const state = JSON.parse(fs.readFileSync(path.join(root, "ops/release-state.json"), "utf8"));
+  const readmeVersions = readReadmeVersions(fs.readFileSync(path.join(root, "README.md"), "utf8"));
+
+  validateVersionConsistency({
+    addonVersion,
+    packageVersion: packageJson.version,
+    productionVersion: state.lastDeploymentVersion,
+    productionTag: state.lastDeploymentTag,
+    nextReleaseVersion: state.nextReleaseVersion,
+    deploymentsSincePause: state.deploymentsSincePause,
+    deploymentLimit: state.deploymentLimit,
+    paused: state.paused,
+  });
+
+  if (readmeVersions.badge !== addonVersion || readmeVersions.development !== addonVersion) {
+    throw new Error("README development version is out of sync with api/version.js.");
+  }
+  if (readmeVersions.production !== state.lastDeploymentVersion) {
+    throw new Error("README production version is out of sync with ops/release-state.json.");
+  }
+  return true;
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  validateRepositoryReleaseState();
+  console.log("Release metadata validation passed.");
+}
