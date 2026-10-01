@@ -3,7 +3,7 @@
 [![Nuvio](https://img.shields.io/badge/Nuvio-addon-ff6f61.svg)](https://nuvio.tv)
 [![AniList](https://img.shields.io/badge/AniList-data_source-02A9FF.svg)](https://anilist.co)
 [![Vercel](https://img.shields.io/badge/deployed_on-Vercel-black.svg?logo=vercel)](https://vercel.com)
-[![Version](https://img.shields.io/badge/version-5.2.0-blue.svg)](https://github.com/mbmelgo/nuvio-anime-releases-addon/releases)
+[![Version](https://img.shields.io/badge/version-5.3.0-blue.svg)](https://github.com/mbmelgo/nuvio-anime-releases-addon/releases)
 
 > A lightweight, season-aware anime release catalog for Nuvio and Stremio-compatible clients.
 
@@ -164,7 +164,7 @@ Add the manifest to your supported Nuvio/Stremio client.
 For MAL-identity experiments, the isolated secondary manifest is:
 
 ```text
-https://nuvio-anime-releases-addon-rho.vercel.app/manifest-mal.json
+https://nuvio-anime-releases-addon-rho.vercel.app/mal/manifest.json
 ```
 
 The secondary manifest uses separate `mal_*` catalog IDs, prefers `mal:<id>` when a MAL id exists, and falls back to `anilist:<id>` when MAL is unavailable. It does not replace or modify the primary AniList manifest.
@@ -195,8 +195,8 @@ The season represented by each endpoint is calculated dynamically.
 
 ## ✅ Release State
 
-**Current production version:** `v5.2.0`  
-**Development version:** `v5.2.0`  
+**Current production version:** `v5.3.0`  
+**Development version:** `v5.3.0`  
 **Major baseline:** `v5.0.0`
 
 The 2026 seasonal baselines validated during the `v4.0.0` production release are:
@@ -213,7 +213,7 @@ These counts correspond to the AniList seasonal query using the six supported an
 
 ## 🚀 Releases
 
-Production releases are published as GitHub Releases alongside their production release tags. The `v5.0.0` baseline formally consolidates the seasonal and rolling release-catalog architecture. `v5.1.0` added an isolated experimental MAL-identity manifest without changing the primary AniList manifest. `v5.2.0` preserves MAL-less entries in that secondary manifest by falling back to their canonical AniList identity.
+Production releases are published as GitHub Releases alongside their production release tags. The `v5.0.0` baseline formally consolidates the seasonal and rolling release-catalog architecture. `v5.1.0` added an isolated experimental MAL-identity manifest without changing the primary AniList manifest. `v5.3.0` fixes the secondary manifest URL layout for Nuvio's `/manifest.json` base-path handling and preserves MAL-less entries in that secondary manifest by falling back to their canonical AniList identity.
 
 **GitHub Releases:** https://github.com/mbmelgo/nuvio-anime-releases-addon/releases
 
