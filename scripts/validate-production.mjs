@@ -1,5 +1,3 @@
-import { catalogDefinitions, getSeasonInfo } from "../lib/catalog-config.js";
-
 export const PRODUCTION_CATALOG_IDS = [
   "upcoming_season",
   "current_season",
@@ -27,7 +25,8 @@ export function validateManifest(manifest, expectedVersion) {
 
 export function validateCatalog(catalog, catalogId) {
   if (!catalog || typeof catalog !== "object") throw new Error(`${catalogId}: catalog is not an object.`);
-  if (!Array.isArray(catalog.metas) || catalog.metas.length === 0) throw new Error(`${catalogId}: catalog has no metas.`);
+  if (!Array.isArray(catalog.metas)) throw new Error(`${catalogId}: catalog metas must be an array.`);
+  if (catalogId === "current_season" && catalog.metas.length === 0) throw new Error("current_season: catalog has no metas.");
 
   const ids = catalog.metas.map((meta) => meta?.id);
   if (new Set(ids).size !== ids.length) throw new Error(`${catalogId}: duplicate catalog identities detected.`);
