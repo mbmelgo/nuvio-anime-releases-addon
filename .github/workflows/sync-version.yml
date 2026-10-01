@@ -160,10 +160,9 @@ jobs:
           release_version="$(python -c 'import json;print(json.load(open("ops/release-state.json"))["nextReleaseVersion"])')"
           tag="v$release_version"
           if [[ "${{ steps.gate.outputs.redeploy }}" == "true" ]]; then
-            target="$GITHUB_SHA"
+            target="$(node scripts/release-target.mjs deploy "$GITHUB_SHA")"
           else
-            target="${{ inputs.release_target_sha }}"
-            test -n "$target"
+            target="$(node scripts/release-target.mjs finalize "${{ inputs.release_target_sha }}")"
             git cat-file -e "$target^{commit}"
           fi
           git fetch --tags --force
