@@ -20,12 +20,12 @@ export function buildManifest(info) {
     id: "com.marki.nuvio.anime-releases",
     version: ADDON_VERSION,
     name: "Anime Releases for Nuvio",
-    description: "Season-aware anime release catalogs using AniList identities directly. Detailed metadata is delegated to the user's preferred metadata addon.",
+    description: "Season-aware anime release catalogs using MyAnimeList identities when available, with canonical AniList identities as fallback. Detailed metadata is delegated to the user's preferred metadata addon.",
     resources: [
       { name: "catalog", types: ["anime"] },
     ],
     types: ["anime"],
-    catalogs: catalogDefinitions(info),
-    identityMode: "anilist",
+    catalogs: catalogDefinitions(info, "mal"),
+    identityMode: "mal",
   };
 }
