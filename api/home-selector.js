@@ -13,6 +13,8 @@ const CATALOGS = [
   ["Upcoming Season", "upcoming_season", "Anime scheduled for the next season"],
   ["Current Season", "current_season", "Anime in the current season"],
   ["Previous Season", "previous_season", "Anime from the immediately preceding season"],
+  ["Upcoming — 5 days", "upcoming_5_days", "Unique anime with an upcoming airing in the next five days"],
+  ["Previous — 7 days", "previous_7_days", "Unique anime with an airing in the previous seven days"],
 ];
 
 export default function handler(req, res) {
@@ -46,7 +48,7 @@ export default function handler(req, res) {
 
     <section class="panel">
       <h2>Supported catalogs</h2>
-      <p class="note">Three seasonal catalogs are exposed. The season is calculated dynamically from the current date, and AniList results use a 50-item page size.</p>
+      <p class="note">Three seasonal and two rolling catalogs are exposed. Rolling catalogs use AniList airing schedules, deduplicate by anime, and include only non-adult TV, TV Short, ONA, OVA, Special, and Movie entries.</p>
       ${CATALOGS.map(([name, id, description]) => `
       <div class="catalog">
         <div><h3>${name}</h3><p>${description}</p></div>
