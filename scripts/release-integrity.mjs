@@ -51,6 +51,12 @@ export function validateVersionConsistency({
   return true;
 }
 
+export function validateReleaseTarget({ targetVersion, expectedVersion, targetSha }) {
+  if (!/^[0-9a-f]{40}$/i.test(String(targetSha || ""))) throw new Error("Release target SHA must be a full 40-character commit SHA.");
+  if (targetVersion !== expectedVersion) throw new Error(`Release target version ${targetVersion} does not match expected release version ${expectedVersion}.`);
+  return true;
+}
+
 import fs from "node:fs";
 import path from "node:path";
 

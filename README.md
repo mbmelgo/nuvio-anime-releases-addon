@@ -174,6 +174,8 @@ v5.5.0 is the current production baseline. It includes MAL-first catalog identit
 
 Production releases are published as Git tags and GitHub Releases.
 
+A manual **dry run** validates CI, release metadata, the target version/SHA, and production behavior without deploying to Vercel, creating a tag or GitHub Release, or mutating release state.
+
 **Releases:** https://github.com/mbmelgo/nuvio-anime-releases-addon/releases
 
 Versioning:
