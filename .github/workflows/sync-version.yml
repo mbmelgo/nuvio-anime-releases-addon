@@ -99,8 +99,8 @@ jobs:
 
           readme_path = Path("README.md")
           readme = readme_path.read_text()
-          readme = re.sub(r"version-\\d+\\.\\d+\\.\\d+-blue", f"version-{next_version}-blue", readme)
-          readme = re.sub(r"(\\*\\*Development:\\*\\*\\s*)`[^`]+`", rf"\\g<1>`{next_version}`", readme)
+          readme = re.sub(r"version-\d+\.\d+\.\d+-blue", f"version-{next_version}-blue", readme)
+          readme = re.sub(r"(\*\*Development:\*\*\s*)`[^`]+`", rf"\g<1>`{next_version}`", readme)
           readme_path.write_text(readme)
           PY
           git config user.name github-actions[bot]
