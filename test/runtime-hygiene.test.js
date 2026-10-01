@@ -223,6 +223,11 @@ test("release workflow keeps dry runs non-mutating and deploys idempotently", as
   assert.match(workflow, /GITHUB_RUN_ID/);
 });
 
+test("release workflow grants read access to commit statuses", async () => {
+  const workflow = await readFile(".github/workflows/sync-version.yml", "utf8");
+  assert.ok(workflow.includes("permissions:\n  contents: write\n  statuses: read"));
+});
+
 test("production dispatch honors an explicit release target SHA over workflow HEAD", async () => {
   const workflow = await readFile(".github/workflows/sync-version.yml", "utf8");
   const deployMarker = 'elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.deploy_prod }}" == "true" ]]; then';
