@@ -57,6 +57,47 @@ export function validateReleaseTarget({ targetVersion, expectedVersion, targetSh
   return true;
 }
 
+export function validateLastDeploymentMetadata(state) {
+  const deployment = state?.lastDeployment;
+  if (!deployment || typeof deployment !== "object") {
+    throw new Error("lastDeployment metadata is missing.");
+  }
+
+  if (deployment.version !== state.lastDeploymentVersion) {
+    throw new Error("lastDeployment version does not match lastDeploymentVersion.");
+  }
+  if (!/^[0-9a-f]{40}$/i.test(String(deployment.sha || "")) || deployment.sha !== state.lastDeploymentSha) {
+    throw new Error("lastDeployment SHA does not match lastDeploymentSha.");
+  }
+  if (!/^dpl_[A-Za-z0-9]+$/.test(String(deployment.vercelDeploymentId || "")) ||
+      deployment.vercelDeploymentId !== state.lastDeploymentId) {
+    throw new Error("lastDeployment deployment ID does not match lastDeploymentId.");
+  }
+  if (!/^v\d+\.\d+\.\d+$/.test(String(deployment.tag || "")) ||
+      deployment.tag !== state.lastDeploymentTag ||
+      deployment.tag !== `v${deployment.version}`) {
+    throw new Error("lastDeployment tag does not match the authoritative release version.");
+  }
+  if (deployment.releasedAt !== null && (!Number.isFinite(Date.parse(deployment.releasedAt)))) {
+    throw new Error("lastDeployment releasedAt is invalid.");
+  }
+  if (deployment.ciRunId !== null && !/^\d+$/.test(String(deployment.ciRunId))) {
+    throw new Error("lastDeployment ciRunId is invalid.");
+  }
+  if (deployment.ciRunUrl !== null) {
+    try {
+      const url = new URL(deployment.ciRunUrl);
+      if (url.protocol !== "https:" || url.hostname !== "github.com") throw new Error();
+    } catch {
+      throw new Error("lastDeployment ciRunUrl is invalid.");
+    }
+  }
+  if (deployment.smokeTest !== "passed") {
+    throw new Error("lastDeployment smokeTest must be passed.");
+  }
+  return true;
+}
+
 import fs from "node:fs";
 import path from "node:path";
 
@@ -91,6 +132,8 @@ export function validateRepositoryReleaseState(root = process.cwd()) {
     deploymentLimit: state.deploymentLimit,
     paused: state.paused,
   });
+
+  validateLastDeploymentMetadata(state);
 
   if (readmeVersions.badge !== addonVersion || readmeVersions.development.replace(/^v/, "") !== addonVersion) {
     throw new Error("README development version is out of sync with api/version.js.");
