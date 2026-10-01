@@ -145,7 +145,7 @@ jobs:
           assert metas
           assert all(re.match(r'^(mal:\d+|anilist:\d+)
           assert all(m.get('type') == 'series' for m in metas)
-          assert any(str(m.get('id','')).startsWith('mal:') for m in metas)
+          assert any(str(m.get('id','')).startswith('mal:') for m in metas)
           PY
             then
               echo "Production smoke test passed."
