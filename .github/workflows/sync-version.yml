@@ -76,6 +76,10 @@ jobs:
             echo "redeploy=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Validate repository release metadata
+        if: steps.gate.outputs.release == 'false'
+        run: node scripts/release-integrity.mjs
+
       - name: Bump patch version and sync metadata
         if: github.event_name == 'push' && steps.gate.outputs.release == 'false' && !contains(github.event.head_commit.message || '', '[skip-version-automation]') && !contains(github.event.head_commit.message || '', '[major-release]')
         shell: bash
@@ -105,7 +109,7 @@ jobs:
           PY
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add api/version.js package.json
+          git add api/version.js package.json README.md
           git commit -m "chore: bump patch version [skip-release-pipeline]"
           git push
 
@@ -143,51 +147,26 @@ jobs:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: test -n "$VERCEL_DEPLOY_HOOK_URL" && curl --fail --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
 
-      - name: Production smoke test
+      - name: Production validation
         if: steps.gate.outputs.release == 'true'
+        env:
+          PRODUCTION_BASE_URL: https://nuvio-anime-releases-addon-rho.vercel.app
         run: |
           set -euo pipefail
           if [ "${{ steps.gate.outputs.redeploy }}" = "true" ]; then
-            expected="$(sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p' api/version.js)"
+            export EXPECTED_VERSION="$(sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p' api/version.js)"
           else
             git fetch --quiet origin "${{ steps.gate.outputs.release_target_sha }}"
-            expected="$(git show "${{ steps.gate.outputs.release_target_sha }}:api/version.js" | sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p')"
+            export EXPECTED_VERSION="$(git show "${{ steps.gate.outputs.release_target_sha }}:api/version.js" | sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p')"
           fi
+
           for attempt in $(seq 1 30); do
-            root_manifest="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json || true)"
-            catalog="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/catalog/anime/current_season.json || true)"
-            meta_status="$(curl --silent --output /dev/null --write-out '%{http_code}' https://nuvio-anime-releases-addon-rho.vercel.app/meta/series/mal%3A39535.json || true)"
-            if EXPECTED="$expected" ROOT="$root_manifest" CATALOG="$catalog" META_STATUS="$meta_status" python - <<'PY'
-          import json
-          import os
-          import re
-
-          root = json.loads(os.environ["ROOT"])
-          catalog = json.loads(os.environ["CATALOG"])
-          expected = os.environ["EXPECTED"]
-
-          assert root.get("version") == expected
-          assert root.get("id") == "com.marki.nuvio.anime-releases"
-          assert root.get("identityMode") == "mal"
-          assert root.get("resources") == [{"name": "catalog", "types": ["anime"]}]
-          assert root.get("types") == ["anime"]
-          assert root.get("catalogs") and all(c.get("type") == "anime" for c in root["catalogs"])
-          assert os.environ["META_STATUS"] == "404"
-
-          metas = catalog.get("metas", [])
-          assert metas
-          assert all(re.match(r"^(mal:\d+|anilist:\d+)$", str(m.get("id", ""))) for m in metas)
-          assert all(m.get("type") == "series" for m in metas)
-          assert any(str(m.get("id", "")).startswith("mal:") for m in metas)
-          PY
-            then
-              echo "Production smoke test passed."
+            if node scripts/validate-production.mjs; then
               exit 0
             fi
             sleep 5
           done
           exit 1
-
       - name: Resolve Vercel deployment ID
         if: steps.gate.outputs.release == 'true'
         id: vercel_deployment
