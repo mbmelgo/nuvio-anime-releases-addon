@@ -92,6 +92,7 @@ test("rolling pagination fills a Nuvio page across schedule pages after deduplic
       return pages[page - 1] || [];
     },
     maxPages: 2,
+    pageSize: 4,
   });
   assert.deepEqual(result.map((meta) => meta.id), ["anilist:1", "anilist:2", "anilist:3", "anilist:4"]);
   assert.deepEqual(calls.map((call) => [call.page, call.futureOnly, call.sort]), [[1, true, "TIME"], [2, true, "TIME"]]);
@@ -110,6 +111,7 @@ test("rolling search is applied before logical pagination so later schedule page
       return pages[args[3] - 1] || [];
     },
     maxPages: 2,
+    pageSize: 2,
   });
   assert.deepEqual(result.map((meta) => meta.name), ["Target Anime", "Target Anime 2"]);
   assert.deepEqual(calls, [1, 2]);

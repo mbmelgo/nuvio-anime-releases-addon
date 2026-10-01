@@ -114,6 +114,7 @@ export function getRollingCatalogRange(id, date) {
 export async function buildRollingCatalog(id, date, skip, search, {
   fetchPage = queryAiringSchedulePage,
   maxPages = MAX_SCHEDULE_PAGES,
+  pageSize = NUVIO_PAGE_SIZE,
 } = {}) {
   const range = getRollingCatalogRange(id, date);
   if (!range) return [];
@@ -123,7 +124,7 @@ export async function buildRollingCatalog(id, date, skip, search, {
 
   return collectValidatedCatalogPage({
     skip,
-    pageSize: NUVIO_PAGE_SIZE,
+    pageSize,
     maxPages,
     fetchPage: (page) => fetchPage(range.start, range.end, futureOnly, page, sort),
     canonicalizePage: async (rows) => {
