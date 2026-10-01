@@ -1,6 +1,6 @@
 const mode = process.argv[2];
 const sha = process.argv[3] || process.env.GITHUB_SHA || "";
-const explicit = process.argv[4] || process.env.RELEASE_TARGET_SHA || "";
+const explicit = process.argv[3] || process.env.RELEASE_TARGET_SHA || "";
 
 if (mode === "deploy") {
   if (!sha) throw new Error("GITHUB_SHA is required for deploy releases.");
