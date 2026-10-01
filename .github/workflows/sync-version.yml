@@ -147,7 +147,12 @@ jobs:
         if: steps.gate.outputs.release == 'true'
         run: |
           set -euo pipefail
-          expected="$(sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p' api/version.js)"
+          if [ "${{ steps.gate.outputs.redeploy }}" = "true" ]; then
+            expected="$(sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p' api/version.js)"
+          else
+            git fetch --quiet origin "${{ steps.gate.outputs.release_target_sha }}"
+            expected="$(git show "${{ steps.gate.outputs.release_target_sha }}:api/version.js" | sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p')"
+          fi
           for attempt in $(seq 1 30); do
             root_manifest="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json || true)"
             catalog="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/catalog/anime/current_season.json || true)"
