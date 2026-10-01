@@ -6,6 +6,7 @@ import {
   compareVersions,
   incrementMinor,
   validateVersionConsistency,
+  validateReleaseTarget,
 } from "../scripts/release-integrity.mjs";
 import {
   PRODUCTION_CATALOG_IDS,
@@ -161,4 +162,29 @@ test("production rolling catalog validators enforce their distinct metadata cont
   assert.throws(() => validateCatalog({
     metas: [{ id: "mal:1", type: "series", extra: { nextEpisode: 2, nextAiringAt: 123 } }],
   }, "previous_7_days"), /future-only/);
+});
+
+
+test("release target validator requires an exact SHA and expected version", () => {
+  assert.equal(validateReleaseTarget({
+    targetVersion: "5.6.0",
+    expectedVersion: "5.6.0",
+    targetSha: "0123456789abcdef0123456789abcdef01234567",
+  }), true);
+  assert.throws(
+    () => validateReleaseTarget({
+      targetVersion: "5.5.5",
+      expectedVersion: "5.6.0",
+      targetSha: "0123456789abcdef0123456789abcdef01234567",
+    }),
+    /does not match expected/,
+  );
+  assert.throws(
+    () => validateReleaseTarget({
+      targetVersion: "5.6.0",
+      expectedVersion: "5.6.0",
+      targetSha: "short",
+    }),
+    /full 40-character/,
+  );
 });
