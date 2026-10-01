@@ -175,7 +175,7 @@ The season represented by each endpoint is calculated dynamically.
 
 ## ✅ Release State
 
-**Current production version:** `v4.2.0`  
+**Current production version:** `v4.3.0`  
 **Development version:** `v4.2.4`  
 **Major baseline:** `v4.0.0`
 
