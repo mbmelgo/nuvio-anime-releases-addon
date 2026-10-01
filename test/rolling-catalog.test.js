@@ -82,8 +82,8 @@ test("previous rolling catalog keeps most-recent schedule order and deduplicates
 test("rolling pagination fills a Nuvio page across schedule pages after deduplication", async () => {
   const now = new Date("2026-10-01T00:00:00.000Z");
   const pages = [
-    [schedule(1, now.getTime() + 1, 1), schedule(1, now.getTime() + 2, 2), schedule(2, now.getTime() + 3, 1)],
-    [schedule(3, now.getTime() + 4, 1), schedule(2, now.getTime() + 5, 2), schedule(4, now.getTime() + 6, 1)],
+    [schedule(1, now.getTime() + 1, 1), schedule(1, now.getTime() + 2, 2), schedule(2, now.getTime() + 3, 1), schedule(2, now.getTime() + 3, 1)],
+    [schedule(3, now.getTime() + 4, 1), schedule(2, now.getTime() + 5, 2), schedule(4, now.getTime() + 6, 1), schedule(4, now.getTime() + 6, 1)],
   ];
   const calls = [];
   const result = await buildRollingCatalog("upcoming_5_days", now, 0, "", {
