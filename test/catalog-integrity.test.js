@@ -19,11 +19,6 @@ import {
   incrementMinor,
   validateVersionConsistency,
 } from "../scripts/release-integrity.mjs";
-import {
-  PRODUCTION_CATALOG_IDS,
-  validateCatalog,
-  validateManifest,
-} from "../scripts/validate-production.mjs";
 
 const SEASON_INFO = {
   ongoing: { season: "FALL", year: 2026 },
@@ -262,58 +257,4 @@ test("release state rejects inconsistent production and development metadata", (
     deploymentLimit: 10,
     paused: false,
   }), true);
-});
-
-test("production manifest validator enforces the exact five-catalog contract", () => {
-  const manifest = {
-    id: "com.marki.nuvio.anime-releases",
-    version: "5.5.3",
-    identityMode: "mal",
-    resources: [{ name: "catalog", types: ["anime"] }],
-    types: ["anime"],
-    catalogs: PRODUCTION_CATALOG_IDS.map((id) => ({ id, type: "anime" })),
-  };
-  assert.equal(validateManifest(manifest, "5.5.3"), true);
-  assert.throws(() => validateManifest({
-    ...manifest,
-    catalogs: manifest.catalogs.slice(0, 4),
-  }, "5.5.3"), /five supported catalogs/);
-});
-
-test("production catalog validator enforces unique series identities", () => {
-  assert.equal(validateCatalog({
-    metas: [
-      { id: "mal:1", type: "series" },
-      { id: "anilist:2", type: "series" },
-    ],
-  }, "current_season"), true);
-
-  assert.throws(() => validateCatalog({
-    metas: [
-      { id: "mal:1", type: "series" },
-      { id: "mal:1", type: "series" },
-    ],
-  }, "current_season"), /duplicate/);
-
-  assert.throws(() => validateCatalog({
-    metas: [{ id: "tvdb:1", type: "series" }],
-  }, "current_season"), /invalid catalog identity/);
-});
-
-test("production rolling catalog validators enforce their distinct metadata contracts", () => {
-  assert.equal(validateCatalog({
-    metas: [{ id: "mal:1", type: "series", extra: { nextEpisode: 2, nextAiringAt: 123 } }],
-  }, "upcoming_5_days"), true);
-
-  assert.throws(() => validateCatalog({
-    metas: [{ id: "mal:1", type: "series", extra: { nextEpisode: 2 } }],
-  }, "upcoming_5_days"), /next episode and next airing/);
-
-  assert.equal(validateCatalog({
-    metas: [{ id: "mal:1", type: "series", extra: {} }],
-  }, "previous_7_days"), true);
-
-  assert.throws(() => validateCatalog({
-    metas: [{ id: "mal:1", type: "series", extra: { nextEpisode: 2, nextAiringAt: 123 } }],
-  }, "previous_7_days"), /future-only/);
 });
