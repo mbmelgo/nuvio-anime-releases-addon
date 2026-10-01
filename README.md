@@ -166,8 +166,8 @@ Catalog names and season labels are generated dynamically.
 
 ## 🚀 Current release
 
-**Production:** `v5.4.0`  
-**Development:** `v5.4.1`  
+**Production:** `v5.5.0`  
+**Development:** `v5.5.0`  
 **Major baseline:** `v5.0.0`
 
 v5.4.0 promotes MAL identity to the primary catalog identity while retaining AniList as the fallback. The rolling upcoming and previous catalogs remain part of the production addon.
