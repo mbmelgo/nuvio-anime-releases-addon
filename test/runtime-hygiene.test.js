@@ -50,7 +50,7 @@ test("README and home page describe the current MAL-primary release", async () =
   const readme = await readFile("README.md", "utf8");
   const home = await readFile("api/home-selector.js", "utf8");
   assert.match(readme, /\[!\[MAL\]\(https:\/\/img\.shields\.io\/badge\/MyAnimeList-identity-2e51a2\.svg\)\]\(https:\/\/myanimelist\.net\)/);
-  assert.match(readme, /version-5\.4\.0-blue/);
+  assert.match(readme, /version-5\.4\.1-blue/);
   assert.match(readme, /MAL identities when available/);
   assert.doesNotMatch(readme, /AniList-only/);
   assert.match(home, /MAL is the primary catalog identity when available/);
