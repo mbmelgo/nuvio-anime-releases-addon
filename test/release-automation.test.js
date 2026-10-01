@@ -24,8 +24,11 @@ test("release smoke test validates the MAL-primary catalog identity", () => {
   assert.match(deployWorkflow, /com\.marki\.nuvio\.anime-releases/);
   assert.doesNotMatch(deployWorkflow, /com\.marki\.nuvio\.anime-releases\.v5/);
   assert.doesNotMatch(deployWorkflow, /\/v5\//);
-  assert.equal(deployWorkflow.includes("r'^(mal:\\d+|anilist:\\d+)
-});
-"), true);
+  assert.equal(deployWorkflow.includes("r'^(mal:\\d+|anilist:\\d+)$'"), true);
   assert.equal(deployWorkflow.includes("assert all(m.get('type') == 'series' for m in metas)"), true);
+});
+
+test("version verification workflow listens to the actual release workflow name", () => {
+  const verifyWorkflow = fs.readFileSync(new URL("../.github/workflows/verify-version-sync.yml", import.meta.url), "utf8");
+  assert.match(verifyWorkflow, /workflows:\s*\[\"CI, automatic patch versioning, and controlled Vercel release\"\]/);
 });
