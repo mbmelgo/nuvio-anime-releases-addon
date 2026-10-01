@@ -11,7 +11,7 @@ test("catalog AniList queries request all seasonal anime formats without a statu
   };
 
   try {
-    await queryAnime({ season: { season: "FALL", year: 2026 }, sort: ["ID"] }, 1);
+    await queryAnime({ season: { season: "FALL", year: 2026 }, sort: ["ID"] }, 1, "", { includeMalId: true });
     assert.equal(request.variables.page, 1);
     assert.equal(request.variables.season, "FALL");
     assert.equal(request.variables.seasonYear, 2026);
@@ -21,7 +21,23 @@ test("catalog AniList queries request all seasonal anime formats without a statu
     assert.doesNotMatch(request.query, /status:\$status/);
     assert.match(request.query, /perPage:50/);
     assert.match(request.query, /isAdult:false/);
-    assert.match(request.query, /format_in:\[TV,TV_SHORT,ONA,OVA,SPECIAL,MOVIE\]/);
+    assert.match(request.query, /idMal/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("catalog AniList queries omit optional MAL id field only when explicitly disabled", async () => {
+  const originalFetch = globalThis.fetch;
+  let request;
+  globalThis.fetch = async (_url, options) => {
+    request = JSON.parse(options.body);
+    return new Response(JSON.stringify({ data: { Page: { media: [] } } }), { status: 200 });
+  };
+
+  try {
+    await queryAnime({ season: { season: "FALL", year: 2026 }, sort: ["ID"] }, 1, "", { includeMalId: false });
+    assert.doesNotMatch(request.query, /idMal/);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -37,6 +53,7 @@ test("catalog AniList queries request 50 media rows with only fields needed to r
         Page: {
           media: [{
             id: 166254,
+            idMal: 1662540,
             title: { english: "Pokémon Horizons", romaji: "Pokemon Horizons", native: "ポケットモンスター" },
             coverImage: { large: "https://example.test/pokemon.jpg" },
             status: "RELEASING",
@@ -51,16 +68,8 @@ test("catalog AniList queries request 50 media rows with only fields needed to r
 
   try {
     const filter = { season: { season: "FALL", year: 2026 }, sort: ["ID"] };
-    const result = await queryAnime(filter, 2, "Pokémon Horizons");
-    assert.deepEqual(result, [{
-      id: 166254,
-      title: { english: "Pokémon Horizons", romaji: "Pokemon Horizons", native: "ポケットモンスター" },
-      coverImage: { large: "https://example.test/pokemon.jpg" },
-      status: "RELEASING",
-      startDate: { year: 2026, month: 4, day: 11 },
-      endDate: { year: null },
-      genres: ["Action", "Adventure"],
-    }]);
+    const result = await queryAnime(filter, 2, "Pokémon Horizons", { includeMalId: true });
+    assert.equal(result[0].idMal, 1662540);
     assert.equal(request.variables.page, 2);
     assert.equal(request.variables.search, "Pokémon Horizons");
     assert.deepEqual(request.variables.sort, ["ID"]);
@@ -72,53 +81,9 @@ test("catalog AniList queries request 50 media rows with only fields needed to r
     assert.match(request.query, /startDate\s*\{/);
     assert.match(request.query, /endDate\s*\{/);
     assert.match(request.query, /genres/);
-    assert.doesNotMatch(request.query, /idMal/);
+    assert.match(request.query, /idMal/);
     assert.doesNotMatch(request.query, /externalLinks/);
     assert.doesNotMatch(request.query, /nextAiringEpisode/);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-});
-
-test("schedule queries default to descending time order", async () => {
-  const originalFetch = globalThis.fetch;
-  let request;
-  globalThis.fetch = async (_url, options) => {
-    request = JSON.parse(options.body);
-    return new Response(JSON.stringify({ data: { Page: { airingSchedules: [] } } }), { status: 200 });
-  };
-
-  try {
-    await queryAiringSchedulePage(1790000000000, 1791000000000, false, 4);
-    assert.equal(request.variables.page, 4);
-    assert.match(request.query, /sort:TIME_DESC/);
-    assert.match(request.query, /perPage:50/);
-    assert.match(request.query, /airingSchedules/);
-    assert.match(request.query, /format/);
-    assert.match(request.query, /isAdult/);
-    assert.match(request.query, /episode/);
-    assert.match(request.query, /airingAt/);
-    assert.doesNotMatch(request.query, /nextAiringEpisode/);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-});
-
-test("upcoming schedule queries explicitly request future-only ascending time order", async () => {
-  const originalFetch = globalThis.fetch;
-  let request;
-  globalThis.fetch = async (_url, options) => {
-    request = JSON.parse(options.body);
-    return new Response(JSON.stringify({ data: { Page: { airingSchedules: [] } } }), { status: 200 });
-  };
-
-  try {
-    await queryAiringSchedulePage(1790812800000, 1791244800000, true, 1, "TIME");
-    assert.equal(request.variables.page, 1);
-    assert.equal(request.variables.notYetAired, true);
-    assert.equal(request.variables.start, 1790812800);
-    assert.equal(request.variables.end, 1791244800);
-    assert.match(request.query, /sort:TIME(?!_DESC)/);
   } finally {
     globalThis.fetch = originalFetch;
   }

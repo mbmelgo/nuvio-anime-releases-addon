@@ -1,13 +1,13 @@
 # Anime Releases for Nuvio
 
 [![Nuvio](https://img.shields.io/badge/Nuvio-addon-ff6f61.svg)](https://nuvio.tv)
-[![AniList](https://img.shields.io/badge/AniList-data_source-02A9FF.svg)](https://anilist.co)
+[![MAL](https://img.shields.io/badge/MyAnimeList-identity-2e51a2.svg](https://myanimelist.net)
 [![Vercel](https://img.shields.io/badge/deployed_on-Vercel-black.svg?logo=vercel)](https://vercel.com)
 [![Version](https://img.shields.io/badge/version-5.3.0-blue.svg)](https://github.com/mbmelgo/nuvio-anime-releases-addon/releases)
 
 > A lightweight, season-aware anime release catalog for Nuvio and Stremio-compatible clients.
 
-**Anime Releases for Nuvio** provides dynamically generated seasonal and rolling anime release catalogs using **AniList** as the catalog source. Anime are exposed with their canonical `anilist:<id>` identity, while detailed metadata and provider mapping are delegated to the metadata addon configured in the client.
+**Anime Releases for Nuvio** provides dynamically generated seasonal and rolling anime release catalogs using **AniList** as the catalog data source while exposing **MyAnimeList (MAL)** identities whenever AniList provides a MAL id. Anime without a MAL id fall back to their canonical `anilist:<id>` identity. Detailed metadata and provider mapping are delegated to the metadata addon configured in the client.
 
 ---
 
@@ -45,15 +45,21 @@ Seasonal catalogs include these AniList anime formats:
 
 The catalog does **not** use a release-status filter, so entries remain associated with their season as they move from upcoming to releasing and finished.
 
-### 🔑 Canonical AniList IDs
+### 🔑 Canonical MAL IDs with AniList fallback
 
-Every catalog item uses:
+Catalog items use:
+
+```text
+mal:<id>
+```
+
+when AniList provides a valid MAL id. If MAL is unavailable for an entry, the addon preserves the source identity as:
 
 ```text
 anilist:<id>
 ```
 
-This keeps the addon focused on catalog discovery and lets the downstream metadata addon resolve detailed information.
+This keeps the addon focused on catalog discovery while giving downstream metadata addons the most useful supported identity available.
 
 ### 📄 Nuvio-Friendly Pagination
 
@@ -106,7 +112,7 @@ The important behavior illustrated here is the addon flow rather than exact Nuvi
 ```text
 AniList seasonal catalog
         ↓
-anilist:<id>
+mal:<id> (or anilist:<id> fallback)
         ↓
 Nuvio
         ↓
@@ -161,13 +167,7 @@ https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json
 
 Add the manifest to your supported Nuvio/Stremio client.
 
-For MAL-identity experiments, the isolated secondary manifest is:
-
-```text
-https://nuvio-anime-releases-addon-rho.vercel.app/mal/manifest.json
-```
-
-The secondary manifest uses separate `mal_*` catalog IDs, prefers `mal:<id>` when a MAL id exists, and falls back to `anilist:<id>` when MAL is unavailable. It does not replace or modify the primary AniList manifest.
+The primary manifest now uses MAL identities when available and falls back to AniList identities per catalog item. The former secondary MAL manifest has been merged into the primary addon.
 
 Production landing page:
 
@@ -196,7 +196,7 @@ The season represented by each endpoint is calculated dynamically.
 ## ✅ Release State
 
 **Current production version:** `v5.3.0`  
-**Development version:** `v5.3.0`  
+**Development version:** `v5.3.1`  
 **Major baseline:** `v5.0.0`
 
 The 2026 seasonal baselines validated during the `v4.0.0` production release are:
@@ -213,7 +213,7 @@ These counts correspond to the AniList seasonal query using the six supported an
 
 ## 🚀 Releases
 
-Production releases are published as GitHub Releases alongside their production release tags. The `v5.0.0` baseline formally consolidates the seasonal and rolling release-catalog architecture. `v5.1.0` added an isolated experimental MAL-identity manifest without changing the primary AniList manifest. `v5.3.0` fixes the secondary manifest URL layout for Nuvio's `/manifest.json` base-path handling and preserves MAL-less entries in that secondary manifest by falling back to their canonical AniList identity.
+Production releases are published as GitHub Releases alongside their production release tags. The `v5.0.0` baseline formally consolidates the seasonal and rolling release-catalog architecture. `v5.1.0` introduced the isolated MAL identity experiment, and the subsequent releases validated its Nuvio routing and fallback behavior. The current development change promotes MAL identity to the primary manifest while retaining an AniList fallback for MAL-less entries.
 
 **GitHub Releases:** https://github.com/mbmelgo/nuvio-anime-releases-addon/releases
 
@@ -236,7 +236,7 @@ v5.0.0
 Current production release:
 
 ```text
-v5.2.0
+v5.3.0
 ```
 
 ---
@@ -315,7 +315,7 @@ This addon is responsible for:
 
 - seasonal anime catalog discovery
 - rolling upcoming/recent airing catalog discovery
-- AniList-based anime identities
+- MAL-first anime identities with AniList fallback
 - catalog pagination
 - catalog search
 - seasonal catalog organization
