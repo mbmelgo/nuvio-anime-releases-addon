@@ -20,6 +20,8 @@ test("catalog AniList queries request all seasonal anime formats without a statu
     assert.match(request.query, /format_in:\[TV,TV_SHORT,ONA,OVA,SPECIAL,MOVIE\]/);
     assert.doesNotMatch(request.query, /status:\$status/);
     assert.match(request.query, /perPage:50/);
+    assert.match(request.query, /isAdult:false/);
+    assert.match(request.query, /format_in:\[TV,TV_SHORT,ONA,OVA,SPECIAL,MOVIE\]/);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -92,6 +94,8 @@ test("schedule queries default to descending time order", async () => {
     assert.match(request.query, /sort:TIME_DESC/);
     assert.match(request.query, /perPage:50/);
     assert.match(request.query, /airingSchedules/);
+    assert.match(request.query, /format/);
+    assert.match(request.query, /isAdult/);
     assert.match(request.query, /episode/);
     assert.match(request.query, /airingAt/);
     assert.doesNotMatch(request.query, /nextAiringEpisode/);
