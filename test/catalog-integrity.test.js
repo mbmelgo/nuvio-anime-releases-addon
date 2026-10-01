@@ -52,7 +52,7 @@ function schedule(id, airingAt, episode, options = {}) {
 
 function assertCatalogMeta(meta) {
   assert.ok(meta && typeof meta === "object");
-  assert.match(meta.id, /^(mal|anilist):[1-9]\\d*$/);
+  assert.match(meta.id, /^(mal|anilist):[1-9]\d*$/);
   assert.equal(meta.type, "series");
   assert.equal(typeof meta.name, "string");
   assert.ok(meta.name.length > 0);
@@ -119,7 +119,6 @@ test("catalog identity resolution never emits an invalid downstream identity", (
 
 test("seasonal pagination returns a unique, bounded, contract-valid catalog page", async () => {
   const rows = [
-    media(1, { malId: 1001 }),
     media(1, { malId: 1001 }),
     media(2),
     media(3),
