@@ -28,9 +28,8 @@ export function catalogDefinitions(info) {
   return getCatalogDefinitions(info);
 }
 
-export function toCatalogIdentity(meta, identityMode = "mal") {
+export function toCatalogIdentity(meta) {
   if (!meta) return null;
-  if (identityMode !== "mal") return meta;
 
   const malId = Number(meta.extra?.malId);
   if (Number.isInteger(malId) && malId > 0) {
@@ -92,7 +91,7 @@ export function normalizeSeasonalCatalogMetaTypes(metas) {
   return metas.map((meta) => ({ ...meta, type: "series" }));
 }
 
-export function canonicalizeCatalogPage(mediaRows, { identityMode = "mal" } = {}) {
+export function canonicalizeCatalogPage(mediaRows) {
   if (!Array.isArray(mediaRows) || mediaRows.length === 0) return [];
   const normalizedRows = mediaRows
     .map((row) => (typeof row === "object" && row !== null ? row : { id: row }))
@@ -100,7 +99,7 @@ export function canonicalizeCatalogPage(mediaRows, { identityMode = "mal" } = {}
   if (normalizedRows.length === 0) return [];
   return normalizeSeasonalCatalogMetaTypes(
     normalizedRows
-      .map((row) => toCatalogIdentity(toMetaFromAniList(row.id, row), identityMode))
+      .map((row) => toCatalogIdentity(toMetaFromAniList(row.id, row)))
       .filter(Boolean),
   );
 }
