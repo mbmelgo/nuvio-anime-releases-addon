@@ -196,7 +196,7 @@ The season represented by each endpoint is calculated dynamically.
 ## ✅ Release State
 
 **Current production version:** `v5.2.0`  
-**Development version:** `v5.1.0`  
+**Development version:** `v5.2.0`  
 **Major baseline:** `v5.0.0`
 
 The 2026 seasonal baselines validated during the `v4.0.0` production release are:
