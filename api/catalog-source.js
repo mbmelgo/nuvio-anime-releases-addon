@@ -111,6 +111,11 @@ export function getRollingCatalogRange(id, date) {
   return null;
 }
 
+export function isEligibleRollingMedia(media) {
+  return media?.isAdult === false
+    && ["TV", "TV_SHORT", "ONA", "OVA", "SPECIAL", "MOVIE"].includes(media?.format);
+}
+
 export async function buildRollingCatalog(id, date, skip, search, {
   fetchPage = queryAiringSchedulePage,
   maxPages = MAX_SCHEDULE_PAGES,
@@ -133,6 +138,7 @@ export async function buildRollingCatalog(id, date, skip, search, {
         const media = row?.media;
         const mediaId = media?.id;
         if (!Number.isInteger(Number(mediaId)) || Number(mediaId) <= 0) continue;
+        if (!isEligibleRollingMedia(media)) continue;
         const meta = toMetaFromAniList(mediaId, media);
         meta.type = "series";
         meta.extra = {
