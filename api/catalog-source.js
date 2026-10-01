@@ -45,8 +45,16 @@ export function toCatalogIdentity(meta, identityMode = "anilist") {
   if (!meta) return null;
   if (identityMode !== "mal") return meta;
   const malId = Number(meta.extra?.malId);
-  if (!Number.isInteger(malId) || malId <= 0) return null;
-  return { ...meta, id: `mal:${malId}` };
+  if (Number.isInteger(malId) && malId > 0) {
+    return { ...meta, id: `mal:${malId}` };
+  }
+
+  const anilistId = Number(meta.extra?.anilistId);
+  if (Number.isInteger(anilistId) && anilistId > 0) {
+    return { ...meta, id: `anilist:${anilistId}` };
+  }
+
+  return null;
 }
 
 export function getSeasonInfo(date) {
