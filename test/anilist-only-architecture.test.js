@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { buildManifest } from "../api/resolver-manifest.js";
 import { canonicalizeCatalogPage } from "../api/catalog-source.js";
 
-test("manifest exposes a single AniList identity mode", () => {
+test("primary manifest uses MAL identity with AniList fallback", () => {
   const manifest = buildManifest({
     ongoing: { season: "SUMMER", year: 2026 },
     previous: { season: "SPRING", year: 2026 },
@@ -11,12 +11,19 @@ test("manifest exposes a single AniList identity mode", () => {
   });
 
   assert.equal(manifest.id, "com.marki.nuvio.anime-releases");
-  assert.equal(manifest.identityMode, "anilist");
+  assert.equal(manifest.identityMode, "mal");
   assert.equal(manifest.name, "Anime Releases for Nuvio");
-  assert.equal(manifest.catalogs.length > 0, true);
+  assert.equal(manifest.catalogs.length, 5);
+  assert.deepEqual(manifest.catalogs.map((catalog) => catalog.id), [
+    "upcoming_season",
+    "current_season",
+    "previous_season",
+    "upcoming_5_days",
+    "previous_7_days",
+  ]);
 });
 
-test("catalog canonicalization always preserves AniList identity", () => {
+test("seasonal catalog canonicalization prefers MAL identity", () => {
   const metas = canonicalizeCatalogPage([
     {
       id: 195604,
@@ -29,7 +36,7 @@ test("catalog canonicalization always preserves AniList identity", () => {
   ]);
 
   assert.equal(metas.length, 1);
-  assert.equal(metas[0].id, "anilist:195604");
+  assert.equal(metas[0].id, "mal:61967");
   assert.equal(metas[0].type, "series");
   assert.equal(metas[0].name, "Black Clover Season 2");
   assert.deepEqual(metas[0].genres, ["Action"]);
@@ -37,11 +44,19 @@ test("catalog canonicalization always preserves AniList identity", () => {
   assert.equal(metas[0].extra.malId, 61967);
 });
 
-test("catalog canonicalization does not drop rows because provider mappings are absent", () => {
+test("seasonal catalog falls back to AniList when MAL is unavailable", () => {
   const metas = canonicalizeCatalogPage([
-    { id: 195604, title: { romaji: "Black Clover 2nd Season" } },
-    { id: 205896, title: { romaji: "Shinja Zero no Megami-sama to Hajimeru Isekai Kouryaku" } },
+    { id: 205896, title: { romaji: "Fallback Anime" } },
   ]);
 
-  assert.deepEqual(metas.map((meta) => meta.id), ["anilist:195604", "anilist:205896"]);
+  assert.deepEqual(metas.map((meta) => meta.id), ["anilist:205896"]);
+});
+
+test("provider mappings are not required for catalog identity", () => {
+  const metas = canonicalizeCatalogPage([
+    { id: 195604, idMal: 61967, title: { romaji: "Black Clover 2nd Season" } },
+    { id: 205896, title: { romaji: "Fallback Anime" } },
+  ]);
+
+  assert.deepEqual(metas.map((meta) => meta.id), ["mal:61967", "anilist:205896"]);
 });
