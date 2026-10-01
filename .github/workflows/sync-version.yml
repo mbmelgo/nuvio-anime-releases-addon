@@ -117,13 +117,24 @@ jobs:
           import re
           from pathlib import Path
 
+          import subprocess
           state = json.loads(Path("ops/release-state.json").read_text())
-          version = re.search(r'ADDON_VERSION = "([^"]+)"', Path("api/version.js").read_text()).group(1)
           expected = state["nextReleaseVersion"]
           if state["paused"] or state["deploymentsSincePause"] >= state["deploymentLimit"]:
               raise SystemExit("Deployment checkpoint reached.")
+
+          if "${{ steps.gate.outputs.redeploy }}" == "true":
+              version = re.search(r'ADDON_VERSION = "([^"]+)"', Path("api/version.js").read_text()).group(1)
+          else:
+              target = "${{ steps.gate.outputs.release_target_sha }}"
+              subprocess.run(["git", "fetch", "--quiet", "origin", target], check=True)
+              version = re.search(
+                  r'ADDON_VERSION = "([^"]+)"',
+                  subprocess.check_output(["git", "show", f"{target}:api/version.js"], text=True),
+              ).group(1)
+
           if version != expected:
-              raise SystemExit(f"Production version {version} does not match next release baseline {expected}.")
+              raise SystemExit(f"Release target version {version} does not match next release baseline {expected}.")
           PY
 
       - name: Trigger Vercel deployment
