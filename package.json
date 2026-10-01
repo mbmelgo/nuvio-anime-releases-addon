@@ -7,6 +7,6 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "node --test test/catalog-integrity.test.js"
+    "test": "node --test"
   }
 }
