@@ -63,6 +63,8 @@ Large seasonal catalogs can therefore be consumed page-by-page without introduci
 
 Rolling catalogs apply pagination after schedule records have been deduplicated into unique anime.
 
+Rolling windows are evaluated from the request time.
+
 ### 🔎 Catalog Search
 
 The catalog endpoint accepts Nuvio/Stremio catalog search requests and applies the search term to the AniList-backed catalog.
