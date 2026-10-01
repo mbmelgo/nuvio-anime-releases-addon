@@ -242,6 +242,12 @@ jobs:
             git fetch --quiet origin "${{ steps.gate.outputs.release_target_sha }}"
             expected="$(git show "${{ steps.gate.outputs.release_target_sha }}:api/version.js" | sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p')"
           fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            production_expected="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json | sed -nE 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p')"
+            test -n "$production_expected"
+          else
+            production_expected="$expected"
+          fi
           for attempt in $(seq 1 30); do
             if EXPECTED_VERSION="$production_expected" PRODUCTION_BASE_URL="https://nuvio-anime-releases-addon-rho.vercel.app" node scripts/validate-production.mjs; then
               echo "Extended production validation passed."
