@@ -5,28 +5,8 @@
   },
   "rewrites": [
     {
-      "source": "/mal/manifest.json",
-      "destination": "/api/resolver-manifest-mal"
-    },
-    {
-      "source": "/mal/catalog/:type/:id.json",
-      "destination": "/api/catalog-source?resource=catalog&type=:type&id=:id"
-    },
-    {
-      "source": "/mal/catalog/:type/:id/search=:search&skip=:skip.json",
-      "destination": "/api/catalog-source?resource=catalog&type=:type&id=:id&search=:search&skip=:skip"
-    },
-    {
-      "source": "/mal/catalog/:type/:id/:extra*",
-      "destination": "/api/catalog-source?resource=catalog&type=:type&id=:id&extra=:extra*"
-    },
-    {
       "source": "/manifest.json",
       "destination": "/api/resolver-manifest"
-    },
-    {
-      "source": "/manifest-mal.json",
-      "destination": "/api/resolver-manifest-mal"
     },
     {
       "source": "/catalog/:type/:id.json",
