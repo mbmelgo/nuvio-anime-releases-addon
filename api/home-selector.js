@@ -72,9 +72,9 @@ export default function handler(req, res) {
     </section>
 
     <section class="panel">
-      <h2>Architecture</h2>
-      <p class="note"><code>AniList → anilist:&lt;id&gt; → Nuvio → metadata addon</code></p>
-      <p class="note">The addon is catalog-focused and does not duplicate downstream detailed metadata/provider-mapping functionality.</p>
+      <h2>Identity and metadata flow</h2>
+      <p class="note"><code>AniList → mal:&lt;id&gt; / anilist:&lt;id&gt; → Nuvio → configured metadata addon</code></p>
+      <p class="note">This addon is catalog-focused. It does not duplicate detailed metadata, provider mapping, or playback resolution.</p>
     </section>
   </main>
   <footer class="wrap">Anime Releases for Nuvio · v${ADDON_VERSION}</footer>
