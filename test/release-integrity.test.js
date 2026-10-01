@@ -12,7 +12,11 @@ import {
   validateManifest,
 } from "../scripts/validate-production.mjs";
 
-test("repository release metadata is internally consistent", () => {\n  assert.equal(validateRepositoryReleaseState(), true);\n});\n\ntest("release version helpers enforce semantic versioning and minor baselines", () => {
+test("repository release metadata is internally consistent", () => {
+  assert.equal(validateRepositoryReleaseState(), true);
+});
+
+test("release version helpers enforce semantic versioning and minor baselines", () => {
   assert.equal(compareVersions("5.5.3", "5.5.0") > 0, true);
   assert.equal(compareVersions("5.5.0", "5.5.0"), 0);
   assert.equal(incrementMinor("5.5.3"), "5.6.0");
