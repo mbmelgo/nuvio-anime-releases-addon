@@ -49,6 +49,7 @@ jobs:
       - name: Run full CI
         run: npm test
 
+      # A finalize-prod marker carries the exact already-deployed commit SHA.
       - name: Determine release request
         id: gate
         env:
