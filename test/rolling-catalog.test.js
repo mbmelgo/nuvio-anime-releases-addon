@@ -131,3 +131,31 @@ test("seasonal pagination remains the existing direct AniList-page mapping", asy
   assert.deepEqual(calls, [2]);
   assert.deepEqual(result, [{ id: "anilist:201" }, { id: "anilist:202" }]);
 });
+
+
+test("rolling catalogs exclude adult and unsupported-format media", async () => {
+  const now = new Date("2026-10-01T00:00:00.000Z");
+  const rows = [
+    {
+      ...schedule(1, now.getTime() + 1, 1, "Allowed TV"),
+      media: { ...schedule(1, now.getTime() + 1, 1, "Allowed TV").media, format: "TV", isAdult: false },
+    },
+    {
+      ...schedule(2, now.getTime() + 2, 1, "Adult TV"),
+      media: { ...schedule(2, now.getTime() + 2, 1, "Adult TV").media, format: "TV", isAdult: true },
+    },
+    {
+      ...schedule(3, now.getTime() + 3, 1, "Allowed ONA"),
+      media: { ...schedule(3, now.getTime() + 3, 1, "Allowed ONA").media, format: "ONA", isAdult: false },
+    },
+    {
+      ...schedule(4, now.getTime() + 4, 1, "Unsupported Manga"),
+      media: { ...schedule(4, now.getTime() + 4, 1, "Unsupported Manga").media, format: "MANGA", isAdult: false },
+    },
+  ];
+  const result = await buildRollingCatalog("upcoming_5_days", now, 0, "", {
+    fetchPage: async () => rows,
+    maxPages: 1,
+  });
+  assert.deepEqual(result.map((meta) => meta.id), ["anilist:1", "anilist:3"]);
+});
