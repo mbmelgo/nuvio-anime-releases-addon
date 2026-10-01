@@ -197,12 +197,6 @@ jobs:
           else
             production_expected="$expected"
           fi
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
-            production_expected="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json | sed -nE 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p')"
-            test -n "$production_expected"
-          else
-            production_expected="$expected"
-          fi
           for attempt in $(seq 1 30); do
             root_manifest="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json || true)"
             catalog="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/catalog/anime/current_season.json || true)"

@@ -65,7 +65,7 @@ test("release workflow resolves and records the actual Vercel deployment ID", ()
 });
 
 test("dry-run validates the existing production version instead of the unreleased target version", () => {
-  assert.match(deployWorkflow, /inputs\.dry_run.*production_expected/);
+  assert.match(deployWorkflow, /inputs\\.dry_run[\\s\\S]*production_expected/);
   assert.match(deployWorkflow, /production_expected=.*manifest\.json/);
   assert.match(deployWorkflow, /EXPECTED="\$production_expected"/);
   assert.match(deployWorkflow, /TARGET="\$expected"/);
