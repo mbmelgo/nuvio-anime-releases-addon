@@ -211,6 +211,18 @@ test("last deployment metadata must mirror the authoritative release state", () 
   );
 });
 
+test("release workflow keeps dry runs non-mutating and deploys idempotently", async () => {
+  const workflow = await readFile(".github/workflows/sync-version.yml", "utf8");
+  assert.match(workflow, /inputs\.dry_run/);
+  assert.match(workflow, /inputs\.dry_run.*true.*release=true|release=true.*inputs\.dry_run.*true/s);
+  assert.ok(workflow.includes("steps.existing_vercel.outputs.needs_deploy == 'true'"));
+  assert.ok(workflow.includes("inputs.dry_run != true"));
+  assert.match(workflow, /Create annotated release tag, GitHub Release, and update release state[\s\S]*inputs\.dry_run != true/);
+  assert.match(workflow, /Check for an existing Vercel deployment/);
+  assert.match(workflow, /state\["lastDeployment"\] = \{/);
+  assert.match(workflow, /GITHUB_RUN_ID/);
+});
+
 test("release target validator requires an exact SHA and expected version", () => {
   assert.equal(validateReleaseTarget({
     targetVersion: "5.6.0",
