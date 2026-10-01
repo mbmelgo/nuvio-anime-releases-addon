@@ -143,7 +143,110 @@ jobs:
           assert os.environ['META_STATUS']=='404'
           metas=catalog.get('metas',[])
           assert metas
-          assert all(re.match(r'^anilist:\d+$',str(m.get('id',''))) for m in metas)
+          assert all(re.match(r'^(mal:\d+|anilist:\d+)
+          assert all(m.get('type') == 'series' for m in metas)
+          assert any(str(m.get('id','')).startswith('mal:') for m in metas)
+          PY
+            then
+              echo "Production smoke test passed."
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
+
+      - name: Create annotated release tag, GitHub Release, and update release state
+        if: steps.gate.outputs.release == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          release_version="$(python -c 'import json;print(json.load(open("ops/release-state.json"))["nextReleaseVersion"])')"
+          tag="v$release_version"
+          if [[ "${{ steps.gate.outputs.redeploy }}" == "true" ]]; then
+            target="$(node scripts/release-target.mjs deploy "$GITHUB_SHA")"
+          else
+            target="$(node scripts/release-target.mjs finalize "${{ steps.gate.outputs.release_target_sha }}")"
+            git cat-file -e "$target^{commit}"
+          fi
+          git fetch --tags --force
+          previous="$(git tag --merged "$target^" --sort=-version:refname --list 'v*' | head -n1 || true)"
+          if [ -n "$previous" ]; then range="$previous..$target"; else range="$target"; fi
+          summary="$(python - "$range" "$tag" <<'PY'
+          import subprocess,sys,re
+          commit_range,tag=sys.argv[1:]
+          subjects=subprocess.check_output(['git','log','--reverse','--no-merges','--pretty=format:%s',commit_range],text=True).splitlines()
+          seen=set(); highlights=[]; categories=[]
+          for subject in subjects:
+              subject=re.sub(r'\s*\[[^]]+\]','',subject).strip()
+              kind,sep,text=subject.partition(': ')
+              kind=kind.lower() if sep else ''
+              text=text.strip() if sep else subject.strip()
+              if kind in {'chore','test','release'}: continue
+              if kind=='fix': categories.append('reliability'); line=text
+              elif kind in {'feat','feature'}: categories.append('features'); line=text
+              elif kind=='refactor': categories.append('maintenance'); line='Improved the internal organization and reliability of the addon.'
+              elif kind=='perf': categories.append('performance'); line='Improved addon performance and efficiency.'
+              elif kind in {'docs','documentation'}: categories.append('documentation'); line='Improved documentation and guidance.'
+              else: continue
+              line=re.sub(r'\s+',' ',line).strip().rstrip('.')+'.'
+              key=line.lower()
+              if key not in seen: seen.add(key); highlights.append(line)
+          overview=[]
+          if 'features' in categories: overview.append('This release adds new user-facing functionality.')
+          if 'reliability' in categories: overview.append('It improves reliability and accuracy when identifying anime across different sources.')
+          if 'maintenance' in categories: overview.append('It improves the internal structure of the addon to make future fixes safer and more reliable.')
+          if 'performance' in categories: overview.append('It includes performance and efficiency improvements.')
+          if not overview: overview=['This release contains improvements to the addon.']
+          print(f'Release {tag}\n\nOverview')
+          for item in overview: print(item)
+          print('\nHighlights')
+          for line in highlights[:12]: print(f'- {line}')
+          if not highlights: print('- General reliability and maintenance improvements.')
+          PY
+          )"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          if git show-ref --verify --quiet "refs/tags/$tag"; then
+            existing_target="$(git rev-list -n1 "$tag^{commit}")"
+            test "$existing_target" = "$target"
+            test "$(git cat-file -t "refs/tags/$tag")" = "tag"
+          else
+            git tag -a "$tag" "$target" -m "$summary"
+            git push origin "refs/tags/$tag"
+          fi
+          test "$(git cat-file -t "refs/tags/$tag")" = "tag"
+          test "$(git rev-list -n1 "$tag^{commit}")" = "$target"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "GitHub Release $tag already exists."
+          else
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$tag" --notes "$summary"
+          fi
+          git pull --rebase origin main
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path=Path('ops/release-state.json')
+          state=json.loads(path.read_text())
+          version=state['nextReleaseVersion']
+          major,minor,patch=map(int,version.split('.'))
+          deployments=state['deploymentsSincePause']+1
+          state['deploymentsSincePause']=deployments
+          state['totalDeployments']+=1
+          state['paused']=deployments>=state['deploymentLimit']
+          state['lastDeploymentSha']=''+'''TARGET_SHA'''
+          state['lastDeploymentId']=''
+          state['lastDeploymentVersion']=version
+          state['nextReleaseVersion']=f'{major}.{minor+1}.0'
+          state['lastDeploymentTag']='v'+version
+          path.write_text(json.dumps(state,indent=2)+'\n')
+          PY
+          sed -i "s/TARGET_SHA/$target/" ops/release-state.json
+          git add ops/release-state.json
+          git commit -m "chore: record $tag production release [skip-release-pipeline]"
+          git push origin HEAD:main
+,str(m.get('id',''))) for m in metas)
           assert all(m.get('type') == 'series' for m in metas)
           assert any(m.get('id') == 'anilist:195604' for m in metas)
           PY

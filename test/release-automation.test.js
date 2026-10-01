@@ -17,13 +17,13 @@ test("release workflow tags and summarizes the production release", () => {
   assert.match(deployWorkflow, /git push origin \"refs\/tags\/\$tag\"/);
 });
 
-test("release smoke test validates the AniList-only catalog identity", () => {
+test("release smoke test validates the MAL-primary catalog identity", () => {
   assert.match(deployWorkflow, /https:\/\/nuvio-anime-releases-addon-rho\.vercel\.app\/manifest\.json/);
   assert.match(deployWorkflow, /https:\/\/nuvio-anime-releases-addon-rho\.vercel\.app\/catalog\/anime\/current_season\.json/);
   assert.doesNotMatch(deployWorkflow, /\/catalog\/series\/ongoing\.json/);
   assert.match(deployWorkflow, /com\.marki\.nuvio\.anime-releases/);
   assert.doesNotMatch(deployWorkflow, /com\.marki\.nuvio\.anime-releases\.v5/);
   assert.doesNotMatch(deployWorkflow, /\/v5\//);
-  assert.equal(deployWorkflow.includes("r'^anilist:\\d+$'"), true);
-  assert.equal(deployWorkflow.includes("tt\\d+|tvdb"), false);
+  assert.equal(deployWorkflow.includes("mal:\\d+|anilist:\\d+"), true);
+  assert.equal(deployWorkflow.includes("assert all(m.get('type') == 'series' for m in metas)"), true);
 });
