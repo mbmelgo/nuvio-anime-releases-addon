@@ -15,6 +15,11 @@ on:
         required: true
         default: false
         type: boolean
+      release_target_sha:
+        description: 'Exact deployed commit SHA for finalize_release'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: write
@@ -155,10 +160,10 @@ jobs:
           release_version="$(python -c 'import json;print(json.load(open("ops/release-state.json"))["nextReleaseVersion"])')"
           tag="v$release_version"
           if [[ "${{ steps.gate.outputs.redeploy }}" == "true" ]]; then
-            target="$GITHUB_SHA"
+            target="$(node scripts/release-target.mjs deploy "$GITHUB_SHA")"
           else
-            target="$(git log -S "ADDON_VERSION = \"$release_version\"" --format=%H -- api/version.js | head -n1)"
-            test -n "$target"
+            target="$(node scripts/release-target.mjs finalize "${{ inputs.release_target_sha }}")"
+            git cat-file -e "$target^{commit}"
           fi
           git fetch --tags --force
           previous="$(git tag --merged "$target^" --sort=-version:refname --list 'v*' | head -n1 || true)"
@@ -198,9 +203,20 @@ jobs:
           )"
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git tag -a "$tag" "$target" -m "$summary"
-          git push origin "refs/tags/$tag"
-          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$tag" --notes "$summary" --target "$target"
+          if git show-ref --verify --quiet "refs/tags/$tag"; then
+            existing_target="$(git rev-list -n1 "$tag^{commit}")"
+            test "$existing_target" = "$target"
+            test "$(git cat-file -t "refs/tags/$tag")" = "tag"
+          else
+            git tag -a "$tag" "$target" -m "$summary"
+            git push origin "refs/tags/$tag"
+          fi
+          test "$(git cat-file -t "refs/tags/$tag")" = "tag"
+          test "$(git rev-list -n1 "$tag^{commit}")" = "$target"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "GitHub Release $tag already exists."
+          else
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$tag" --notes "$summary"
           git pull --rebase origin main
           python - <<'PY'
           import json
