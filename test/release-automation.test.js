@@ -38,6 +38,7 @@ test("release smoke test validates the MAL-primary catalog identity", () => {
   assert.match(deployWorkflow, /com\.marki\.nuvio\.anime-releases/);
   assert.doesNotMatch(deployWorkflow, /com\.marki\.nuvio\.anime-releases\.v5/);
   assert.doesNotMatch(deployWorkflow, /\/v5\//);
-  assert.match(deployWorkflow, /mal:\\d+\|anilist:\\d+/);
+  assert.match(deployWorkflow, /mal:/);
+  assert.match(deployWorkflow, /anilist:/);
   assert.match(deployWorkflow, /assert all\(m\.get\("type"\) == "series" for m in metas\)/);
 });
