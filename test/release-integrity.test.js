@@ -4,6 +4,7 @@ import {
   compareVersions,
   incrementMinor,
   validateVersionConsistency,
+  validateRepositoryReleaseState,
 } from "../scripts/release-integrity.mjs";
 import {
   PRODUCTION_CATALOG_IDS,
@@ -11,7 +12,7 @@ import {
   validateManifest,
 } from "../scripts/validate-production.mjs";
 
-test("release version helpers enforce semantic versioning and minor baselines", () => {
+test("repository release metadata is internally consistent", () => {\n  assert.equal(validateRepositoryReleaseState(), true);\n});\n\ntest("release version helpers enforce semantic versioning and minor baselines", () => {
   assert.equal(compareVersions("5.5.3", "5.5.0") > 0, true);
   assert.equal(compareVersions("5.5.0", "5.5.0"), 0);
   assert.equal(incrementMinor("5.5.3"), "5.6.0");
