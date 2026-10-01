@@ -74,3 +74,12 @@ test("dry-run validates the existing production version instead of the unrelease
 test("dry-run trims whitespace from a manually supplied release target SHA", () => {
   assert.equal(deployWorkflow.includes("target=\"$(printf '%s' '${{ inputs.release_target_sha }}' | xargs)\""), true);
 });
+
+
+test("extended production validation defines its production version within the same shell", () => {
+  assert.equal(
+    deployWorkflow.includes('EXPECTED_VERSION="$production_expected" PRODUCTION_BASE_URL=') &&
+    deployWorkflow.includes('production_expected="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json'),
+    true,
+  );
+});
