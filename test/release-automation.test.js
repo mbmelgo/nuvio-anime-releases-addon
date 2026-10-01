@@ -53,3 +53,13 @@ test("release smoke test validates the MAL-primary catalog identity", () => {
   assert.match(deployWorkflow, /anilist:/);
   assert.match(deployWorkflow, /assert all\(m\.get\("type"\) == "series" for m in metas\)/);
 });
+
+
+test("release workflow resolves and records the actual Vercel deployment ID", () => {
+  assert.match(deployWorkflow, /Resolve Vercel deployment ID/);
+  assert.match(deployWorkflow, /commits\/\\?\$\{target\}\/status/);
+  assert.match(deployWorkflow, /resolve-vercel-deployment-id\.mjs/);
+  assert.match(deployWorkflow, /steps\.vercel_deployment\.outputs\.deployment_id/);
+  assert.match(deployWorkflow, /state\["lastDeploymentId"\] = os\.environ\["VERCEL_DEPLOYMENT_ID"\]/);
+  assert.doesNotMatch(deployWorkflow, /state\["lastDeploymentId"\] = ""/);
+});
