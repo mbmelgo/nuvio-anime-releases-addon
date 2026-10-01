@@ -223,6 +223,15 @@ test("release workflow keeps dry runs non-mutating and deploys idempotently", as
   assert.match(workflow, /GITHUB_RUN_ID/);
 });
 
+test("production dispatch honors an explicit release target SHA over workflow HEAD", async () => {
+  const workflow = await readFile(".github/workflows/sync-version.yml", "utf8");
+  const deployBlock = workflow.match(/elif \\[\\[ "\\$\\{\\{ github\\.event_name \\}\\}" == "workflow_dispatch" && "\\$\\{\\{ inputs\\.deploy_prod \\}\\}" == "true" \\]\\]; then[\\s\\S]*?elif \\[\\[ "\\$\\{\\{ github\\.event_name \\}\\}" == "workflow_dispatch" && "\\$\\{\\{ inputs\\.finalize_release \\}\\}" == "true" \\]\\]; then/);
+  assert.ok(deployBlock);
+  assert.match(deployBlock[0], /target="\\$\\(printf '%s' '\\$\\{\\{ inputs\\.release_target_sha \\}\\}' \\| xargs\\)"/);
+  assert.match(deployBlock[0], /if \[ -z "\\$target" \]; then target="\\$GITHUB_SHA"; fi/);
+  assert.ok(deployBlock[0].indexOf("release_target_sha=$target") < deployBlock[0].length);
+});
+
 test("release target validator requires an exact SHA and expected version", () => {
   assert.equal(validateReleaseTarget({
     targetVersion: "5.6.0",
