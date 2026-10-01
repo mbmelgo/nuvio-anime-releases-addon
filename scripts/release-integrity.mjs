@@ -133,6 +133,8 @@ export function validateRepositoryReleaseState(root = process.cwd()) {
     paused: state.paused,
   });
 
+  validateLastDeploymentMetadata(state);
+
   if (readmeVersions.badge !== addonVersion || readmeVersions.development.replace(/^v/, "") !== addonVersion) {
     throw new Error("README development version is out of sync with api/version.js.");
   }
