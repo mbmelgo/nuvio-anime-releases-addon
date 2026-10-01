@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-const script = new URL("../scripts/release-target.mjs", import.meta.url);
+const script = fileURLToPath(new URL("../scripts/release-target.mjs", import.meta.url));
 
 function run(args, env = {}) {
   return spawnSync(process.execPath, [script, ...args], {
