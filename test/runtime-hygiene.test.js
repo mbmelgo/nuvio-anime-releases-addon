@@ -53,7 +53,7 @@ test("README and home page describe the current MAL-primary release", async () =
   assert.match(readme, /version-5\.4\.0-blue/);
   assert.match(readme, /MAL identities when available/);
   assert.doesNotMatch(readme, /AniList-only/);
-  assert.match(home, /MAL identities when available/);
+  assert.match(home, /MAL is the primary catalog identity when available/);
   assert.match(home, /mal:<id>/);
   assert.doesNotMatch(home, /AniList-only/);
 });
