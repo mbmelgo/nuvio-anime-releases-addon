@@ -4,8 +4,6 @@ import {
   NUVIO_PAGE_SIZE,
   buildCatalogMediaVariables,
   catalogDefinitions as getCatalogDefinitions,
-  getLast7DaysRangeManila,
-  getNext7DaysRangeManila,
   getNext5DaysRangeManila,
   getPrevious7DaysRangeManila,
   getSeasonInfo as getSeasonInfoValue,
@@ -19,8 +17,6 @@ export {
   ANILIST_PAGE_SIZE,
   NUVIO_PAGE_SIZE,
   buildCatalogMediaVariables,
-  getLast7DaysRangeManila,
-  getNext7DaysRangeManila,
   getNext5DaysRangeManila,
   getPrevious7DaysRangeManila,
   parseCatalogExtraPath,
@@ -28,17 +24,8 @@ export {
   toMetaFromAniList,
 };
 
-export function catalogDefinitions(info, identityMode = "mal") {
-  return getCatalogDefinitions(info, identityMode);
-}
-
-export function getCatalogIdentityMode(id) {
-  return String(id || "").startsWith("anilist_") ? "anilist" : "mal";
-}
-
-export function getBaseCatalogId(id) {
-  const value = String(id || "");
-  return value.startsWith("mal_") || value.startsWith("anilist_") ? value.slice(value.indexOf("_") + 1) : value;
+export function catalogDefinitions(info) {
+  return getCatalogDefinitions(info);
 }
 
 export function toCatalogIdentity(meta, identityMode = "mal") {
@@ -95,10 +82,9 @@ export default async function handler(req, res) {
 }
 
 export function getCatalogFilter(id, info) {
-  const baseId = getBaseCatalogId(id);
-  if (baseId === "current_season") return { season: info.ongoing, sort: ["ID"] };
-  if (baseId === "previous_season") return { season: info.previous, sort: ["ID"] };
-  if (baseId === "upcoming_season") return { season: info.upcoming, sort: ["ID"] };
+  if (id === "current_season") return { season: info.ongoing, sort: ["ID"] };
+  if (id === "previous_season") return { season: info.previous, sort: ["ID"] };
+  if (id === "upcoming_season") return { season: info.upcoming, sort: ["ID"] };
   return null;
 }
 
@@ -135,9 +121,8 @@ export async function fetchValidatedSeasonCatalogPage({
 }
 
 export function getRollingCatalogRange(id, date) {
-  const baseId = getBaseCatalogId(id);
-  if (baseId === "upcoming_5_days") return getNext5DaysRangeManila(date);
-  if (baseId === "previous_7_days") return getPrevious7DaysRangeManila(date);
+  if (id === "upcoming_5_days") return getNext5DaysRangeManila(date);
+  if (id === "previous_7_days") return getPrevious7DaysRangeManila(date);
   return null;
 }
 
@@ -154,8 +139,7 @@ export async function buildRollingCatalog(id, date, skip, search, {
   const range = getRollingCatalogRange(id, date);
   if (!range) return [];
 
-  const identityMode = getCatalogIdentityMode(id);
-  const futureOnly = getBaseCatalogId(id) === "upcoming_5_days";
+  const futureOnly = id === "upcoming_5_days";
   const sort = futureOnly ? "TIME" : "TIME_DESC";
 
   return collectValidatedCatalogPage({
@@ -170,7 +154,7 @@ export async function buildRollingCatalog(id, date, skip, search, {
         const mediaId = media?.id;
         if (!Number.isInteger(Number(mediaId)) || Number(mediaId) <= 0) continue;
         if (!isEligibleRollingMedia(media)) continue;
-        const meta = toCatalogIdentity(toMetaFromAniList(mediaId, media), identityMode);
+        const meta = toCatalogIdentity(toMetaFromAniList(mediaId, media));
         if (!meta) continue;
         meta.type = "series";
         meta.extra = {
@@ -190,14 +174,13 @@ export async function buildRollingCatalog(id, date, skip, search, {
 }
 
 export async function buildCatalog(id, info, skip, search) {
-  const identityMode = getCatalogIdentityMode(id);
   const filter = getCatalogFilter(id, info);
   if (filter) {
     return fetchValidatedSeasonCatalogPage({
       filter,
       skip,
       search,
-      canonicalizePage: (rows) => canonicalizeCatalogPage(rows, { identityMode }),
+      canonicalizePage: canonicalizeCatalogPage,
     });
   }
   if (getRollingCatalogRange(id, new Date())) return buildRollingCatalog(id, new Date(), skip, search);
