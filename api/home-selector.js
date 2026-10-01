@@ -7,8 +7,8 @@ const SAMPLE_IMAGES = [
   ["Seasonal Catalogs", "/docs/images/readme-nuvio-home.png", "Representative seasonal catalog view"],
   ["Season Listing", "/docs/images/readme-nuvio-season.png", "Representative season listing"],
   ["Metadata Detail Flow", "/docs/images/readme-nuvio-detail.png", "Representative anime detail flow"],
-  ["Upcoming — 5 days", "/docs/images/readme-nuvio-upcoming-5-days.svg", "Representative upcoming rolling catalog"],
-  ["Previous — 7 days", "/docs/images/readme-nuvio-previous-7-days.svg", "Representative previous rolling catalog"],
+  ["Upcoming — 5 days", "/docs/images/nuvio-upcoming-5-days.png", "Nuvio-style upcoming rolling catalog"],
+  ["Previous — 7 days", "/docs/images/nuvio-previous-7-days.png", "Nuvio-style previous rolling catalog"],
 ];
 
 const CATALOGS = [
@@ -60,7 +60,7 @@ export default function handler(req, res) {
 
     <section class="panel">
       <h2>Sample Nuvio views</h2>
-      <p class="note">Representative showcase images from the repository. These are illustrative images rather than exact screenshots of the Nuvio application.</p>
+      <p class="note">Representative showcase images from the repository. These are Nuvio-style showcase screenshots with representative anime artwork.</p>
       <div class="samples">
         ${SAMPLE_IMAGES.map(([title, image, description]) => `<article class="sample"><img class="sample-image" src="${image}" alt="${title}" loading="lazy"><h3>${title}</h3><p>${description}</p></article>`).join("")}
       </div>
