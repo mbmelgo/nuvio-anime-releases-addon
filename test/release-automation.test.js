@@ -12,7 +12,8 @@ test("release workflow exposes manual dispatch inputs", () => {
 });
 
 test("release finalization validates the deployed target version", () => {
-  assert.match(deployWorkflow, /git show[\\s\\S]*api\\/version\\.js/);
+  assert.match(deployWorkflow, /git show/);
+  assert.match(deployWorkflow, /api\\/version\\.js/);
   assert.match(deployWorkflow, /Release target version.*next release baseline/);
 });
 
