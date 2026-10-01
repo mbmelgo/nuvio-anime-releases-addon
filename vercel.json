@@ -9,6 +9,10 @@
       "destination": "/api/resolver-manifest"
     },
     {
+      "source": "/manifest-mal.json",
+      "destination": "/api/resolver-manifest-mal"
+    },
+    {
       "source": "/catalog/:type/:id.json",
       "destination": "/api/catalog-source?resource=catalog&type=:type&id=:id"
     },

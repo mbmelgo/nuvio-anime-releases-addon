@@ -28,8 +28,25 @@ export {
   toMetaFromAniList,
 };
 
-export function catalogDefinitions(info) {
-  return getCatalogDefinitions(info);
+export function catalogDefinitions(info, identityMode = "anilist") {
+  return getCatalogDefinitions(info, identityMode);
+}
+
+export function getCatalogIdentityMode(id) {
+  return String(id || "").startsWith("mal_") ? "mal" : "anilist";
+}
+
+export function getBaseCatalogId(id) {
+  const value = String(id || "");
+  return value.startsWith("mal_") ? value.slice(4) : value;
+}
+
+export function toCatalogIdentity(meta, identityMode = "anilist") {
+  if (!meta) return null;
+  if (identityMode !== "mal") return meta;
+  const malId = Number(meta.extra?.malId);
+  if (!Number.isInteger(malId) || malId <= 0) return null;
+  return { ...meta, id: `mal:${malId}` };
 }
 
 export function getSeasonInfo(date) {
@@ -52,7 +69,7 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return send(res, {}, 200);
 
   if (resource === "catalog" && type === "anime") {
-    if (!catalogDefinitions(seasonInfo).some((catalog) => catalog.id === id)) {
+    if (!catalogDefinitions(seasonInfo).concat(catalogDefinitions(seasonInfo, "mal")).some((catalog) => catalog.id === id)) {
       return send(res, { metas: [] }, 404);
     }
     try {
@@ -69,9 +86,10 @@ export default async function handler(req, res) {
 }
 
 export function getCatalogFilter(id, info) {
-  if (id === "current_season") return { season: info.ongoing, sort: ["ID"] };
-  if (id === "previous_season") return { season: info.previous, sort: ["ID"] };
-  if (id === "upcoming_season") return { season: info.upcoming, sort: ["ID"] };
+  const baseId = getBaseCatalogId(id);
+  if (baseId === "current_season") return { season: info.ongoing, sort: ["ID"] };
+  if (baseId === "previous_season") return { season: info.previous, sort: ["ID"] };
+  if (baseId === "upcoming_season") return { season: info.upcoming, sort: ["ID"] };
   return null;
 }
 
@@ -79,14 +97,16 @@ export function normalizeSeasonalCatalogMetaTypes(metas) {
   return metas.map((meta) => ({ ...meta, type: "series" }));
 }
 
-export function canonicalizeCatalogPage(mediaRows) {
+export function canonicalizeCatalogPage(mediaRows, { identityMode = "anilist" } = {}) {
   if (!Array.isArray(mediaRows) || mediaRows.length === 0) return [];
   const normalizedRows = mediaRows
     .map((row) => (typeof row === "object" && row !== null ? row : { id: row }))
     .filter((row) => /^\d+$/.test(String(row.id ?? "").trim()));
   if (normalizedRows.length === 0) return [];
   return normalizeSeasonalCatalogMetaTypes(
-    normalizedRows.map((row) => toMetaFromAniList(row.id, row)).filter(Boolean),
+    normalizedRows
+      .map((row) => toCatalogIdentity(toMetaFromAniList(row.id, row), identityMode))
+      .filter(Boolean),
   );
 }
 
@@ -106,8 +126,9 @@ export async function fetchValidatedSeasonCatalogPage({
 }
 
 export function getRollingCatalogRange(id, date) {
-  if (id === "upcoming_5_days") return getNext5DaysRangeManila(date);
-  if (id === "previous_7_days") return getPrevious7DaysRangeManila(date);
+  const baseId = getBaseCatalogId(id);
+  if (baseId === "upcoming_5_days") return getNext5DaysRangeManila(date);
+  if (baseId === "previous_7_days") return getPrevious7DaysRangeManila(date);
   return null;
 }
 
@@ -124,7 +145,8 @@ export async function buildRollingCatalog(id, date, skip, search, {
   const range = getRollingCatalogRange(id, date);
   if (!range) return [];
 
-  const futureOnly = id === "upcoming_5_days";
+  const identityMode = getCatalogIdentityMode(id);
+  const futureOnly = getBaseCatalogId(id) === "upcoming_5_days";
   const sort = futureOnly ? "TIME" : "TIME_DESC";
 
   return collectValidatedCatalogPage({
@@ -139,7 +161,8 @@ export async function buildRollingCatalog(id, date, skip, search, {
         const mediaId = media?.id;
         if (!Number.isInteger(Number(mediaId)) || Number(mediaId) <= 0) continue;
         if (!isEligibleRollingMedia(media)) continue;
-        const meta = toMetaFromAniList(mediaId, media);
+        const meta = toCatalogIdentity(toMetaFromAniList(mediaId, media), identityMode);
+        if (!meta) continue;
         meta.type = "series";
         meta.extra = {
           ...meta.extra,
@@ -158,8 +181,21 @@ export async function buildRollingCatalog(id, date, skip, search, {
 }
 
 export async function buildCatalog(id, info, skip, search) {
+  const identityMode = getCatalogIdentityMode(id);
   const filter = getCatalogFilter(id, info);
-  if (filter) return fetchValidatedSeasonCatalogPage({ filter, skip, search });
+  if (filter) {
+    if (identityMode === "mal") {
+      return fetchValidatedSeasonCatalogPage({
+        filter,
+        skip,
+        search,
+        fetchPage: (catalogFilter, page, catalogSearch) =>
+          queryAnime(catalogFilter, page, catalogSearch, { includeMalId: true }),
+        canonicalizePage: (rows) => canonicalizeCatalogPage(rows, { identityMode }),
+      });
+    }
+    return fetchValidatedSeasonCatalogPage({ filter, skip, search });
+  }
   if (getRollingCatalogRange(id, new Date())) return buildRollingCatalog(id, new Date(), skip, search);
   return [];
 }
