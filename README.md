@@ -167,7 +167,7 @@ Catalog names and season labels are generated dynamically.
 ## 🚀 Current release
 
 **Production:** `v5.5.0`  
-**Development:** `5.5.4`  
+**Development:** `v5.5.4`  
 **Major baseline:** `v5.0.0`
 
 v5.5.0 is the current production baseline. It includes MAL-first catalog identity, AniList fallback, Nuvio pagination, and the five supported seasonal/rolling catalogs. Development currently contains additional catalog-integrity and release-validation coverage that has not yet been promoted to production.
