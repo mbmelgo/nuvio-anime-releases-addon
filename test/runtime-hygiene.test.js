@@ -7,6 +7,7 @@ import {
   incrementMinor,
   validateVersionConsistency,
   validateReleaseTarget,
+  validateLastDeploymentMetadata,
 } from "../scripts/release-integrity.mjs";
 import {
   PRODUCTION_CATALOG_IDS,
@@ -164,6 +165,51 @@ test("production rolling catalog validators enforce their distinct metadata cont
   }, "previous_7_days"), /future-only/);
 });
 
+
+test("last deployment metadata must mirror the authoritative release state", () => {
+  const state = {
+    lastDeploymentVersion: "5.5.0",
+    lastDeploymentSha: "afcb1604426af1d1fe4e02931c9dc1579c7f69c7",
+    lastDeploymentId: "dpl_Cja365dcwSHTN2BsSttr2nE8VrCU",
+    lastDeploymentTag: "v5.5.0",
+    lastDeployment: {
+      version: "5.5.0",
+      sha: "afcb1604426af1d1fe4e02931c9dc1579c7f69c7",
+      vercelDeploymentId: "dpl_Cja365dcwSHTN2BsSttr2nE8VrCU",
+      tag: "v5.5.0",
+      releasedAt: "2026-10-01T00:00:00.000Z",
+      ciRunId: "12345",
+      ciRunUrl: "https://github.com/mbmelgo/nuvio-anime-releases-addon/actions/runs/12345",
+      smokeTest: "passed",
+    },
+  };
+
+  assert.equal(validateLastDeploymentMetadata(state), true);
+
+  assert.throws(
+    () => validateLastDeploymentMetadata({
+      ...state,
+      lastDeployment: { ...state.lastDeployment, sha: "different" },
+    }),
+    /SHA/,
+  );
+
+  assert.throws(
+    () => validateLastDeploymentMetadata({
+      ...state,
+      lastDeployment: { ...state.lastDeployment, vercelDeploymentId: "wrong" },
+    }),
+    /deployment ID/,
+  );
+
+  assert.throws(
+    () => validateLastDeploymentMetadata({
+      ...state,
+      lastDeployment: { ...state.lastDeployment, releasedAt: "not-a-date" },
+    }),
+    /releasedAt/,
+  );
+});
 
 test("release target validator requires an exact SHA and expected version", () => {
   assert.equal(validateReleaseTarget({
