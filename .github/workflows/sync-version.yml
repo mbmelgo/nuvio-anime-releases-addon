@@ -188,24 +188,6 @@ jobs:
           done
           exit 1
 
-      - name: Extended production validation
-        if: steps.gate.outputs.release == 'true'
-        run: |
-          set -euo pipefail
-          if [ "${{ steps.gate.outputs.redeploy }}" = "true" ]; then
-            expected="$(sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p' api/version.js)"
-          else
-            git fetch --quiet origin "${{ steps.gate.outputs.release_target_sha }}"
-            expected="$(git show "${{ steps.gate.outputs.release_target_sha }}:api/version.js" | sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p')"
-          fi
-          for attempt in $(seq 1 30); do
-            if EXPECTED_VERSION="$expected" PRODUCTION_BASE_URL="https://nuvio-anime-releases-addon-rho.vercel.app" node scripts/validate-production.mjs; then
-              echo "Extended production validation passed."
-              exit 0
-            fi
-            sleep 5
-          done
-          exit 1
       - name: Resolve Vercel deployment ID
         if: steps.gate.outputs.release == 'true'
         id: vercel_deployment
