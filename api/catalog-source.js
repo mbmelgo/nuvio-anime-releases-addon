@@ -63,7 +63,7 @@ export default async function handler(req, res) {
 
   if (req.method === "OPTIONS") return send(res, {}, 200);
 
-  if (resource === "catalog" && type === "anime") {
+  if (resource === "catalog" && type === "series") {
     if (!catalogDefinitions(seasonInfo).some((catalog) => catalog.id === id)) {
       return send(res, { metas: [] }, 404);
     }

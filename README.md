@@ -156,17 +156,17 @@ The landing page provides the manifest, current catalog endpoints, release infor
 
 | Catalog | Endpoint |
 | --- | --- |
-| Upcoming Season | `/catalog/anime/upcoming_season.json` |
-| Current Season | `/catalog/anime/current_season.json` |
-| Previous Season | `/catalog/anime/previous_season.json` |
-| Upcoming — 5 days | `/catalog/anime/upcoming_5_days.json` |
-| Previous — 7 days | `/catalog/anime/previous_7_days.json` |
+| Upcoming Season | `/catalog/series/upcoming_season.json` |
+| Current Season | `/catalog/series/current_season.json` |
+| Previous Season | `/catalog/series/previous_season.json` |
+| Upcoming — 5 days | `/catalog/series/upcoming_5_days.json` |
+| Previous — 7 days | `/catalog/series/previous_7_days.json` |
 
 Catalog names and season labels are generated dynamically.
 
 ## 🚀 Current release
 
-**Production:** `v5.5.0`  
+**Production:** `v5.6.0`  
 **Development:** `v5.6.3`  
 **Major baseline:** `v5.0.0`
 
