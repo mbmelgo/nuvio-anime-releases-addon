@@ -136,9 +136,9 @@ test("production manifest validator enforces the exact five-catalog contract", (
     id: "com.marki.nuvio.anime-releases",
     version: "5.5.3",
     identityMode: "mal",
-    resources: [{ name: "catalog", types: ["anime"] }],
-    types: ["anime"],
-    catalogs: PRODUCTION_CATALOG_IDS.map((id) => ({ id, type: "anime" })),
+    resources: [{ name: "catalog", types: ["series"] }],
+    types: ["series"],
+    catalogs: PRODUCTION_CATALOG_IDS.map((id) => ({ id, type: "series" })),
   };
   assert.equal(validateManifest(manifest, "5.5.3"), true);
   assert.throws(() => validateManifest({
