@@ -22,9 +22,9 @@ export function buildManifest(info) {
     name: "Anime Releases for Nuvio",
     description: "Season-aware anime release catalogs using MyAnimeList identities when available, with canonical AniList identities as fallback. Detailed metadata is delegated to the user's preferred metadata addon.",
     resources: [
-      { name: "catalog", types: ["anime"] },
+      { name: "catalog", types: ["series"] },
     ],
-    types: ["anime"],
+    types: ["series"],
     catalogs: catalogDefinitions(info, "mal"),
     identityMode: "mal",
   };
