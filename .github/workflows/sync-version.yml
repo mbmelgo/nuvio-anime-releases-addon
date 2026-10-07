@@ -217,7 +217,7 @@ jobs:
           assert root.get("id") == "com.marki.nuvio.anime-releases"
           assert root.get("identityMode") == "mal"
           assert root.get("resources") == [{"name": "catalog", "types": ["series"]}]
-          assert root.get("types") == ["anime"]
+          assert root.get("types") == ["series"]
           assert root.get("catalogs") and all(c.get("type") == "series" for c in root["catalogs"])
           assert os.environ["META_STATUS"] == "404"
 
