@@ -9,9 +9,9 @@ test("release addon advertises anime catalogs for external metadata delegation",
     upcoming: { season: "FALL", year: 2026 },
   });
 
-  assert.deepEqual(manifest.types, ["anime"]);
+  assert.deepEqual(manifest.types, ["series"]);
   assert.deepEqual(manifest.resources, [
-    { name: "catalog", types: ["anime"] },
+    { name: "catalog", types: ["series"] },
   ]);
   assert.equal(manifest.resources.some((resource) => resource.name === "meta"), false);
   assert.equal("idPrefixes" in manifest, false);
