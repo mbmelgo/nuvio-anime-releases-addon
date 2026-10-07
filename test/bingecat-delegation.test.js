@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { buildManifest } from "../api/resolver-manifest.js";
 
-test("release addon advertises anime catalogs for external metadata delegation", () => {
+test("release addon advertises series catalogs for external metadata delegation", () => {
   const manifest = buildManifest({
     ongoing: { season: "SUMMER", year: 2026 },
     previous: { season: "SPRING", year: 2026 },
