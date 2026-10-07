@@ -46,7 +46,8 @@ test("release smoke test validates the MAL-primary catalog identity", () => {
   assert.match(deployWorkflow, /https:\/\/nuvio-anime-releases-addon-rho\.vercel\.app\/manifest\.json/);
   assert.match(deployWorkflow, /https:\/\/nuvio-anime-releases-addon-rho\.vercel\.app\/catalog\/series\/current_season\.json\?release_smoke=\$\{expected\}/);
   assert.doesNotMatch(deployWorkflow, /\/catalog\/anime\/ongoing\.json/);
-  assert.match(deployWorkflow, /--connect-timeout 5 --max-time 10/);\n  assert.match(deployWorkflow, /com\.marki\.nuvio\.anime-releases/);
+  assert.match(deployWorkflow, /--connect-timeout 5 --max-time 10/);
+  assert.match(deployWorkflow, /com\.marki\.nuvio\.anime-releases/);
   assert.doesNotMatch(deployWorkflow, /com\.marki\.nuvio\.anime-releases\.v5/);
   assert.doesNotMatch(deployWorkflow, /\/v5\//);
   assert.match(deployWorkflow, /mal:/);
