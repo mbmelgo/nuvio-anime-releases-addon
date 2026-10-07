@@ -52,7 +52,8 @@ test("release smoke test validates the MAL-primary catalog identity", () => {
   assert.doesNotMatch(deployWorkflow, /\/v5\//);
   assert.match(deployWorkflow, /mal:/);
   assert.match(deployWorkflow, /anilist:/);
-  assert.match(deployWorkflow, /assert root\.get\("types"\) == \["series"\]/);\n  assert.match(deployWorkflow, /assert all\(m\.get\("type"\) == "series" for m in metas\)/);
+  assert.match(deployWorkflow, /assert root\.get\("types"\) == \["series"\]/);
+  assert.match(deployWorkflow, /assert all\(m\.get\("type"\) == "series" for m in metas\)/);
 });
 
 
