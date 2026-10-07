@@ -201,8 +201,8 @@ jobs:
             production_expected="$expected"
           fi
           for attempt in $(seq 1 30); do
-            root_manifest="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json || true)"
-            catalog="$(curl --fail --silent --show-error https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/current_season.json || true)"
+            root_manifest="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 10 https://nuvio-anime-releases-addon-rho.vercel.app/manifest.json?release_smoke=${expected} || true)"
+            catalog="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 10 https://nuvio-anime-releases-addon-rho.vercel.app/catalog/series/current_season.json?release_smoke=${expected} || true)"
             meta_status="$(curl --silent --output /dev/null --write-out '%{http_code}' https://nuvio-anime-releases-addon-rho.vercel.app/meta/series/mal%3A39535.json || true)"
             if EXPECTED="$production_expected" TARGET="$expected" ROOT="$root_manifest" CATALOG="$catalog" META_STATUS="$meta_status" python - <<'PY'
           import json
